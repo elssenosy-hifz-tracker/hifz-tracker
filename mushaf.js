@@ -30,8 +30,8 @@ const MUSHAF_CSS=`.mpage{font-family:"KFGQPC Hafs",serif;direction:rtl;line-heig
 .sh{justify-content:center;border:1px solid #c9b47a;border-radius:.3em;background:#f5edd3;margin:.15em 0;line-height:1.6}
 .bs{justify-content:center}
 .pno{text-align:center;font-size:.55em;color:#7a6a3a;line-height:1.6}`;
-function pageHTML(pg,markMap){
-  const W=mw(),E=aend(),a=MUS.p[pg-1],b=pg<604?MUS.p[pg]:W.length,c=pg<=2;
+function pageHTML(pg,markMap,tj){
+  const W=mw(),E=aend(),a=MUS.p[pg-1],b=pg<604?MUS.p[pg]:W.length,c=pg<=2,T=tj?(tjInject(),tjRange(W,w=>!!E[w],a,b)):null;
   let html="",li=bsr(MUS.l,a);
   for(;li<MUS.l.length&&MUS.l[li]<b;li++){
     const x=MUS.l[li],y=li+1<MUS.l.length?MUS.l[li+1]:W.length;
@@ -39,7 +39,7 @@ function pageHTML(pg,markMap){
     if(s>=0){html+=`<div class="ml sh"><span>سُورَةُ ${MUS.n[s]}</span></div>`;if(s!==0&&s!==8)html+=`<div class="ml bs"><span>${BASMALA}</span></div>`}
     let row="";
     for(let w=x;w<y;w++){const mk=markMap&&markMap.get(w);
-      row+=`<span class="w${mk?` m k-${mk.k}${mk.fx?" fx":""}`:""}" data-w="${w}">${W[w]}</span>`;
+      row+=`<span class="w${mk?` m k-${mk.k}${mk.fx?" fx":""}`:""}" data-w="${w}">${T?T[w-a]:W[w]}</span>`;
       if(E[w])row+=`<span class="ae">۝<b>${toAr(E[w])}</b></span>`}
     html+=`<div class="ml${c?" c":""}">${row}</div>`}
   return `<div class="mpage">${html}<div class="pno">${toAr(pg)}</div></div>`;
@@ -75,8 +75,8 @@ function renderMushaf(el,sub,st){
     <div class="mkinds" role="radiogroup" aria-label="Mistake kind"><span class="small muted">Tap a word to mark:</span>${MK_ORDER.map(k=>`<label class="mk k-${k}"><input type="radio" name="mk" value="${k}" ${k===MK_KIND?"checked":""}> ${ERR_KINDS[k]}</label>`).join("")}</div>
     <div class="filters">${[["all","All marks"],["30","Last 30 days"],["today","Today"]].map(([k,l])=>`<button class="fbtn ${k===flt?"on":""}" data-mf="${k}">${l}</button>`).join("")}</div>
   </div>
-  <div class="mwrap"><div class="mbox" style="width:${[100,135,170][z]}%">${pageHTML(pg,markMapFor(shown))}</div></div>
-  <p class="small muted mcap">Page ${pg} · juz ${juzOfPage(pg)} · ${SURAH_NAMES[ps.s]}. Swipe or use the arrow keys to turn pages.</p>
+  <div class="mwrap"><div class="mbox${z?" big"+z:""}">${pageHTML(pg,markMapFor(shown))}</div></div>
+  <p class="small muted mcap">Page ${pg} · juz ${juzOfPage(pg)} · ${SURAH_NAMES[ps.s]}. ${z?"Large text: long lines continue on the next row; dotted lines show where each mushaf line ends. ":""}Swipe or use the arrow keys to turn pages.</p>
   <div class="panel"><div class="head"><h3>Marks on this page</h3><button id="mPrint">Print mistakes</button></div>
     <div class="log">${onPage.length?onPage.map(m=>markRow(m)).join(""):'<p class="muted">No marks on this page. Tap a word in the page above to mark it.</p>'}</div></div>
   <div class="wsheet" id="wsheet" hidden></div>`;
@@ -92,7 +92,7 @@ function renderMushaf(el,sub,st){
   el.querySelector("#mPrint").onclick=()=>go({name:"mprint",id:st.id});
   const wrap=el.querySelector(".mwrap");let tx=null,ty=null;
   wrap.addEventListener("touchstart",e=>{tx=e.touches[0].clientX;ty=e.touches[0].clientY},{passive:true});
-  wrap.addEventListener("touchend",e=>{if(tx==null)return;const dx=e.changedTouches[0].clientX-tx,dy=e.changedTouches[0].clientY-ty;tx=null;if(z===0&&Math.abs(dx)>70&&Math.abs(dy)<60)goPg(dx>0?pg+1:pg-1)});
+  wrap.addEventListener("touchend",e=>{if(tx==null)return;const dx=e.changedTouches[0].clientX-tx,dy=e.changedTouches[0].clientY-ty;tx=null;if(Math.abs(dx)>70&&Math.abs(dy)<60)goPg(dx>0?pg+1:pg-1)});
   el.querySelectorAll(".mpage .w").forEach(sp=>sp.onclick=()=>{const w=Number(sp.dataset.w);const ex=all.filter(m=>m.w===w);if(ex.length)openSheet(el,st,w);else addMark(st,w,MK_KIND)});
   wireMarkRows(el);
   fitPage(el);document.fonts.load('20px "KFGQPC Hafs"').then(()=>fitPage(el)).catch(()=>{});

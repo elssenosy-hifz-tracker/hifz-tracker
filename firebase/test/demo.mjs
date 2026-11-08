@@ -37,6 +37,55 @@ try {
   await ready();
   ok('changes are kept after reload', await page.evaluate(() => students.find((s) => s.id === 's1').name === 'Yusuf Changed'));
 
+  // student mushaf: A+ makes the text larger without making the page wider than the screen
+  await page.evaluate(() => { go({ name: 'mushaf', id: 's1' }); view.page = 2; render(true); });
+  await page.waitForSelector('#mZi');
+  const size = () => page.evaluate(() => { const w = document.querySelector('.mwrap'); return { font: parseFloat(getComputedStyle(document.querySelector('.mpage')).fontSize), over: w.scrollWidth - w.clientWidth }; });
+  const s0 = await size();
+  await page.click('#mZi'); await page.waitForTimeout(200); await page.click('#mZi'); await page.waitForTimeout(300);
+  const s2 = await size();
+  ok('A+ makes the mushaf text larger without sideways scrolling', s2.font > s0.font * 1.6 && s2.over <= 1, JSON.stringify({ s0, s2 }));
+  await page.click('#mZo'); await page.waitForTimeout(200); await page.click('#mZo'); await page.waitForTimeout(200);
+
+  // Tajweed page: rules index, a rule with its examples, search, coloured mushaf
+  await page.click('#nav [data-nav="tajweed"]');
+  await page.waitForSelector('.tjrule');
+  ok('Tajweed page lists the rules', await page.evaluate(() => document.querySelectorAll('.tjrule').length >= 25 && ['tabii', 'silaS', 'silaK', 'arid', 'leen', 'iwad', 'tafkhim', 'tarqiq'].every((r) => document.querySelector('.tjrule[data-tr=' + r + ']'))));
+  await page.click('.tjrule[data-tr="iwad"]');
+  await page.waitForSelector('.tjres .tjsel');
+  ok('madd iwad page finds examples', await page.evaluate(() => +document.querySelector('.tjstat b').textContent > 500));
+  await page.click('[data-tr=""]');
+  await page.waitForSelector('.tjrule[data-tr="iqlab"]');
+  await page.click('.tjrule[data-tr="iqlab"]');
+  await page.waitForSelector('.tjres .tjay');
+  const iq = await page.evaluate(() => ({ places: +document.querySelector('.tjstat b').textContent, shown: document.querySelectorAll('.tjres .tjay').length, hl: document.querySelectorAll('.tjres .tjsel').length }));
+  ok('a rule page shows its count and highlighted examples', iq.places > 500 && iq.shown === 20 && iq.hl >= 20, JSON.stringify(iq));
+  await page.selectOption('#tjScope', 's1');
+  await page.waitForTimeout(300);
+  const iqB = await page.evaluate(() => +document.querySelector('.tjstat b').textContent);
+  ok('examples can be limited to one surah', iqB > 0 && iqB < iq.places, String(iqB));
+  await page.click('[data-tv="search"]');
+  await page.fill('#tjQ', 'من بعد');
+  await page.click('#tjSF button[type=submit]');
+  await page.waitForSelector('.tjres .tjay');
+  const sr = await page.evaluate(() => ({ found: parseInt(document.querySelector('.tjres').previousElementSibling.querySelector('p b').textContent, 10), coloured: document.querySelectorAll('.tjres [class^="tj-"]').length }));
+  ok('search finds ayahs without diacritics and shows colours', sr.found > 100 && sr.coloured > 20, JSON.stringify(sr));
+  await page.click('[data-tv="mushaf"]');
+  await page.evaluate(() => { view.tp = 2; render(true); });
+  await page.waitForSelector('.mpage .tj-madd6');
+  const tj = await page.evaluate(() => ({
+    // page 2: الٓمٓ is madd lazim, هُدࣰى لِّلۡمُتَّقِينَ is idgham without ghunnah
+    lazim: [...document.querySelectorAll('.mpage .tj-madd6')].some((e) => e.textContent.includes('لٓمٓ')),
+    idgN: [...document.querySelectorAll('.mpage .tj-idgN')].some((e) => e.textContent.startsWith('د')),
+    key: !!document.querySelector('.tjkey'),
+  }));
+  ok('coloured mushaf colours the rules and shows the key', tj.lazim && tj.idgN && tj.key, JSON.stringify(tj));
+  await page.hover('.mpage .tj-madd6');
+  await page.waitForSelector('#tjTip:not([hidden])');
+  ok('pointing at a coloured letter shows the rule name', /المد اللازم/.test(await page.textContent('#tjTip')));
+  await page.mouse.move(5, 5);
+  await page.evaluate(() => { go({ name: 'list' }); });
+
   // view as teacher
   await reloadBy(() => page.selectOption('#hifzDemoRole', 'teacher'));
   await ready();
