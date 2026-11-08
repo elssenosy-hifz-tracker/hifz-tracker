@@ -37,6 +37,26 @@ try {
   await ready();
   ok('changes are kept after reload', await page.evaluate(() => students.find((s) => s.id === 's1').name === 'Yusuf Changed'));
 
+  // tajweed colours in the mushaf: off by default, the button turns them on (with the key) and off again
+  await page.evaluate(() => { go({ name: 'mushaf', id: 's1' }); view.page = 2; render(true); });
+  await page.waitForSelector('#mTj');
+  const tjCount = () => page.evaluate(() => document.querySelectorAll('.mpage [class^="tj-"]').length);
+  ok('mushaf has no tajweed colours by default', (await tjCount()) === 0);
+  await page.click('#mTj');
+  await page.waitForSelector('.tjkey');
+  const tj = await page.evaluate(() => ({
+    n: document.querySelectorAll('.mpage [class^="tj-"]').length,
+    // page 2: الٓمٓ is madd lazim, هُدࣰى لِّلۡمُتَّقِينَ is idgham without ghunnah
+    lazim: [...document.querySelectorAll('.mpage .tj-madd6')].some((e) => e.textContent.includes('لٓمٓ')),
+    idgN: [...document.querySelectorAll('.mpage .tj-idgN')].some((e) => e.textContent.startsWith('د')),
+    words: document.querySelectorAll('.mpage .w').length,
+  }));
+  ok('tajweed button colours the rules and shows the key', tj.n > 20 && tj.lazim && tj.idgN && tj.words > 30, JSON.stringify(tj));
+  await page.click('#mTj');
+  await page.waitForTimeout(200);
+  ok('tajweed button turns the colours off again', (await tjCount()) === 0 && !(await page.$('.tjkey')));
+  await page.evaluate(() => { go({ name: 'list' }); });
+
   // view as teacher
   await reloadBy(() => page.selectOption('#hifzDemoRole', 'teacher'));
   await ready();

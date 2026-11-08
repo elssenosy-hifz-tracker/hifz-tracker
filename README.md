@@ -62,7 +62,7 @@ the build matched it byte for byte at that point, and it is not updated any more
    - `mushaf.js`: `/*MUSDATA*/` gets `mushaf/mus.json` (Quran text, page layout), `/*HAFSFONT*/` gets `mushaf/hafs.b64` (the Hafs font as base64).
    - `heart.js`: `/*HEARTVEC*/` gets `heart/heartvec.json` (vector heart of the 114 surahs).
 3. Strips the final `init();` from `app_en.js`, appends the modules in this order, then calls `init();` again:
-   `mushaf.js, heart.js, guide.js, classrep.js, extras.js, more.js, quick.js, smart.js, goals.js, tarteel.js, school.js, schools.js`
+   `mushaf.js, heart.js, guide.js, classrep.js, extras.js, more.js, quick.js, smart.js, goals.js, tarteel.js, tajweed.js, school.js, schools.js`
 4. Replaces `/*QDATA*/` with `qdata.json` (surah names, ayah counts, juz/page data).
 5. Wraps it all into one HTML document (style from `head_en.html` into `<head>`, the rest into `<body>`, all JS in one `<script>`).
 
@@ -86,6 +86,7 @@ Use `build_portable.py` from now on.
 | `smart.js` | Settings, smart suggestions, admin tools |
 | `goals.js` | Goals and plan sheets |
 | `tarteel.js` | Coverage panel, recitation features |
+| `tajweed.js` | Tajweed colours in the mushaf (rules worked out from the Uthmani text signs) |
 | `school.js`, `schools.js` | School mode: roles, teachers, groups, substitutes, multiple schools |
 | `qdata.json` | Quran metadata (surahs, ayahs, juz, pages) |
 | `mushaf/mus.json`, `mushaf/hafs.b64` | Quran text/layout and Hafs font (see `mushaf/LICENSE-quran-ws-text.txt`) |
