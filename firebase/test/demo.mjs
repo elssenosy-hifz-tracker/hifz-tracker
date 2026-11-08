@@ -15,6 +15,8 @@ const server = await serve(fileURLToPath(new URL('../../public-demo', import.met
 const browser = await chromium.launch(process.env.PW_BUNDLED ? {} : { channel: 'chrome' });
 try {
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  // the first-visit tour is tested on its own; other checks start with it already seen
+  await ctx.addInitScript(() => { try { localStorage.setItem('hifz.tour', '1'); } catch (_) {} });
   const page = await ctx.newPage();
   const errs = [];
   const firebaseCalls = [];
@@ -114,6 +116,7 @@ try {
 
   // student page: practice results (weakest first) and tajweed mistakes by rule; practise the weakest rule with that student
   await page.evaluate(() => { go({ name: 'student', id: 's1' }); });
+  await page.click('details[data-sf="tajweed"] > summary');
   await page.waitForSelector('.tjstud');
   const sp = await page.evaluate(() => ({ first: document.querySelector('.tjstud .tjweak .tjar').textContent, text: document.querySelector('.tjstud').textContent }));
   ok('student page shows the weakest practised rule and marked tajweed mistakes', sp.first === 'الإقلاب' && /1 \/ 4/.test(sp.text) && /الإدغام بغير غنة/.test(sp.text), JSON.stringify(sp));
@@ -141,10 +144,52 @@ try {
   await page.check('input[name=mk][value=forgot]');
   await page.evaluate(() => { go({ name: 'list' }); });
 
+  // simpler layout: 5 buttons in the bottom bar, Help instead of Backup/Settings in the header
+  await page.evaluate(() => { go({ name: 'list' }); });
+  await page.waitForSelector('.slist .row');
+  const lay = await page.evaluate(() => ({ nav: [...document.querySelectorAll('#nav button')].filter((b) => !b.hidden).map((b) => b.dataset.nav), help: !!document.getElementById('helpTop'), oldTop: !!document.getElementById('bkTop'), rows: document.querySelectorAll('.slist .row').length, att: document.querySelectorAll('#view .att, #view [data-att]').length }));
+  ok('bottom bar has 5 buttons and the header has Help', lay.nav.join() === 'today,list,tajweed,reports,settings' && lay.help && !lay.oldTop, JSON.stringify(lay));
+  ok('Students page is search, class tabs and the list', lay.rows === 6 && lay.att === 0 && !!(await page.$('#srch')), JSON.stringify(lay));
+  await page.evaluate(() => { go({ name: 'settings' }); });
+  await page.waitForSelector('[data-hub="backup"]');
+  ok('Backup and Schools are in Settings', !!(await page.$('[data-hub="schools"]')));
+  // student page: two main buttons, the rest under More, long sections folded
+  await page.evaluate(() => { go({ name: 'student', id: 's1' }); });
+  await page.waitForSelector('#sesBtn');
+  const sv = await page.evaluate(() => { const v = (s) => { const e = document.querySelector(s); return !!e && !e.closest('details:not([open])') && e.getBoundingClientRect().height > 0; }; return { ses: v('#sesBtn'), mus: v('#musBtn'), test: v('#tmBtn'), folds: document.querySelectorAll('details[data-sf]').length, open: document.querySelectorAll('details[data-sf][open]').length }; });
+  await page.click('#sMore > summary');
+  const tmAfter = await page.evaluate(() => document.querySelector('#tmBtn').getBoundingClientRect().height > 0);
+  ok('student page shows two main buttons; the rest are under More', sv.ses && sv.mus && !sv.test && tmAfter, JSON.stringify(sv));
+  ok('long sections on the student page start folded', sv.folds >= 8 && sv.open <= 1, JSON.stringify(sv));
+  // session: mistake counters stay hidden until "Mistakes and details"
+  await page.evaluate(() => { go({ name: 'session', id: 's2' }); });
+  await page.waitForSelector('[data-qx="qHC"]');
+  const vis = (s) => page.evaluate((s) => { const e = document.querySelector(s); return !!e && e.getBoundingClientRect().height > 0; }, s);
+  const before = await vis('#qHm');
+  await page.click('[data-qx="qHC"]');
+  ok('session hides mistake counters until "Mistakes and details"', !before && (await vis('#qHm')));
+  // first-visit tour: shows on a new device, Skip ends it, Help shows it again
+  const p2 = await browser.newPage({ viewport: { width: 390, height: 844 } });
+  await p2.goto(BASE);
+  await p2.waitForSelector('#tour .tcard', { timeout: 15000 });
+  const t1 = await p2.textContent('#tour .tt');
+  await p2.click('#tSkip');
+  const gone = !(await p2.$('#tour')) && (await p2.evaluate(() => localStorage.getItem('hifz.tour') === '1'));
+  await p2.click('#helpTop');
+  await p2.waitForSelector('#tour .tcard');
+  ok('first-visit tour shows once, Skip ends it, Help shows it again', t1 === 'Today' && gone, t1);
+  await p2.close();
+
   // view as teacher
   await reloadBy(() => page.selectOption('#hifzDemoRole', 'teacher'));
   await ready();
   ok('view as teacher gives teacher mode', await page.evaluate(() => document.body.classList.contains('sub') && meTeacher() && meTeacher().id === 't2'));
+  await page.evaluate(() => { localStorage.removeItem('hifz.cls'); go({ name: 'list' }); });
+  await page.waitForSelector('.slist .row');
+  ok('a teacher starts on their own class in Students', await page.evaluate(() => document.querySelectorAll('.slist .row').length === 3 && document.querySelector('[data-cls].on').dataset.cls === 'c1'));
+  await page.evaluate(() => { go({ name: 'reports' }); });
+  await page.waitForSelector('.hubs');
+  ok('a teacher does not see the school overview', !(await page.$('[data-hub="sover"]')));
   await reloadBy(() => page.selectOption('#hifzDemoRole', 'owner'));
   await ready();
 

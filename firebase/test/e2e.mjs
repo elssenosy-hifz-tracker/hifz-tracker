@@ -26,6 +26,8 @@ async function signInByEmailLink(page, email) {
 
 async function newPage(browser) {
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, acceptDownloads: true });
+  // the first-visit tour is tested on its own; other checks start with it already seen
+  await ctx.addInitScript(() => { try { localStorage.setItem('hifz.tour', '1'); } catch (_) {} });
   const page = await ctx.newPage();
   page.errs = [];
   page.on('pageerror', (e) => page.errs.push(String(e.stack || e.message).split('\n').slice(0, 3).join(' <- ')));

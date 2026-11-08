@@ -85,7 +85,7 @@ function testsDue(){const out=[],t=iso(today()),wk=iso(addDays(today(),7));
   return out.sort((a,b)=>a.date.localeCompare(b.date))}
 const testName=x=>x.kind==="monthly"?"Monthly random test":`Juz ${x.juz}${x.earlier?" (earlier hifz)":""}`;
 function testsPanel(){const list=testsDue();
-  let open=true;try{open=localStorage.getItem("hifz.tests")!=="0"}catch(e){}
+  let open=false;try{open=localStorage.getItem("hifz.tests")==="1"}catch(e){}
   const st0=students.slice().sort((a,b)=>String(a.name).localeCompare(String(b.name)));
   return `<details class="panel tight" id="testsBox" ${open?"open":""}><summary><b>Tests this week</b> <span class="small muted">${list.filter(x=>x.state!=="suggest").length} planned · ${list.filter(x=>x.state==="suggest").length} suggested</span></summary>
   ${list.length?`<div class="tbl"><table class="book tt"><thead><tr><th>Day</th><th>Student</th><th>Test</th><th></th></tr></thead><tbody>${list.map(x=>`<tr><td>${fmtShort(x.date)}</td><td><b>${esc(x.st.name)}</b></td><td>${testName(x)}</td><td>

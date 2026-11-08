@@ -99,7 +99,7 @@ function alertsPanel(list){
   const cw=classWeakAlerts(list);
   if(!rows.length&&!bk&&!cw.length)return `<div class="panel tight alerts"><span class="chip ok">No alerts today</span> <span class="small muted">Everyone is on plan.</span></div>`;
   rows.sort((x,y)=>x.a[0]-y.a[0]||String(x.st.name).localeCompare(String(y.st.name)));
-  let open=true;try{open=localStorage.getItem("hifz.alerts")!=="0"}catch(e){}
+  let open=true;try{open=localStorage.getItem("hifz.alerts")==="1"}catch(e){}
   return `<details class="panel tight alerts" id="alertsBox" ${open?"open":""}><summary><b>Today's alerts</b> <span class="small muted">${rows.length+cw.length} ${rows.length+cw.length===1?"alert":"alerts"}</span></summary>
     <ul class="alist">${rows.map(({st,a})=>`<li><button class="link" data-al="${st.id}">${esc(st.name)}</button> <span class="chip ${a[1]}">${a[2]}</span></li>`).join("")}
     ${cw.map(x=>`<li><span class="chip info">${esc(x.cls?x.cls.name:"Class")}</span> <b>${esc(SURAH_NAMES[x.s])}</b> is weak for ${x.names.length} students (${x.names.map(esc).join(", ")}): review it together?</li>`).join("")}

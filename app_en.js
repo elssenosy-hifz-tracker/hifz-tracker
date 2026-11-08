@@ -317,7 +317,8 @@ function classBar(cur){
 }
 
 const clsName=id=>{const c=classes.find(c=>c.id===id);return c?c.name:""};
-function getListCls(){try{return localStorage.getItem("hifz.cls")||"all"}catch(e){return "all"}}
+function getListCls(){try{return localStorage.getItem("hifz.cls")||myClsDefault()}catch(e){return "all"}}
+function myClsDefault(){try{const t=typeof meTeacher==="function"&&meTeacher();if(t&&SUB){const c=classes.find(x=>x.teacher===t.id&&schVisible(x));if(c)return c.id}}catch(_){}return "all"}
 function setListCls(v){try{localStorage.setItem("hifz.cls",v)}catch(e){}}
 function renderList(el,sub,ta){
   let cur=getListCls();
@@ -329,38 +330,24 @@ function renderList(el,sub,ta){
   sub.textContent=`${shown.length} ${shown.length===1?"student":"students"}${cur!=="all"&&cur!=="none"?" in "+clsName(cur):""} · ${fmt(today())}`;
   const b=document.createElement("button");b.className="primary adminonly";b.textContent="Add student";b.onclick=()=>go({name:"add",cls:cur});ta.append(b);
 
-  const tabs=`<div class="filters" role="tablist">${[["all","All students",students.length],...classes.filter(schVisible).map(c=>[c.id,c.name,students.filter(s=>s.cls===c.id).length]),...(orphans.length?[["none","No class",orphans.length]]:[]),...(arch.length?[["arch","Archived",arch.length]]:[])].map(([k,n,c])=>`<button class="fbtn ${k===cur?"on":""}" data-cls="${k}" role="tab" aria-selected="${k===cur}">${esc(n)} <span class="cnt">${c}</span></button>`).join("")}<button class="link small adminonly" id="mngCls">Settings: classes, points, holidays, backup</button></div>`;
-  const wireTabs=()=>{el.querySelectorAll("[data-openc]").forEach(b=>b.onclick=()=>go({name:"class",id:b.dataset.openc,date:iso(today())}));el.querySelectorAll("[data-crep]").forEach(b=>b.onclick=()=>go({name:"crep",id:b.dataset.crep}));el.querySelectorAll("[data-cls]").forEach(b=>b.onclick=()=>{setListCls(b.dataset.cls);render(true)});el.querySelector("#mngCls").onclick=()=>go({name:"classes"});wireAlerts(el);wireSearch(el);{const g=el.querySelector("[data-gows]");if(g)g.onclick=()=>go({name:"wsum",cls:cur!=="all"?cur:undefined});const h=el.querySelector("[data-gostar]");if(h)h.onclick=()=>go({name:"star",cls:cur!=="all"?cur:undefined})}wireClassSign(el);wireTests(el)};
+  const tabs=`<div class="filters" role="tablist">${[["all","All students",students.length],...classes.filter(schVisible).map(c=>[c.id,c.name,students.filter(s=>s.cls===c.id).length]),...(orphans.length?[["none","No class",orphans.length]]:[]),...(arch.length?[["arch","Archived",arch.length]]:[])].map(([k,n,c])=>`<button class="fbtn ${k===cur?"on":""}" data-cls="${k}" role="tab" aria-selected="${k===cur}">${esc(n)} <span class="cnt">${c}</span></button>`).join("")}</div>`;
+  const wireTabs=()=>{el.querySelectorAll("[data-openc]").forEach(b=>b.onclick=()=>go({name:"class",id:b.dataset.openc,date:iso(today())}));el.querySelectorAll("[data-crep]").forEach(b=>b.onclick=()=>go({name:"crep",id:b.dataset.crep}));el.querySelectorAll("[data-cls]").forEach(b=>b.onclick=()=>{setListCls(b.dataset.cls);render(true)});wireAlerts(el);wireSearch(el);{const g=el.querySelector("[data-gows]");if(g)g.onclick=()=>go({name:"wsum",cls:cur!=="all"?cur:undefined});const h=el.querySelector("[data-gostar]");if(h)h.onclick=()=>go({name:"star",cls:cur!=="all"?cur:undefined})}wireClassSign(el);wireTests(el)};
   if(cur==="arch"){sub.textContent=`${arch.length} archived`;el.innerHTML=subBanner()+tabs+archivedList();wireTabs();wireArchived(el);return}
-  if(!shown.length){el.innerHTML=subBanner()+tabs+classBar(cur)+`<div class="panel empty"><h3>No students yet</h3><p>Add your first student: name, daily amount, and hifz days per week. Then choose where they start: from An-Nas or from Al-Fatihah.</p></div>`;wireTabs();return}
+  if(!shown.length){el.innerHTML=subBanner()+tabs+`<div class="panel empty"><h3>No students yet</h3><p>Add your first student: name, daily amount, and hifz days per week. Then choose where they start: from An-Nas or from Al-Fatihah.</p></div>`;wireTabs();return}
   const rank=s=>s.chips.some(c=>c[0]==="bad")?0:s.chips.some(c=>c[0]==="warn")?1:s.chips.some(c=>c[0]==="info")?2:3;
   const rows=shown.map(st=>({st,s:status(st,events)}));
   const counts=[0,0,0,0];rows.forEach(r=>counts[rank(r.s)]++);
   const todayIso=iso(today());
   const attToday=new Map(events.filter(e=>e.type==="session"&&e.date===todayIso).map(e=>[e.sid,e.att]));
-  el.innerHTML=subBanner()+starBanner()+wsumBanner()+searchBox()+tabs+classBar(cur)+alertsPanel(shown)+testsPanel()+`
-  <div class="summary">
-    <span class="chip bad">${counts[0]} absent or not heard</span>
-    <span class="chip warn">${counts[1]} need attention</span>
-    <span class="chip info">${counts[2]} due a test or consolidation</span>
-    <span class="chip ok">${counts[3]} on track</span>
-  </div>
-  <div class="list">${rows.map(({st,s})=>{useOrder(st);const cj=currentJuz(st.pos),la=lastAyahOf(st.pos),at=attToday.get(st.id);return `
+  el.innerHTML=subBanner()+searchBox()+tabs+`
+  <div class="list slist">${rows.map(({st,s})=>{useOrder(st);const pl=planShort(st);return `
     <div class="row" data-id="${st.id}" role="button" tabindex="0">
-      <span class="name">${esc(st.name)}${st.example?' <span class="chip plain">example</span>':""} <span class="chip pts" title="Points">★ ${ptsSum(st.id)}</span> ${streakChip(st)}</span>
-      <span class="chips">${chipsHTML(s.chips)}</span>
-      <span class="meta">${cur==="all"&&clsName(st.cls)?"<bdi>"+esc(clsName(st.cls))+"</bdi> · ":""}${amountLabel(st.amount)} · ${st.days.length} hifz days · ${orderName()} · ${la?"reached "+pieceText({...la,a1:la.a2}):"not started"}${cj?` · juz ${cj}`:""} · <b>${pagesOf((Number(st.pos)||0)+PREV_LINES)} p memorized</b></span>
-      <span class="att" data-sid="${st.id}">
-        <span class="small muted">Today:</span>
-        ${attCtl(st,todayIso)}
-        ${leftCtl(st.id,todayIso,true)}
-      </span>
-    </div>`}).join("")}</div>
-  <p class="note">Mark attendance here with one tap. Open a student to record the full session: hifz, review and mistakes.</p>`;
+      <span class="name">${esc(st.name)}${st.example?' <span class="chip plain">example</span>':""}</span>
+      <span class="chips">${chipsHTML(s.chips.slice(0,2))}</span>
+      <span class="meta">${cur==="all"&&clsName(st.cls)?"<bdi>"+esc(clsName(st.cls))+"</bdi>"+(pl?" · ":""):""}${esc(pl)}</span>
+    </div>`}).join("")}</div>`;
   wireTabs();
   el.querySelectorAll(".row").forEach(r=>{const open=()=>go({name:"student",id:r.dataset.id});r.onclick=e=>{if(!e.target.closest(".att"))open()};r.onkeydown=e=>{if(e.key==="Enter"&&e.target===r)open()}});
-  wireLeft(el,todayIso);
-  wireAtt(el,todayIso);
 }
 async function setAttendance(sid,date,att,arr){
   const ex=events.find(e=>e.type==="session"&&e.sid===sid&&e.date===date);
@@ -380,13 +367,11 @@ function renderStudent(el,sub,st){
     <div class="head"><h2>${esc(st.name)}</h2><div class="chips">${chipsHTML(s.chips)}</div></div>
     <div class="bar" aria-label="Share memorized"><i style="width:${pct}%"></i></div>
     <p class="small muted">${PREV_R.length?`Memorized before: ${prevSummary()} · `:""}${pagesOf(st.pos+PREV_LINES)} of 604 pages memorized (${pct}%)${la?` · last memorized: ${pieceText({...la,a1:la.a2})}`:""}${cj?` · now in juz ${cj}`:" · completed the Quran"}</p>
-    <div class="juzgrid">${JUZ_ORDER.map(j=>`<span class="${s.passed.has(j)?"tested":s.done.includes(j)?"done":j===cj?"cur":""}" title="Juz ${j}">${j}</span>`).join("")}</div>
-    <p class="small muted">Green: juz passed its test. Teal: memorized, not tested yet. Last 30 days: present ${pres.filter(attended).length} (late ${pres.filter(e=>e.att==="late").length}), absent ${pres.filter(e=>e.att==="absent").length}, excused ${pres.filter(e=>e.att==="excused").length}.</p>
-    <div class="actions"><button class="primary" id="sesBtn">Record session</button><button class="primary" id="tmBtn">Test mode</button><button id="jtBtn">Juz test</button><button id="mtBtn">Monthly test</button><button id="otBtn">Other record</button><button class="primary" id="musBtn">Mushaf</button><button id="histBtn">Student history</button><button id="weekBtn">Plan sheet</button><button id="repBtn">Report</button><button id="mprBtn">Print mistakes</button><button id="waBtn">Message parents</button><button id="yrBtn">Year report</button><button id="editBtn">Edit details</button></div>
+    <details class="sfold sjuz"><summary>Juz map and attendance</summary><div class="juzgrid">${JUZ_ORDER.map(j=>`<span class="${s.passed.has(j)?"tested":s.done.includes(j)?"done":j===cj?"cur":""}" title="Juz ${j}">${j}</span>`).join("")}</div>
+    <p class="small muted">Green: juz passed its test. Teal: memorized, not tested yet. Last 30 days: present ${pres.filter(attended).length} (late ${pres.filter(e=>e.att==="late").length}), absent ${pres.filter(e=>e.att==="absent").length}, excused ${pres.filter(e=>e.att==="excused").length}.</p></details>
+    <div class="bigacts"><button class="primary" id="sesBtn">✎ Record session</button><button class="primary" id="musBtn">📖 Mushaf</button></div>
+    <details class="smore" id="sMore"><summary>More</summary><div class="smenu"><b class="small muted">Tests</b><div class="actions"><button id="tmBtn">Test mode</button><button id="jtBtn">Juz test</button><button id="mtBtn">Monthly test</button><button id="otBtn">Other record</button></div><b class="small muted">Reports and parents</b><div class="actions"><button id="repBtn">Report</button><button id="yrBtn">Year report</button><button id="weekBtn">Plan sheet</button><button id="mprBtn">Print mistakes</button><button id="waBtn">Message parents</button></div><b class="small muted">Student</b><div class="actions"><button id="histBtn">Student history</button><button id="editBtn">Edit details</button></div></div></details>
   </div>
-  ${streakPanel(st)}
-  ${strengthPanel(st)}
-  ${typeof coveragePanel==="function"?coveragePanel(st):""}
   ${st.archived?`<div class="banner warn">${esc(st.name)} is archived since ${fmtShort(st.archived)}: hidden from the lists and reports. <button class="primary adminonly" id="unarchBtn">Restore student</button></div>`:""}
   ${s.done.length>=30?`<div class="banner ok">${esc(st.name)} has completed the whole Quran. <button class="primary" id="khatmCert" ${downloads?"":"hidden"}>Download khatm certificate</button> <span class="small muted" id="k_msg"></span></div>`:""}
   ${backBanner(st)}
@@ -409,13 +394,11 @@ function renderStudent(el,sub,st){
   </div>
   <div class="panel">
     <div class="head"><h3>Recent sessions</h3><button class="link" id="histBtn2">Full history</button></div>
-    <div class="log">${s.mine.length?s.mine.slice(0,5).map(evRow).join(""):'<p class="muted">Nothing recorded yet. Tap "Record session" to add the first one.</p>'}</div>
+    <div class="log">${s.mine.length?s.mine.slice(0,3).map(evRow).join(""):'<p class="muted">Nothing recorded yet. Tap "Record session" to add the first one.</p>'}</div>
   </div>
-  ${heartPanel(st)}
-  ${goalPanel(st)}${suggPanel(st)}${progressPanel(st)}${journeyPanel(st)}${tjStudentPanel(st)}
-  ${certPanel(st)}
-  ${pointsPanel(st)}
-  <div id="bookWrap">${errorBookPanel(st)}</div>`;
+  ${sFold("sugg","Amount suggestion",suggPanel(st))}${sFold("streak","Streak",streakPanel(st))}${sFold("strength","Surah strength",strengthPanel(st))}${typeof coveragePanel==="function"?sFold("cover","Coverage",coveragePanel(st)):""}${sFold("heart","Quran heart",heartPanel(st))}${sFold("goal","Goal",goalPanel(st))}${sFold("progress","Progress",progressPanel(st))}${sFold("journey","Journey",journeyPanel(st))}${sFold("tajweed","Tajweed",tjStudentPanel(st))}${sFold("cert","Certificates",certPanel(st))}${sFold("points","Points",pointsPanel(st))}
+  ${sFold("book","Mistakes to fix",`<div id="bookWrap">${errorBookPanel(st)}</div>`,/data-|class="bk/.test(errorBookPanel(st)))}`;
+  wireFolds(el);
   wireBack(el);wireHeart(el,st);
   el.querySelector("#sesBtn").onclick=()=>go({name:"session",id:st.id});
   wireSugg(el,st);wireGoal(el,st);wireStrength(el,st);el.querySelector("#tmBtn").onclick=()=>go({name:"test",id:st.id});el.querySelector("#jtBtn").onclick=()=>go({name:"session",id:st.id,pre:{type:"test"}});el.querySelector("#mtBtn").onclick=()=>go({name:"session",id:st.id,pre:{type:"monthly"}});el.querySelector("#otBtn").onclick=()=>go({name:"session",id:st.id,pre:{type:"makeup"}});
@@ -431,6 +414,10 @@ function renderStudent(el,sub,st){
   wireFix(el,st);wirePoints(el,st);
   wireDeletes(el,st);
 }
+// folded sections on the student page; which ones are open is remembered on this device. Opening one redraws the page so charts get their size.
+let S_OPEN=null;const sOpen=()=>S_OPEN||(S_OPEN=(()=>{try{return new Set(JSON.parse(localStorage.getItem("hifz.sfold")||"[]"))}catch(_){return new Set()}})());
+function sFold(k,title,html,show=true){if(!html||!String(html).trim()||!show)return "";const t=(String(html).match(/<h[23][^>]*>([\s\S]*?)<\/h[23]>/)||[])[1];const label=t?t.replace(/<[^>]+>/g,"").trim()||title:title;return `<details class="sfold" data-sf="${k}" ${sOpen().has(k)?"open":""}><summary>${esc(label)}</summary><div class="sfb">${html}</div></details>`}
+function wireFolds(el){el.querySelectorAll("details[data-sf]").forEach(d=>d.addEventListener("toggle",()=>{const s=sOpen();if(d.open===s.has(d.dataset.sf))return;if(d.open)s.add(d.dataset.sf);else s.delete(d.dataset.sf);try{localStorage.setItem("hifz.sfold",JSON.stringify([...s]))}catch(_){}if(d.open){busy=false;render(true)}}))}
 function skipText(e){return (e.revSkip||[]).map(r=>SURAH_NAMES[r.s]).join(", ")}
 function evBody(e){
   if(e.type==="session"){

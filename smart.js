@@ -19,8 +19,8 @@ function oddChecks(st,d,usual){const w=[];
   return w}
 
 // ---------- 3. bottom bar + search ----------
-const NAV=[["today","◷","Today"],["list","☰","Students"],["schools","🏫","Schools"],["reports","▤","Reports"],["tajweed","۞","Tajweed"],["settings","⚙","Settings"]];
-const navOf=v=>({tajweed:"tajweed",today:"today",list:"list",reports:"reports",crep:"reports",wsum:"reports",star:"reports",grading:"reports",screen:"reports",settings:"settings",classes:"settings",fees:"schools",place:"schools",schools:"schools",schoolv:"schools",teacher:"schools",gmove:"schools",handover:"schools",class:"today",buddy:"today",school:"schools",waitlist:"schools",sover:"reports"})[v]||"list";
+const NAV=[["today","◷","Today"],["list","☰","Students"],["tajweed","۞","Tajweed"],["reports","▤","Reports"],["settings","⚙","Settings"]];
+const navOf=v=>({tajweed:"tajweed",today:"today",list:"list",reports:"reports",crep:"reports",wsum:"reports",star:"reports",grading:"reports",screen:"reports",settings:"settings",classes:"settings",fees:"settings",place:"settings",schools:"settings",schoolv:"settings",teacher:"settings",gmove:"settings",handover:"settings",class:"today",buddy:"today",school:"settings",waitlist:"settings",sover:"reports"})[v]||"list";
 function afterRender(){
   let n=document.getElementById("nav");
   if(!n){n=document.createElement("nav");n.id="nav";n.className="bnav";n.innerHTML=NAV.map(([k,i,l])=>`<button type="button" data-nav="${k}"><i>${i}</i><span>${l}</span></button>`).join("");document.body.append(n);
@@ -29,6 +29,7 @@ function afterRender(){
   const hide=view.name==="session"||view.name==="screen";n.hidden=hide;document.body.classList.toggle("hasnav",!hide);
   n.querySelector('[data-nav="settings"]').hidden=!!SUB;
   try{schoolAfter()}catch(e){console.error(e)}
+  if(typeof tourMaybe==="function")tourMaybe();
   arApply();
 }
 let listQ="";
@@ -52,19 +53,21 @@ function renderToday(el,sub,ta){
   const ses=sid=>events.filter(e=>e.type==="session"&&e.sid===sid&&e.date===iso(today())).sort((a,b)=>(b.t||0)-(a.t||0))[0];
   const line=e=>{if(!e)return "";const A={present:"On time",late:"Late",absent:"Absent",excused:"Excused"};const p=[A[e.att]||""];if(attended(e)){if(e.hifzNR)p.push("hifz not recited");else if(e.hifzText)p.push(e.hifzText);if(e.revNR)p.push("review not recited");else if(e.revType&&e.revType!=="none")p.push("review "+(e.revRows||[]).length+((e.revSkip||[]).length?" of "+((e.revRows||[]).length+(e.revSkip||[]).length):""))}return p.join(" · ")};
   const nx=list.find(s=>!doneToday(s.id));
-  el.innerHTML=`${subBanner()}${!isToday?`<div class="banner info">No class today.${nextClassText()?" Next: "+esc(nextClassText())+".":""}</div>`:""}${tabs}
+  el.innerHTML=`${subBanner()}${starBanner()}${wsumBanner()}${!isToday?`<div class="banner info">No class today.${nextClassText()?" Next: "+esc(nextClassText())+".":""}</div>`:""}${tabs}
    <div class="panel tnow" data-cid="${c.id}">
-    <div class="head"><h2>${esc(c.name)}</h2><span class="chip ${live&&live.id===c.id?"ok":"plain"}">${live&&live.id===c.id?"Now":esc(c.time||"")}${c.end?"–"+esc(c.end):""}</span></div>
+    <div class="head"><h2>${esc(c.name)}</h2><button type="button" class="link small" data-openc="${c.id}">Class log</button><span class="chip ${live&&live.id===c.id?"ok":"plain"}">${live&&live.id===c.id?"Now":esc(c.time||"")}${c.end?"–"+esc(c.end):""}</span></div>
     ${isToday?`<div class="actions">${classTimeChip(c,m)}${classTimeButtons(c,m)}</div>`:""}
     <div class="tprog"><div class="bar"><i style="width:${list.length?Math.round(done/list.length*100):0}%"></i></div><span class="small"><b>${done} of ${list.length}</b> recorded</span></div>
     ${nx?`<button class="primary qnext" data-trec="${nx.id}">Record next › ${esc(nx.name)}</button>`:list.length?`<div class="banner ok">Everyone is recorded for today.</div>`:""}
     ${list.length>=2?`<button type="button" class="qnext tbud" id="tBuddy">👥 Buddy recitation</button>`:""}
     <div class="tlist">${list.map(s=>{const e=ses(s.id);return `<div class="trow ${doneToday(s.id)?"done":""}"><button type="button" class="tname" data-tst="${s.id}"><b>${esc(s.name)}${flameChip(s)}</b><span class="small muted">${e?esc(line(e)):esc(planShort(s))}</span></button><span class="tatt">${isToday?attCtl(s,iso(today())):""}</span><button type="button" class="${doneToday(s.id)?"":"primary"} sm" data-trec="${s.id}">${doneToday(s.id)?"Edit":"Record"}</button></div>`}).join("")}</div>
-   </div>${challengeCard(c)}`;
+   </div>${alertsPanel(list)}${testsPanel()}${challengeCard(c)}`;
   wireChallenge(el);{const bb=el.querySelector("#tBuddy");if(bb)bb.onclick=()=>go({name:"buddy",cls:c.id})}el.querySelectorAll("[data-tcls]").forEach(b=>b.onclick=()=>go({name:"today",cls:b.dataset.tcls}));
   el.querySelectorAll("[data-trec]").forEach(b=>b.onclick=()=>go({name:"session",id:b.dataset.trec}));
   el.querySelectorAll("[data-tst]").forEach(b=>b.onclick=()=>go({name:"student",id:b.dataset.tst}));
-  wireClassSign(el);wireAtt(el,iso(today()));
+  wireClassSign(el);wireAtt(el,iso(today()));wireAlerts(el);wireTests(el);
+  el.querySelectorAll("[data-openc]").forEach(b=>b.onclick=()=>go({name:"class",id:b.dataset.openc,date:iso(today())}));
+  {const g=el.querySelector("[data-gows]");if(g)g.onclick=()=>go({name:"wsum",cls:c.id});const h=el.querySelector("[data-gostar]");if(h)h.onclick=()=>go({name:"star",cls:c.id})}
 }
 function planShort(s){try{useOrder(s);const ends=plannedEnds(s);const wk=s.days.length;const e=ends.length?ends[Math.min(wk,ends.length)-1]:null;const t=e!=null?"Today: "+rangeText(s.pos,e):"";const cur=allStudents.find(x=>x.id===view.id);if(cur)useOrder(cur);return t}catch(_){return ""}}
 async function autoStartClass(st){try{const c=classes.find(x=>x.id===st.cls);if(!c||!classesToday().some(x=>x.id===c.id))return;const m=meetingOf(c.id,iso(today()));if(m&&(m.started||m.status==="cancelled"))return;const s=minsOf(c.time),n=nowMins();if(s!=null&&(n<s-30||n>(minsOf(c.end)||s+90)+30))return;await classSign(c.id,"start")}catch(_){}}
@@ -179,16 +182,17 @@ function starBanner(){const d=today().getDate();if(d>7||!classes.length)return "
 // ---------- reports + settings hubs ----------
 function renderReports(el,sub){sub.textContent="Reports";
   const card=(id,i,t,d)=>`<button type="button" class="hub" data-hub="${id}"><i>${i}</i><b>${t}</b><span>${d}</span></button>`;
-  el.innerHTML=`<div class="hubs">${card("sover","🏫","School overview","Every group and teacher, and this week by teacher")}${card("crep","▤","Class report","Chart, table and diary for any dates")}${card("wsum","☷","Weekly summary","Who moved ahead, who needs follow-up")}${card("star","★","Star of the month","Picked from points and attendance, with a certificate")}${card("screen","▣","Class screen","Big board for the classroom")}${card("buddy","👥","Buddy recitation","Students recite to each other in pairs")}${card("grading","✓","How we grade","Grading rules and guide")}</div>
+  el.innerHTML=`<div class="hubs">${SUB?"":card("sover","🏫","School overview","Every group and teacher, and this week by teacher")}${card("crep","▤","Class report","Chart, table and diary for any dates")}${card("wsum","☷","Weekly summary","Who moved ahead, who needs follow-up")}${card("star","★","Star of the month","Picked from points and attendance, with a certificate")}${card("screen","▣","Class screen","Big board for the classroom")}${card("buddy","👥","Buddy recitation","Students recite to each other in pairs")}${card("grading","✓","How we grade","Grading rules and guide")}</div>
    <p class="small muted">Student reports, year reports and parent messages are on each student's page.</p>`;
   el.querySelectorAll("[data-hub]").forEach(b=>b.onclick=()=>{const c=(classes.find(x=>x.id===getListCls())||classes[0]||{}).id;const h=b.dataset.hub;go(h==="crep"||h==="screen"?{name:h,id:c}:{name:h,cls:c})})}
 function renderSettings(el,sub){if(SUB){go({name:"list"});return}sub.textContent="Settings";
   const card=(id,i,t,d)=>`<button type="button" class="hub" data-hub="${id}"><i>${i}</i><b>${t}</b><span>${d}</span></button>`;
-  el.innerHTML=`<div class="hubs">${card("classes","⚙","Grading, points, holidays, backup","Same rules in every school · daily reading per group · breaks · backup and restore")}${card("schools","🏫","Schools","Schools, teachers, groups, waiting list")}</div>
+  el.innerHTML=`<div class="hubs">${card("classes","⚙","Grading, points, holidays, backup","Same rules in every school · daily reading per group · breaks · backup and restore")}${card("backup","💾","Backup","Download a copy of all records to keep somewhere safe")}${card("schools","🏫","Schools","Schools, teachers, groups, waiting list")}</div>
+   <p class="small muted" id="bkSetMsg" aria-live="polite"></p>
    <div class="panel" style="background:var(--accent-soft)"><b class="small">Moved into each school</b><p class="small" style="margin:4px 0 0">Teachers · Groups · Add student · Waiting list · Placement test · Fees: open Schools, then a school.</p></div>
    <div class="panel"><h3>Attendance</h3><label class="inl">Late after <input type="number" id="graceIn" min="0" max="60" value="${graceMins()}" style="width:70px" inputmode="numeric"> minutes from the class start</label> <span class="small muted" id="graceMsg"></span></div>
    <div class="panel"><h3>Language · اللغة</h3><div class="seg"><button type="button" class="fbtn ${AR?"":"on"}" data-lang="en">English</button><button type="button" class="fbtn ${AR?"on":""}" data-lang="ar">العربية</button></div></div>`;
-  el.querySelectorAll("[data-hub]").forEach(b=>b.onclick=()=>go({name:b.dataset.hub,cls:getListCls()}));
+  el.querySelectorAll("[data-hub]").forEach(b=>b.onclick=()=>{if(b.dataset.hub==="backup")return doBackup(el.querySelector("#bkSetMsg"));go({name:b.dataset.hub,cls:getListCls()})});
   el.querySelectorAll("[data-lang]").forEach(b=>b.onclick=()=>setLang(b.dataset.lang));
   const gi=el.querySelector("#graceIn");if(gi){gi.addEventListener("focus",()=>busy=true);gi.onchange=async()=>{const v=Math.max(0,Math.min(60,Number(gi.value)||0));try{await db.doc("settings/main").set({...(settings.main||{}),grace:v});el.querySelector("#graceMsg").textContent="Saved."}catch(_){el.querySelector("#graceMsg").textContent="Not saved."}busy=false}}}
 
@@ -232,8 +236,6 @@ function arApply(){if(!AR)return;try{document.documentElement.setAttribute("lang
   if(!arObs){arObs=new MutationObserver(ms=>{if(arBusy)return;arBusy=true;try{for(const m of ms){if(m.type==="characterData"){const n=m.target;if(n.parentElement&&!n.parentElement.closest("script,style,textarea,.mpage,[data-noar],option:not([value]),datalist")){const v=arText(n.nodeValue);if(v!==n.nodeValue)n.nodeValue=v}}else m.addedNodes.forEach(n=>{if(n.nodeType===3){const p=n.parentElement;if(p&&!p.closest("script,style,textarea,.mpage,[data-noar],option:not([value]),datalist")){const v=arText(n.nodeValue);if(v!==n.nodeValue)n.nodeValue=v}}else if(n.nodeType===1&&!n.closest(".pdfroot,[aria-hidden=true]"))arWalk(n)})}}finally{arBusy=false}});
     arObs.observe(document.body,{subtree:true,childList:true,characterData:true})}}
 
-// Always-visible Settings and Backup in the header (the bottom bar can be hidden by the app frame on some phones)
-(function(){const g=document.getElementById("gearTop"),b=document.getElementById("bkTop"),m=document.getElementById("bkTopMsg");if(!g||!b)return;
-  g.onclick=()=>go({name:"settings"});
-  b.onclick=async()=>{if(typeof downloads==="undefined"||!downloads){m.textContent="Downloads are not available here.";return}if(!allReady()){m.textContent="Still loading all records. Wait a few seconds and try again.";return}
-    try{await downloads.save({filename:`hifz-full-backup-${iso(today())}.json`,data:new Blob([backupJson()],{type:"application/json"})});m.textContent="Saved. Keep the file somewhere safe.";try{await db.doc("settings/main").update({lastBackup:iso(today())})}catch(_){}}catch(e){m.textContent="The backup was not saved. Try again."}}})();
+// Backup of all records (Settings → Backup)
+async function doBackup(m){if(typeof downloads==="undefined"||!downloads){m.textContent="Downloads are not available here.";return}if(!allReady()){m.textContent="Still loading all records. Wait a few seconds and try again.";return}
+    try{await downloads.save({filename:`hifz-full-backup-${iso(today())}.json`,data:new Blob([backupJson()],{type:"application/json"})});m.textContent="Saved. Keep the file somewhere safe.";try{await db.doc("settings/main").update({lastBackup:iso(today())})}catch(_){}}catch(e){m.textContent="The backup was not saved. Try again."}}
