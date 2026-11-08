@@ -5,17 +5,22 @@ preview link, and say yes. Claude does the rest, and the live app updates by its
 
 Live app: https://hifz-tracker-cd6d0.web.app
 
-## One-time setup
+## One-time setup (on your laptop)
 
 1. **GitHub invitation**: open https://github.com/elivnjak/hifz-tracker/invitations while signed in as `elssenosy-create`
    and accept.
-2. **Connect Claude to the project**, one of:
-   - In a browser: go to https://claude.ai/code, connect your GitHub account when asked, and pick the repository
-     `elivnjak/hifz-tracker`.
-   - On your laptop with Claude Code: ask Claude *"Clone github.com/elivnjak/hifz-tracker and set it up"*. It may ask you
-     to log in to GitHub once.
-3. Try a tiny first change together with Edin, for example *"change the sign-in page text to say Welcome"*, so you have seen
-   the whole journey once.
+2. **Get the project onto the laptop.** Open Claude Code in a folder where you keep projects (for example `Documents`) and say:
+   *"Clone github.com/elivnjak/hifz-tracker, open it, and get it set up following its AGENTS.md."*
+3. **Let Claude install what is missing.** It checks the laptop and may ask to install a few free tools (Git, Node.js,
+   Python, the GitHub tool, Java). Say yes. After installing, it may ask you to **close and reopen** the terminal and Claude;
+   then start Claude again in the `hifz-tracker` folder.
+4. **Sign in to GitHub once.** Claude runs `gh auth login`: pick GitHub.com, then *Login with a web browser*, copy the
+   8-character code it shows, paste it into the browser page, and approve.
+5. **Try a tiny first change**, for example *"change the sign-in page text to say Welcome"*, so you have seen the whole
+   journey once. Edin can look along.
+
+Each time after that: open Claude Code in the `hifz-tracker` folder and say what you want. Claude fetches the latest
+version first.
 
 ## Making a change
 
