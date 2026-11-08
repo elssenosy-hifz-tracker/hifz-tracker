@@ -86,7 +86,7 @@ Use `build_portable.py` from now on.
 | `smart.js` | Settings, smart suggestions, admin tools |
 | `goals.js` | Goals and plan sheets |
 | `tarteel.js` | Coverage panel, recitation features |
-| `tajweed.js` | Tajweed colours in the mushaf (rules worked out from the Uthmani text signs) |
+| `tajweed.js` | Tajweed page (rules, examples, search, coloured mushaf); rules worked out from the Uthmani text signs |
 | `school.js`, `schools.js` | School mode: roles, teachers, groups, substitutes, multiple schools |
 | `qdata.json` | Quran metadata (surahs, ayahs, juz, pages) |
 | `mushaf/mus.json`, `mushaf/hafs.b64` | Quran text/layout and Hafs font (see `mushaf/LICENSE-quran-ws-text.txt`) |

@@ -19,8 +19,8 @@ function oddChecks(st,d,usual){const w=[];
   return w}
 
 // ---------- 3. bottom bar + search ----------
-const NAV=[["today","◷","Today"],["list","☰","Students"],["schools","🏫","Schools"],["reports","▤","Reports"],["settings","⚙","Settings"]];
-const navOf=v=>({today:"today",list:"list",reports:"reports",crep:"reports",wsum:"reports",star:"reports",grading:"reports",screen:"reports",settings:"settings",classes:"settings",fees:"schools",place:"schools",schools:"schools",schoolv:"schools",teacher:"schools",gmove:"schools",handover:"schools",class:"today",buddy:"today",school:"schools",waitlist:"schools",sover:"reports"})[v]||"list";
+const NAV=[["today","◷","Today"],["list","☰","Students"],["schools","🏫","Schools"],["reports","▤","Reports"],["tajweed","۞","Tajweed"],["settings","⚙","Settings"]];
+const navOf=v=>({tajweed:"tajweed",today:"today",list:"list",reports:"reports",crep:"reports",wsum:"reports",star:"reports",grading:"reports",screen:"reports",settings:"settings",classes:"settings",fees:"schools",place:"schools",schools:"schools",schoolv:"schools",teacher:"schools",gmove:"schools",handover:"schools",class:"today",buddy:"today",school:"schools",waitlist:"schools",sover:"reports"})[v]||"list";
 function afterRender(){
   let n=document.getElementById("nav");
   if(!n){n=document.createElement("nav");n.id="nav";n.className="bnav";n.innerHTML=NAV.map(([k,i,l])=>`<button type="button" data-nav="${k}"><i>${i}</i><span>${l}</span></button>`).join("");document.body.append(n);

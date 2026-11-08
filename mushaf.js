@@ -59,7 +59,7 @@ function renderMushaf(el,sub,st){
   injectFont();
   const la=lastAyahOf(st.pos);
   const pg=Math.min(604,Math.max(1,view.page||(la?pageOfAyah(la.s,la.a2):1)));view.page=pg;
-  const flt=view.mf||"all",z=view.mz||0,t=iso(today()),tj=tjOn();
+  const flt=view.mf||"all",z=view.mz||0,t=iso(today());
   const all=marksOf(st),shown=all.filter(m=>flt==="all"||(flt==="today"?m.date===t:daysBetween(parse(m.date),today())<30));
   const onPage=shown.filter(m=>pageOfWord(m.w)===pg).sort((a,b)=>a.w-b.w);
   const ps=wordPlace(MUS.p[pg-1]);
@@ -71,13 +71,11 @@ function renderMushaf(el,sub,st){
       <button id="mPrev" ${pg<=1?"disabled":""}>Previous →</button></div>
     <div class="mnav"><select id="mSurah" aria-label="Go to surah">${SURAH_NAMES.map((n,s)=>`<option value="${s}" ${s===ps.s?"selected":""}>${s+1}. ${n}</option>`).join("")}</select>
       <button id="mHere" class="small">Today's hifz</button>
-      <button id="mTj" class="small fbtn ${tj?"on":""}" aria-pressed="${tj}">Tajweed colours</button>
       <span class="zoom"><button id="mZo" class="small" ${z<=0?"disabled":""} aria-label="Smaller">A−</button><button id="mZi" class="small" ${z>=2?"disabled":""} aria-label="Larger">A+</button></span></div>
     <div class="mkinds" role="radiogroup" aria-label="Mistake kind"><span class="small muted">Tap a word to mark:</span>${MK_ORDER.map(k=>`<label class="mk k-${k}"><input type="radio" name="mk" value="${k}" ${k===MK_KIND?"checked":""}> ${ERR_KINDS[k]}</label>`).join("")}</div>
     <div class="filters">${[["all","All marks"],["30","Last 30 days"],["today","Today"]].map(([k,l])=>`<button class="fbtn ${k===flt?"on":""}" data-mf="${k}">${l}</button>`).join("")}</div>
   </div>
-  <div class="mwrap"><div class="mbox${z?" big"+z:""}">${pageHTML(pg,markMapFor(shown),tj)}</div></div>
-  ${tj?`<div class="panel tjpanel">${tjKeyHTML()}</div>`:""}
+  <div class="mwrap"><div class="mbox${z?" big"+z:""}">${pageHTML(pg,markMapFor(shown))}</div></div>
   <p class="small muted mcap">Page ${pg} · juz ${juzOfPage(pg)} · ${SURAH_NAMES[ps.s]}. ${z?"Large text: long lines continue on the next row; dotted lines show where each mushaf line ends. ":""}Swipe or use the arrow keys to turn pages.</p>
   <div class="panel"><div class="head"><h3>Marks on this page</h3><button id="mPrint">Print mistakes</button></div>
     <div class="log">${onPage.length?onPage.map(m=>markRow(m)).join(""):'<p class="muted">No marks on this page. Tap a word in the page above to mark it.</p>'}</div></div>
@@ -88,7 +86,6 @@ function renderMushaf(el,sub,st){
   el.querySelector("#mPg").onchange=e=>goPg(Number(e.target.value)||pg);
   el.querySelector("#mSurah").onchange=e=>goPg(pageOfAyah(Number(e.target.value),1));
   el.querySelector("#mHere").onclick=()=>{const p=dayPlan(st,today(),st.pos);goPg(st.pos<TOTAL?pageOfWord(ayahWord(...(()=>{const ps=pieces(st.pos,p.end);return ps.length?[ps[0].s,ps[0].a1]:[0,1]})())):pg)};
-  el.querySelector("#mTj").onclick=()=>{tjSet(!tj);render(true)};
   el.querySelector("#mZo").onclick=()=>{view.mz=Math.max(0,z-1);render(true)};el.querySelector("#mZi").onclick=()=>{view.mz=Math.min(2,z+1);render(true)};
   el.querySelectorAll("input[name=mk]").forEach(r=>r.onchange=()=>{MK_KIND=r.value});
   el.querySelectorAll("[data-mf]").forEach(b=>b.onclick=()=>{view.mf=b.dataset.mf;render(true)});
