@@ -33,7 +33,8 @@ const TJ_R={
 const TJ_G=[["nun","أحكام النون الساكنة والتنوين","Noon sakinah and tanween"],["mim","أحكام الميم الساكنة","Meem sakinah"],["ghun","الغنة","Ghunnah"],["madd","المدود","Madd"],["qlq","القلقلة","Qalqalah"],["lam","لام التعريف","The lam of «al»"],["tfk","التفخيم والترقيق","Heavy and light letters"],["sil","حروف لا تُنطق","Letters not said"]];
 const TJ_KEY=[["madd6","مد لازم","6"],["madd5","مد متصل","4–5"],["madd4","مد منفصل","2/4/5"],["ghun","غنة"],["ikhfa","إخفاء"],["idgG","إدغام بغنة"],["idgN","إدغام بغير غنة"],["iqlab","إقلاب"],["qlq","قلقلة"],["sil","لا يُنطق"]];
 const TJ_CSS=Object.entries(TJ_COL).map(([k,c])=>`.tj-${k}{color:${c}${k==="sil"?"":";-webkit-text-stroke:.03em "+c}}`).join("")+`.tj-hl{color:#7a4a00}.tjsel{background:rgba(255,200,40,.32);border-radius:.15em}
-.tjkey{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center}.tjkey span{white-space:nowrap;display:inline-flex;align-items:center;gap:6px}.tjkey i,.tjdot{display:inline-block;width:12px;height:12px;border-radius:3px;flex:none}.tjkey b,.tjar{font-family:"KFGQPC Hafs",serif;font-weight:400;font-size:1.15em}
+.tjkey{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;font-size:15px}.tjkey span{white-space:nowrap;display:inline-flex;align-items:center;gap:6px}.tjkey i,.tjdot{display:inline-block;width:12px;height:12px;border-radius:3px;flex:none}.tjkey b,.tjar{font-family:"KFGQPC Hafs",serif;font-weight:400;font-size:1.25em}.tjkey i{width:14px;height:14px}
+[data-tj]{cursor:help}.tjtip{position:fixed;z-index:80;background:#1f2a2e;color:#fff;padding:8px 12px;border-radius:10px;font-size:16px;box-shadow:0 6px 20px rgba(0,0,0,.25);pointer-events:none;max-width:92vw;display:flex;flex-direction:column;gap:4px}.tjtip div{display:flex;align-items:center;gap:8px;white-space:nowrap}.tjtip .tjar{font-size:1.45em}.tjtip span{opacity:.8;font-size:14px}
 .tjtabs{margin-top:6px}.tjrules{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:8px}
 .tjrule{text-align:start;display:flex;flex-direction:column;gap:3px;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:var(--surface);cursor:pointer;font:inherit;color:inherit}
 .tjrule .tjn{display:flex;align-items:center;gap:8px;font-weight:700;flex-wrap:wrap}.tjrule .tjn .tjar{font-size:1.25em}.tjlet{font-family:"KFGQPC Hafs",serif;color:var(--muted);direction:rtl}
@@ -116,11 +117,13 @@ function tjRange(W,isEnd,a,b,only){
   const {C,first,rid,part,ext}=tjAnalyze(W,isEnd,a,b),out=[];
   const cls=i=>{const r=rid[i],p=part[i];if(only){if(r!==only&&p!==only&&!(ext[i]&&ext[i].includes(only)))return "";return `tj-${TJ_R[only][3]||"hl"} tjsel`}
     const c=(r&&TJ_R[r][3])||(p&&!r&&TJ_R[p][3])||"";return c?"tj-"+c:""};
+  const names=i=>{const x=[];for(const r of [rid[i],part[i],...(ext[i]||[])])if(r&&!x.includes(r))x.push(r);return x.join(" ")};
+  const open=k=>{const [c,n]=k.split("|");return n?`<span${c?` class="${c}"`:""} data-tj="${n}">`:c?`<span class="${c}">`:""},close=k=>k&&k!=="|"?"</span>":"";
   for(let w=a;w<b;w++){let h="",cur=null,buf="";const s=first.get(w),e=first.has(w+1)?first.get(w+1):C.length;
-    for(let i=s;i<e;i++){const c=cls(i);if(c!==cur){if(buf)h+=cur?`<span class="${cur}">${buf}</span>`:buf;buf="";cur=c}buf+=C[i].t}
-    if(buf)h+=cur?`<span class="${cur}">${buf}</span>`:buf;out.push(h)}
+    for(let i=s;i<e;i++){const k=cls(i)+"|"+names(i);if(k!==cur){if(buf)h+=open(cur)+buf+close(cur);buf="";cur=k}buf+=C[i].t}
+    if(buf)h+=open(cur)+buf+close(cur);out.push(h)}
   return out}
-const tjKeyHTML=()=>`<div class="tjkey small">${TJ_KEY.map(([k,ar,n])=>`<span><i style="background:${TJ_COL[k]}"></i><b>${ar}</b>${n?` ${n}`:""}</span>`).join("")}</div>`;
+const tjKeyHTML=()=>`<div class="tjkey">${TJ_KEY.map(([k,ar,n])=>`<span><i style="background:${TJ_COL[k]}"></i><b>${ar}</b>${n?` ${n}`:""}</span>`).join("")}</div>`;
 
 // ---------- whole-Quran index (worked out once, on first use) ----------
 const tjEnd=w=>!!aend()[w];
@@ -189,5 +192,14 @@ function renderTajweed(el,sub){injectFont();tjInject();const tv=view.tv||"rules"
     wrap.addEventListener("touchstart",e=>{tx=e.touches[0].clientX;ty=e.touches[0].clientY},{passive:true});
     wrap.addEventListener("touchend",e=>{if(tx==null)return;const dx=e.changedTouches[0].clientX-tx,dy=e.changedTouches[0].clientY-ty;tx=null;if(Math.abs(dx)>70&&Math.abs(dy)<60)goPg(dx>0?pg+1:pg-1)});
     fitPage(el);document.fonts.load('20px "KFGQPC Hafs"').then(()=>fitPage(el)).catch(()=>{})}}
+// ---------- rule name under the mouse / finger ----------
+function tjTip(e){let tip=document.getElementById("tjTip");const s=view.name==="tajweed"&&e.target.closest&&e.target.closest("#view [data-tj]");
+  if(!s){if(tip&&(e.type!=="mouseover"||!e.target.closest||!e.target.closest(".tjtip")))tip.hidden=true;return}
+  if(!tip){tip=document.createElement("div");tip.id="tjTip";tip.className="tjtip";tip.setAttribute("data-noar","");tip.setAttribute("role","tooltip");document.body.append(tip)}
+  tip.innerHTML=s.dataset.tj.split(" ").filter(r=>TJ_R[r]).map(r=>`<div><i class="tjdot" style="background:${TJ_R[r][3]?TJ_COL[TJ_R[r][3]]:"#f5c94a"}"></i><b class="tjar">${TJ_R[r][1]}</b>${AR?"":`<span>${TJ_R[r][2]}</span>`}</div>`).join("");
+  tip.hidden=false;const b=s.getBoundingClientRect(),tw=tip.offsetWidth,th=tip.offsetHeight;
+  tip.style.left=Math.max(8,Math.min(innerWidth-tw-8,b.left+b.width/2-tw/2))+"px";tip.style.top=(b.top-th-8<8?b.bottom+8:b.top-th-8)+"px"}
+document.addEventListener("mouseover",tjTip);document.addEventListener("click",tjTip);
+addEventListener("scroll",()=>{const t=document.getElementById("tjTip");if(t)t.hidden=true},{passive:true});
 document.addEventListener("keydown",e=>{if(view.name!=="tajweed"||view.tv!=="mushaf"||/INPUT|SELECT|TEXTAREA/.test(document.activeElement&&document.activeElement.tagName))return;if(e.key==="ArrowLeft"){view.tp=Math.min(604,(view.tp||1)+1);render(true)}else if(e.key==="ArrowRight"){view.tp=Math.max(1,(view.tp||1)-1);render(true)}});
 Object.assign(AR_DICT,{"Tajweed":"التجويد","Rules":"الأحكام","Search":"بحث","Coloured mushaf":"المصحف الملون","← All rules":"← كل الأحكام","Whole Quran":"القرآن كله","Show examples from":"أمثلة من","Most in:":"أكثر السور ورودًا:","Search the mushaf":"ابحث في المصحف","The rules of tajweed with examples from the mushaf.":"أحكام التجويد مع أمثلة من المصحف.","Type a word or part of an ayah; diacritics are not needed. Results show the tajweed colours.":"اكتب كلمة أو جزءًا من آية، ولا حاجة للتشكيل. تظهر النتائج بألوان التجويد.","Nothing found. Try fewer letters.":"لا توجد نتائج. جرّب حروفًا أقل.","No examples here.":"لا توجد أمثلة هنا.","Letters:":"الحروف:","The rules are worked out from the signs written in the Uthmani mushaf text (Hafs). Rules without a colour in the mushaf (such as iẓhār, madd ṭabīʿī, tafkhīm) are shown highlighted on their own pages.":"تُستخرج الأحكام من العلامات المكتوبة في رسم المصحف العثماني (رواية حفص). الأحكام غير الملونة في المصحف (مثل الإظهار والمد الطبيعي والتفخيم) تظهر مظللة في صفحاتها.","Where to look":"مكان البحث"});

@@ -80,6 +80,10 @@ try {
     key: !!document.querySelector('.tjkey'),
   }));
   ok('coloured mushaf colours the rules and shows the key', tj.lazim && tj.idgN && tj.key, JSON.stringify(tj));
+  await page.hover('.mpage .tj-madd6');
+  await page.waitForSelector('#tjTip:not([hidden])');
+  ok('pointing at a coloured letter shows the rule name', /المد اللازم/.test(await page.textContent('#tjTip')));
+  await page.mouse.move(5, 5);
   await page.evaluate(() => { go({ name: 'list' }); });
 
   // view as teacher
