@@ -52,6 +52,13 @@ try {
     words: document.querySelectorAll('.mpage .w').length,
   }));
   ok('tajweed button colours the rules and shows the key', tj.n > 20 && tj.lazim && tj.idgN && tj.words > 30, JSON.stringify(tj));
+  // A+ makes the text larger without making the page wider than the screen
+  const size = () => page.evaluate(() => { const w = document.querySelector('.mwrap'); return { font: parseFloat(getComputedStyle(document.querySelector('.mpage')).fontSize), over: w.scrollWidth - w.clientWidth }; });
+  const s0 = await size();
+  await page.click('#mZi'); await page.waitForTimeout(200); await page.click('#mZi'); await page.waitForTimeout(300);
+  const s2 = await size();
+  ok('A+ makes the mushaf text larger without sideways scrolling', s2.font > s0.font * 1.6 && s2.over <= 1, JSON.stringify({ s0, s2 }));
+  await page.click('#mZo'); await page.waitForTimeout(200); await page.click('#mZo'); await page.waitForTimeout(200);
   await page.click('#mTj');
   await page.waitForTimeout(200);
   ok('tajweed button turns the colours off again', (await tjCount()) === 0 && !(await page.$('.tjkey')));

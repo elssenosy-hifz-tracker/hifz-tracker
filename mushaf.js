@@ -76,9 +76,9 @@ function renderMushaf(el,sub,st){
     <div class="mkinds" role="radiogroup" aria-label="Mistake kind"><span class="small muted">Tap a word to mark:</span>${MK_ORDER.map(k=>`<label class="mk k-${k}"><input type="radio" name="mk" value="${k}" ${k===MK_KIND?"checked":""}> ${ERR_KINDS[k]}</label>`).join("")}</div>
     <div class="filters">${[["all","All marks"],["30","Last 30 days"],["today","Today"]].map(([k,l])=>`<button class="fbtn ${k===flt?"on":""}" data-mf="${k}">${l}</button>`).join("")}</div>
   </div>
-  <div class="mwrap"><div class="mbox" style="width:${[100,135,170][z]}%">${pageHTML(pg,markMapFor(shown),tj)}</div></div>
+  <div class="mwrap"><div class="mbox${z?" big"+z:""}">${pageHTML(pg,markMapFor(shown),tj)}</div></div>
   ${tj?`<div class="panel tjpanel">${tjKeyHTML()}</div>`:""}
-  <p class="small muted mcap">Page ${pg} · juz ${juzOfPage(pg)} · ${SURAH_NAMES[ps.s]}. Swipe or use the arrow keys to turn pages.</p>
+  <p class="small muted mcap">Page ${pg} · juz ${juzOfPage(pg)} · ${SURAH_NAMES[ps.s]}. ${z?"Large text: long lines continue on the next row; dotted lines show where each mushaf line ends. ":""}Swipe or use the arrow keys to turn pages.</p>
   <div class="panel"><div class="head"><h3>Marks on this page</h3><button id="mPrint">Print mistakes</button></div>
     <div class="log">${onPage.length?onPage.map(m=>markRow(m)).join(""):'<p class="muted">No marks on this page. Tap a word in the page above to mark it.</p>'}</div></div>
   <div class="wsheet" id="wsheet" hidden></div>`;
@@ -95,7 +95,7 @@ function renderMushaf(el,sub,st){
   el.querySelector("#mPrint").onclick=()=>go({name:"mprint",id:st.id});
   const wrap=el.querySelector(".mwrap");let tx=null,ty=null;
   wrap.addEventListener("touchstart",e=>{tx=e.touches[0].clientX;ty=e.touches[0].clientY},{passive:true});
-  wrap.addEventListener("touchend",e=>{if(tx==null)return;const dx=e.changedTouches[0].clientX-tx,dy=e.changedTouches[0].clientY-ty;tx=null;if(z===0&&Math.abs(dx)>70&&Math.abs(dy)<60)goPg(dx>0?pg+1:pg-1)});
+  wrap.addEventListener("touchend",e=>{if(tx==null)return;const dx=e.changedTouches[0].clientX-tx,dy=e.changedTouches[0].clientY-ty;tx=null;if(Math.abs(dx)>70&&Math.abs(dy)<60)goPg(dx>0?pg+1:pg-1)});
   el.querySelectorAll(".mpage .w").forEach(sp=>sp.onclick=()=>{const w=Number(sp.dataset.w);const ex=all.filter(m=>m.w===w);if(ex.length)openSheet(el,st,w);else addMark(st,w,MK_KIND)});
   wireMarkRows(el);
   fitPage(el);document.fonts.load('20px "KFGQPC Hafs"').then(()=>fitPage(el)).catch(()=>{});

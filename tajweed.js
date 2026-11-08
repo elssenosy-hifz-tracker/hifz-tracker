@@ -2,17 +2,17 @@
 // The text already writes most rules: bare noon / open tanween = ikhfa or idgham, small meem = iqlab, maddah = long madd,
 // circle (U+0652) = silent letter. Rules follow continuous reading (wasl) and stop at the end of an ayah (qalqalah there too).
 const TJ_RULES=[
-  ["madd6","#a3001b","مد لازم","Madd lāzim · 6 counts"],
-  ["madd5","#e3262e","مد واجب متصل","Madd muttaṣil · 4–5"],
-  ["madd4","#ef7d00","مد جائز منفصل","Madd munfaṣil · 2, 4 or 5"],
-  ["ghun","#1d8a35","غنة","Ghunnah (نّ مّ)"],
-  ["ikhfa","#8e2bb0","إخفاء","Ikhfāʾ"],
-  ["idgG","#00897b","إدغام بغنة","Idghām with ghunnah"],
-  ["idgN","#5d7f2a","إدغام بغير غنة","Idghām without ghunnah"],
-  ["iqlab","#1678d2","إقلاب","Iqlāb"],
-  ["qlq","#0b3e91","قلقلة","Qalqalah"],
-  ["sil","#9a9a9a","لا يُنطق","Not pronounced"]];
-const TJ_CSS=TJ_RULES.map(([k,c])=>`.tj-${k}{color:${c}}`).join("")+`.tjkey{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center}.tjkey span{white-space:nowrap;display:inline-flex;align-items:center;gap:6px}.tjkey i{display:inline-block;width:12px;height:12px;border-radius:3px}.tjkey b{font-family:"KFGQPC Hafs",serif;font-weight:400;font-size:1.15em}`;
+  ["madd6","#990014","مد لازم","Madd lāzim · 6 counts"],
+  ["madd5","#d4141c","مد واجب متصل","Madd muttaṣil · 4–5"],
+  ["madd4","#e06800","مد جائز منفصل","Madd munfaṣil · 2, 4 or 5"],
+  ["ghun","#0b8a2a","غنة","Ghunnah (نّ مّ)"],
+  ["ikhfa","#8a17b8","إخفاء","Ikhfāʾ"],
+  ["idgG","#007f6e","إدغام بغنة","Idghām with ghunnah"],
+  ["idgN","#4c7a00","إدغام بغير غنة","Idghām without ghunnah"],
+  ["iqlab","#0a6ad8","إقلاب","Iqlāb"],
+  ["qlq","#0a3aa8","قلقلة","Qalqalah"],
+  ["sil","#8e8e8e","لا يُنطق","Not pronounced"]];
+const TJ_CSS=TJ_RULES.map(([k,c])=>`.tj-${k}{color:${c}${k==="sil"?"":";-webkit-text-stroke:.03em "+c}}`).join("")+`.tjkey{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center}.tjkey span{white-space:nowrap;display:inline-flex;align-items:center;gap:6px}.tjkey i{display:inline-block;width:12px;height:12px;border-radius:3px}.tjkey b{font-family:"KFGQPC Hafs",serif;font-weight:400;font-size:1.15em}`;
 const tjIsL=c=>(c>=0x621&&c<=0x63A)||(c>=0x641&&c<=0x64A)||c===0x671||c===0x640;
 const TJ_QQ=new Set([0x642,0x637,0x628,0x62C,0x62F]),TJ_THROAT=new Set([0x621,0x623,0x625,0x624,0x626,0x647,0x639,0x62D,0x63A,0x62E]);
 const TJ_HAMZA=new Set([0x621,0x623,0x624,0x625,0x626]),TJ_MADDL=new Set([0x627,0x648,0x64A,0x649]);
