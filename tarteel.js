@@ -259,7 +259,7 @@ const gAyah=(s,a)=>SURAH_FIRST[s]+a-1;
 function openQMus(st,items,idx,SM,onMark,onRange){
   injectFont();busy=true;
   let hide=false;try{hide=localStorage.getItem("hifz.qhide")==="1"}catch(_){}
-  let kind="forgot";const rev={},ext={};let sel=null;
+  let kind="forgot";const rev={},ext={};let sel=null,tjp=null; // tjp: a tajweed mistake waiting for its rule
   const old=new Map();for(const x of marksOf(st))if(!x.fixed&&!(x.src==="session"&&x.date===iso(today())))old.set(x.w,x.k);
   document.querySelectorAll(".qmus").forEach(x=>x.remove());
   const ov=document.createElement("div");ov.className="qmus";document.body.appendChild(ov);document.body.classList.add("qmus-on");
@@ -276,6 +276,7 @@ function openQMus(st,items,idx,SM,onMark,onRange){
     const n=[...SM].filter(([w,v])=>inRanges(R,w)&&v.k!=="hesitate").length,ns=[...SM].filter(([w,v])=>inRanges(R,w)&&v.k==="hesitate").length;
     ov.innerHTML=`<div class="qmh"><div class="qmt"><button type="button" class="link" id="qmX">✕ Done</button><b>${esc(itemLabel(it))}</b><span class="small muted">${idx+1} of ${items.length}</span></div>
       <div class="tmk">${TK.map(([k,l])=>`<button type="button" class="sm mk k-${k}${k===kind?" on":""}" data-qk="${k}">${l}</button>`).join("")}<label class="qhide"><input type="checkbox" id="qmHide" ${hide?"checked":""}> Hide text</label></div>
+      ${tjp?`<div class="qmtj"><b>Which tajweed rule?</b> <span class="mword">${mw()[tjp.w]}</span><div class="actions">${tjp.rules.map(r=>`<button type="button" class="sm" data-tjr="${r}">${TJ_R[r][1]}</button>`).join("")}<select id="qmTjO" aria-label="Another rule"><option value="">Another rule…</option>${Object.keys(TJ_R).filter(r=>!tjp.rules.includes(r)).map(r=>`<option value="${r}">${TJ_R[r][1]}</option>`).join("")}</select><button type="button" class="link sm" id="qmTjX">Skip</button></div></div>`:""}
       ${onRange?`<div class="qrng small">${sel!=null?`<b>Start: ${esc(SURAH_NAMES[AY_SURAH[sel]])} ${sel-SURAH_FIRST[AY_SURAH[sel]]+1}</b> · now tap the number of the ayah where he stopped <button type="button" class="link sm" id="qmSelX">cancel</button>`:`Read more or less? Tap the <b>ayah number</b> where he started, then the one where he stopped.`}</div>`:""}
       <div class="small">Mistakes here: <b>${n}</b>${ns?` · self-corrected ${ns}`:""} <span class="muted">· tap a word to mark, tap again to remove · faint = old mistakes</span></div></div>
       <div class="qmb2">${pages[0]>1?`<button type="button" class="sm qmext" id="qmPre">＋ Show the page before</button>`:""}<div class="mbox">${pages.map(p=>pageHTML(p,mm)).join("")}</div>${pages[pages.length-1]<604?`<button type="button" class="sm qmext" id="qmPost">＋ Show the page after</button>`:""}</div>
@@ -294,12 +295,16 @@ function openQMus(st,items,idx,SM,onMark,onRange){
     const qa=ov.querySelector("#qmA");if(qa)qa.onclick=()=>{const nx=R.flatMap(([a,b])=>a>rev[idx]?[a]:b>rev[idx]?[rev[idx]+1]:[])[0];if(nx==null)return;const p=wordPlace(nx);rev[idx]=ayEndWord(p.s,p.a);draw(false)};
     ov.querySelector("#qmHide").onchange=e=>{hide=e.target.checked;try{localStorage.setItem("hifz.qhide",hide?"1":"0")}catch(_){}draw(false)};
     ov.querySelectorAll("[data-qk]").forEach(b=>b.onclick=()=>{kind=b.dataset.qk;draw(false)});
+    const setTr=async r=>{if(!tjp||!r)return;const v=tjp.v;v.tr=r;tjp=null;draw(false);try{const id=v.id||await v.p;if(id)await db.doc("marks/"+id).update({tr:r})}catch(_){}};
+    ov.querySelectorAll("[data-tjr]").forEach(b=>b.onclick=()=>setTr(b.dataset.tjr));
+    {const o=ov.querySelector("#qmTjO");if(o)o.onchange=()=>setTr(o.value);const x=ov.querySelector("#qmTjX");if(x)x.onclick=()=>{tjp=null;draw(false)}}
     ov.querySelectorAll(".mpage .w").forEach(sp=>sp.onclick=async()=>{const w=Number(sp.dataset.w);if(!inRanges(R,w))return;
       if(hide&&w>rev[idx]){rev[idx]=w;draw(false);return}
       const ex=SM.get(w);
-      if(ex){SM.delete(w);onMark(ex.part,ex.k,-1);draw(false);try{const id=ex.id||await ex.p;if(id)await db.doc("marks/"+id).delete()}catch(_){}return}
-      rev[idx]=Math.max(rev[idx],w);const v={k:kind,part:it.part,id:null,t:Date.now()};SM.set(w,v);onMark(it.part,kind,1);draw(false);
-      v.p=db.collection("marks").add({sid:st.id,w,k:kind,date:iso(today()),t:v.t,src:"session",part:it.part}).then(r=>{v.id=r&&r.id;return v.id}).catch(()=>{if(SM.get(w)===v){SM.delete(w);onMark(it.part,kind,-1);draw(false)}errToast("That mistake was not saved. Check your connection and tap the word again.");return null})});
+      if(ex){if(tjp&&tjp.w===w)tjp=null;SM.delete(w);onMark(ex.part,ex.k,-1);draw(false);try{const id=ex.id||await ex.p;if(id)await db.doc("marks/"+id).delete()}catch(_){}return}
+      rev[idx]=Math.max(rev[idx],w);const auto=kind==="tajweed"?tjAutoRule(w):"";const v={k:kind,part:it.part,id:null,t:Date.now(),tr:auto};SM.set(w,v);onMark(it.part,kind,1);
+      tjp=kind==="tajweed"&&!auto?{w,v,rules:tjWordRules(w)}:null;draw(false);
+      v.p=db.collection("marks").add({sid:st.id,w,k:kind,...(auto?{tr:auto}:{}),date:iso(today()),t:v.t,src:"session",part:it.part}).then(r=>{v.id=r&&r.id;return v.id}).catch(()=>{if(SM.get(w)===v){SM.delete(w);onMark(it.part,kind,-1);draw(false)}errToast("That mistake was not saved. Check your connection and tap the word again.");return null})});
     const keep=()=>{if(!anc)return;const b=ov.querySelector(".qmb2");if(!b)return;for(const o of anc.L||[]){const x=b.querySelector(`.mpage .w[data-w="${o.w}"]`);if(x){b.scrollTop+=x.getBoundingClientRect().top-b.getBoundingClientRect().top-o.d;return}}b.scrollTop=anc.top};
     keep();
     const fit=()=>{fitPage(ov);keep();if(scroll){const f=ov.querySelector(`.mpage .w[data-w="${first}"]`);if(f){const b=ov.querySelector(".qmb2");b.scrollTop=Math.max(0,f.offsetTop-b.offsetTop-60)}}};

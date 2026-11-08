@@ -168,6 +168,18 @@ try {
   const before = await vis('#qHm');
   await page.click('[data-qx="qHC"]');
   ok('session hides mistake counters until "Mistakes and details"', !before && (await vis('#qHm')));
+  // marking a tajweed mistake in the session mushaf asks which rule (rules of that word only)
+  await page.click('#qMusH');
+  await page.waitForSelector('.qmus .mpage .w');
+  await page.click('.qmus [data-qk="tajweed"]');
+  const tw = await page.evaluate(() => [...document.querySelectorAll('.qmus .mpage .w:not(.out)')].map((e) => +e.dataset.w).find((w) => tjWordRules(w).length > 1 && !marks.some((m) => m.w === w)));
+  await page.click(`.qmus .mpage .w[data-w="${tw}"]`);
+  await page.waitForSelector('.qmtj [data-tjr]');
+  const want = await page.evaluate((w) => { const b = document.querySelectorAll('.qmtj [data-tjr]'); return { n: b.length, rules: tjWordRules(w), first: b[0].dataset.tjr }; }, tw);
+  await page.click('.qmtj [data-tjr]');
+  await page.waitForTimeout(500);
+  ok('session mushaf asks which tajweed rule and saves it', want.n === want.rules.length && (await page.evaluate(([w, r]) => { const m = marks.find((x) => x.w === w && x.src === 'session'); return !!m && m.k === 'tajweed' && m.tr === r; }, [tw, want.first])), JSON.stringify({ tw, ...want }));
+  await page.click('#qmX');
   // first-visit tour: shows on a new device, Skip ends it, Help shows it again
   const p2 = await browser.newPage({ viewport: { width: 390, height: 844 } });
   await p2.goto(BASE);
