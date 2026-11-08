@@ -17,3 +17,4 @@ ui-debug.log*
 # Test build output (tests/batch1.test.js expects this in the working dir)
 test3.html
 public/
+public-demo/

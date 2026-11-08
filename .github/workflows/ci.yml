@@ -1,0 +1,183 @@
+# Test, preview and deploy. This is the ONLY way changes reach the live site.
+#
+#   pull request  -> test -> preview: demo build (sample data, no Firebase) on a temporary link,
+#                                     posted as a comment on the pull request
+#   push to main  -> test -> deploy:  the real app to https://hifz-tracker-cd6d0.web.app,
+#                                     Firestore security rules, and the demo of main to https://hifz-tracker-demo.web.app
+#
+# Secrets (set by the repo owner): GCP_SA_PREVIEW (can only deploy Hosting), GCP_SA_DEPLOY (Hosting + rules).
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  FIREBASE_TOOLS: firebase-tools@15.35.0
+  PROJECT: hifz-tracker-cd6d0
+
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    concurrency:
+      group: test-${{ github.event.pull_request.number || github.sha }}
+      cancel-in-progress: true
+    env:
+      PW_BUNDLED: '1' # Playwright's own Chromium (no Chrome on the runner)
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: firebase/package-lock.json
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: actions/cache@v5
+        with:
+          path: ~/.cache/firebase/emulators
+          key: firebase-emulators-${{ hashFiles('firebase/package-lock.json') }}
+      - name: Install
+        working-directory: firebase
+        run: |
+          npm ci --no-audit --no-fund
+          npx playwright install --with-deps chromium
+      - name: Demo build test (sample data, roles, no Firebase traffic)
+        working-directory: firebase
+        run: npm run test:demo
+      - name: Security rules test
+        working-directory: firebase
+        run: npm run test:rules
+      - name: App test (sign-in, roles, backup restore) against Firebase emulators
+        working-directory: firebase
+        run: npm run test:e2e
+      - name: Keep the tested builds for preview / deploy
+        uses: actions/upload-artifact@v7
+        with:
+          name: site
+          path: |
+            public
+            public-demo
+          retention-days: 7
+      - name: Save emulator logs
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: emulator-logs
+          path: firebase/*.log
+          if-no-files-found: ignore
+
+  preview:
+    name: Preview link
+    needs: test
+    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - uses: actions/download-artifact@v8
+        with:
+          name: site
+      - uses: google-github-actions/auth@v3
+        with:
+          credentials_json: ${{ secrets.GCP_SA_PREVIEW }}
+      - name: Deploy demo build to a preview channel
+        id: deploy
+        env:
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          test -f public-demo/index.html
+          grep -q HIFZ_DEMO public-demo/fb-*.js   # never preview anything but the demo build
+          npx --yes "$FIREBASE_TOOLS" hosting:channel:deploy "pr-$PR" --only demo --expires 14d \
+            --no-authorized-domains --project "$PROJECT" --non-interactive --json > deploy.json
+          url=$(jq -r '[.result[]][0].url' deploy.json)
+          test -n "$url" && test "$url" != null
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+          echo "Preview: $url" >> "$GITHUB_STEP_SUMMARY"
+      - name: Comment the link on the pull request
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+          URL: ${{ steps.deploy.outputs.url }}
+          SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          body="<!-- hifz-preview -->
+          **Preview:** $URL
+
+          Tests passed. This preview runs the change with **made-up sample data** in your browser only; it cannot touch the real school.
+          Use *View as* at the top to try each role. Built from ${SHA:0:7}; the link expires in 14 days.
+          Merging this pull request puts the change live on https://hifz-tracker-cd6d0.web.app a few minutes later."
+          body=$(printf '%s\n' "$body" | sed 's/^          //')
+          id=$(gh api "repos/$GITHUB_REPOSITORY/issues/$PR/comments" --paginate --jq '.[] | select(.body | startswith("<!-- hifz-preview -->")) | .id' | head -1)
+          if [ -n "$id" ]; then
+            gh api -X PATCH "repos/$GITHUB_REPOSITORY/issues/comments/$id" -f body="$body" > /dev/null
+          else
+            gh api "repos/$GITHUB_REPOSITORY/issues/$PR/comments" -f body="$body" > /dev/null
+          fi
+
+  deploy:
+    name: Deploy to the live site
+    needs: test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    concurrency:
+      group: deploy-production
+      cancel-in-progress: false # never stop a deploy halfway
+    steps:
+      - uses: actions/checkout@v7
+      - name: Skip if main has moved on (the newer commit deploys instead)
+        id: current
+        run: |
+          head=$(git ls-remote origin refs/heads/main | cut -f1)
+          if [ "$head" = "$GITHUB_SHA" ]; then echo "go=true" >> "$GITHUB_OUTPUT"
+          else echo "main is now $head; skipping $GITHUB_SHA" | tee -a "$GITHUB_STEP_SUMMARY"; fi
+      - uses: actions/setup-node@v7
+        if: steps.current.outputs.go == 'true'
+        with:
+          node-version: 22
+      - uses: actions/download-artifact@v8
+        if: steps.current.outputs.go == 'true'
+        with:
+          name: site
+      - uses: google-github-actions/auth@v3
+        if: steps.current.outputs.go == 'true'
+        with:
+          credentials_json: ${{ secrets.GCP_SA_DEPLOY }}
+      - name: Deploy
+        if: steps.current.outputs.go == 'true'
+        env:
+          MSG: ${{ github.event.head_commit.message }}
+        run: |
+          if grep -q HIFZ_DEMO public/fb-*.js; then echo "public/ is a demo build"; exit 1; fi   # the live site never gets the demo
+          grep -q HIFZ_DEMO public-demo/fb-*.js
+          npx --yes "$FIREBASE_TOOLS" deploy --only hosting:app,hosting:demo,firestore:rules \
+            --project "$PROJECT" --non-interactive --message "${GITHUB_SHA:0:7} $(printf '%s' "$MSG" | head -1 | cut -c1-200)"
+      - name: Check the live site serves this build
+        if: steps.current.outputs.go == 'true'
+        run: |
+          want=$(sha256sum public/index.html | cut -c1-64)
+          for i in 1 2 3 4 5 6; do
+            got=$(curl -fsS "https://hifz-tracker-cd6d0.web.app/?v=$GITHUB_SHA" | sha256sum | cut -c1-64)
+            if [ "$got" = "$want" ]; then echo "Live: https://hifz-tracker-cd6d0.web.app (${GITHUB_SHA:0:7})" >> "$GITHUB_STEP_SUMMARY"; exit 0; fi
+            sleep 10
+          done
+          echo "The live site is not serving this build"; exit 1
