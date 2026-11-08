@@ -1,0 +1,76 @@
+rules_version = '2';
+
+// Hifz Tracker access rules.
+//
+//   owners      listed below (keep in sync with firebase/owners.json; the rules test checks it): everything.
+//   members     one doc per teacher email in members/<email>, kept in sync with the app's Teachers list by
+//               owners/admins (firebase/src/boot.js, startMemberSync). Role: admin | teacher | supervisor.
+//     admin       read and write everything, manage teachers and members.
+//     teacher     read everything, write class data; cannot change anyone's role, email or active flag.
+//     supervisor  read only.
+//   anyone else nothing.
+//
+// Only verified emails count: Google and email-link sign-in are verified, so nobody can claim a teacher's
+// address by creating a password account with it.
+// Which groups a teacher may record in is still decided in the app, as it was in the Claude version.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function owners() {
+      return ['edin.livnjak2@gmail.com', 'elssenosy@gmail.com'];
+    }
+    function signedInVerified() {
+      return request.auth != null
+        && request.auth.token.get('email', '') != ''
+        && request.auth.token.get('email_verified', false) == true;
+    }
+    function myEmail() {
+      return request.auth.token.email.lower();
+    }
+    function isOwner() {
+      return signedInVerified() && myEmail() in owners();
+    }
+    function memberPath() {
+      return /databases/$(database)/documents/members/$(myEmail());
+    }
+    function member() {
+      return get(memberPath()).data;
+    }
+    function isMember() {
+      return signedInVerified() && exists(memberPath()) && member().get('active', true) != false;
+    }
+    function memberRole() {
+      return member().get('role', 'teacher');
+    }
+    function isAdmin() {
+      return isOwner() || (isMember() && memberRole() == 'admin');
+    }
+    function canRead() {
+      return isOwner() || isMember();
+    }
+    function canWrite() {
+      return isOwner() || (isMember() && memberRole() != 'supervisor');
+    }
+
+    // Access list. People may read their own entry (the app checks it at sign-in); admins manage all of it.
+    match /members/{email} {
+      allow get: if signedInVerified() && email == myEmail();
+      allow read, write: if isAdmin();
+    }
+
+    // Teachers list. Only admins add or remove teachers or change role, email or active (those decide access).
+    match /teachers/{id} {
+      allow read: if canRead();
+      allow create, delete: if isAdmin();
+      allow update: if isAdmin()
+        || (canWrite() && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'email', 'active']));
+    }
+
+    // All other app data: students, events, classes, marks, settings, ...
+    match /{coll}/{id} {
+      allow read: if coll != 'members' && coll != 'teachers' && canRead();
+      allow write: if coll != 'members' && coll != 'teachers' && canWrite();
+    }
+  }
+}

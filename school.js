@@ -146,7 +146,7 @@ function renderSchool(el,sub){
   const cName=c=>esc(c.name)+(SCHOOLS.length>1&&schById(schOfCls(c.id))?` <span class="small muted">· ${esc(schById(schOfCls(c.id)).name)}</span>`:"");
   el.innerHTML=`${back}<form class="panel" id="tForm"><h3>${t?"Edit teacher":"Add teacher"}</h3>
     <div class="fields"><label>Name<input id="t_name" required value="${esc(t&&t.name||"")}"></label><label>Phone (WhatsApp)<input id="t_ph" type="tel" value="${esc(t&&t.phone||"")}" placeholder="+61 4xx xxx xxx"></label>
-    <label>Email they use on claude.ai<input id="t_em" type="email" value="${esc(t&&t.email||"")}" placeholder="name@gmail.com"></label>
+    <label>Email they sign in with (gives them access)<input id="t_em" type="email" value="${esc(t&&t.email||"")}" placeholder="name@gmail.com"></label>
     <label>Ijazah / riwayah<input id="t_ij" value="${esc(t&&t.ijazah||"")}" placeholder="e.g. Hafs ʿan ʿAsim"></label><label>Started<input id="t_st" type="date" value="${esc(t&&t.started||"")}"></label><label>Notes<input id="t_no" value="${esc(t&&t.notes||"")}"></label></div>
     <p class="small muted">Share the app link with this email: as <b>Contributor</b> for a teacher, <b>Viewer</b> for a supervisor, <b>Editor</b> for another admin. When they open it the app knows who they are, or they pick their name once.</p>
     <div><p class="small muted lbl">Role</p><div class="seg" id="t_role">${Object.entries(SC_ROLES).map(([k,v])=>`<button type="button" class="fbtn ${(t&&t.role||"teacher")===k?"on":""}" data-r="${k}">${v}</button>`).join("")}</div></div>

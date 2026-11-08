@@ -1,0 +1,4 @@
+{
+  "_comment": "App owners: full admin inside the app, regardless of the Teachers list. Must match the OWNERS list in ../firestore.rules (the rules test checks this).",
+  "owners": ["edin.livnjak2@gmail.com", "elssenosy@gmail.com"]
+}
