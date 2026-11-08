@@ -412,7 +412,7 @@ function renderStudent(el,sub,st){
     <div class="log">${s.mine.length?s.mine.slice(0,5).map(evRow).join(""):'<p class="muted">Nothing recorded yet. Tap "Record session" to add the first one.</p>'}</div>
   </div>
   ${heartPanel(st)}
-  ${goalPanel(st)}${suggPanel(st)}${progressPanel(st)}${journeyPanel(st)}
+  ${goalPanel(st)}${suggPanel(st)}${progressPanel(st)}${journeyPanel(st)}${tjStudentPanel(st)}
   ${certPanel(st)}
   ${pointsPanel(st)}
   <div id="bookWrap">${errorBookPanel(st)}</div>`;

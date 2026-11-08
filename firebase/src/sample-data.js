@@ -33,6 +33,9 @@ export function sampleData() {
     marks: {
       k1: { sid: 's1', w: 12, k: 'prompt', date: daysAgo(1), t: 1 },
       k2: { sid: 's2', w: 30, k: 'prompt', date: daysAgo(2), t: 1 },
+      // tajweed mistakes with the rule chosen (tr): iqlab in أَلِيمُۢ, idgham without ghunnah in هُدࣰى
+      k3: { sid: 's1', w: 117, k: 'tajweed', tr: 'iqlab', date: daysAgo(1), t: 2 },
+      k4: { sid: 's1', w: 59, k: 'tajweed', tr: 'idgN', date: daysAgo(3), t: 3 },
     },
   };
   const kids = [
@@ -40,10 +43,12 @@ export function sampleData() {
     ['s4', 'Fatima', 'c2', 15, 300], ['s5', 'Zakariya', 'c2', 10, 210], ['s6', 'Hana', 'c2', 15, 420],
   ];
   let e = 1;
+  const tjp = { s1: { iqlab: [1, 4], ikhfa: [3, 5], madd5: [4, 4] } }; // tajweed practice results (right, asked) per rule
   for (const [id, name, cls, amount, pos] of kids) {
     const days = data.classes[cls].days;
     data.students[id] = {
       name, cls, order: 'nas', startS: 113, prevS: [], amount, readPages: 20, readStart: 1, farDays: 7, days, start: daysAgo(60), pos,
+      ...(tjp[id] ? { tjp: tjp[id] } : {}),
     };
     for (let k = 14; k >= 1; k--) {
       const d = new Date(); d.setDate(d.getDate() - k);

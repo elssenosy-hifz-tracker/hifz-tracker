@@ -105,6 +105,30 @@ try {
   await page.waitForSelector('#tjTip:not([hidden])');
   ok('pointing at a coloured letter shows the rule name', /المد اللازم/.test(await page.textContent('#tjTip')));
   await page.mouse.move(5, 5);
+  // "All rules" also colours madd tabii etc. and underlines tafkhim / tarqiq
+  await page.click('#tjAll');
+  await page.waitForSelector('.mpage .tjF');
+  ok('All rules colours the extra rules and extends the key', await page.evaluate(() => document.querySelectorAll('.mpage .tj-madd2').length > 5 && document.querySelectorAll('.mpage .tjF').length > 5 && document.querySelectorAll('.tjkey .ul').length === 2));
+  await page.click('#tjAll');
+  await page.waitForTimeout(200);
+
+  // student page: practice results (weakest first) and tajweed mistakes by rule; practise the weakest rule with that student
+  await page.evaluate(() => { go({ name: 'student', id: 's1' }); });
+  await page.waitForSelector('.tjstud');
+  const sp = await page.evaluate(() => ({ first: document.querySelector('.tjstud .tjweak .tjar').textContent, text: document.querySelector('.tjstud').textContent }));
+  ok('student page shows the weakest practised rule and marked tajweed mistakes', sp.first === 'الإقلاب' && /1 \/ 4/.test(sp.text) && /الإدغام بغير غنة/.test(sp.text), JSON.stringify(sp));
+  await page.click('#tjPractise');
+  await page.waitForSelector('.tjopt:not([disabled])');
+  ok('Practise weakest rule opens practice for that student and rule', await page.evaluate(() => view.pst === 's1' && TJ_Q.r === 'iqlab' && document.querySelector('#tjPS').value === 's1'));
+  await page.click('.tjopt[data-ans="iqlab"]');
+  await page.waitForTimeout(400);
+  ok('a practice answer is saved to the student', await page.evaluate(() => { const t = allStudents.find((s) => s.id === 's1').tjp; return t && t.iqlab[0] === 2 && t.iqlab[1] === 5; }));
+
+  // a tajweed mistake mark offers the rules in that word first, and keeps the chosen rule
+  await page.evaluate(() => { go({ name: 'mushaf', id: 's1' }); view.page = pageOfWord(117); render(true); });
+  await page.waitForSelector('.mtr');
+  const mk = await page.evaluate(() => { const s = [...document.querySelectorAll('.mtr')].find((x) => x.value === 'iqlab'); return { chosen: !!s, inWord: s ? [...s.querySelector('optgroup').querySelectorAll('option')].map((o) => o.value) : [] }; });
+  ok('a tajweed mistake shows its rule, with the rules in that word first', mk.chosen && mk.inWord.includes('iqlab'), JSON.stringify(mk));
   await page.evaluate(() => { go({ name: 'list' }); });
 
   // view as teacher
