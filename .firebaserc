@@ -1,5 +1,27 @@
 {
   "projects": {
     "default": "hifz-tracker-cd6d0"
+  },
+  "targets": {
+    "hifz-tracker-cd6d0": {
+      "hosting": {
+        "app": [
+          "hifz-tracker-cd6d0"
+        ],
+        "demo": [
+          "hifz-tracker-demo"
+        ]
+      }
+    },
+    "demo-hifz": {
+      "hosting": {
+        "app": [
+          "demo-hifz"
+        ],
+        "demo": [
+          "demo-hifz-demo"
+        ]
+      }
+    }
   }
 }

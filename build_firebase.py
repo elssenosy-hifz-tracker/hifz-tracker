@@ -1,24 +1,31 @@
 #!/usr/bin/env python3
-"""Build the Firebase Hosting version into public/.
+"""Build the Firebase Hosting version.
 
-  python3 build_firebase.py
+  python3 build_firebase.py          # the real app      -> public/       (Firebase sign-in + Firestore)
+  python3 build_firebase.py --demo   # demo with sample data -> public-demo/  (no Firebase at all; previews, local dev)
 
 Steps:
-  1. Bundle the Firebase layer (firebase/src/boot.js) with esbuild and name it by content hash: public/fb-<hash>.js.
+  1. Bundle the data layer with esbuild and name it by content hash: fb-<hash>.js.
+     Real app: firebase/src/boot.js. Demo: firebase/src/demo.js (in-browser store, sample data, preview banner).
   2. Build the normal single-file app with build_portable.py.
   3. Load the bundle in <head> and start the app through the sign-in gate: the final `init();` becomes `HIFZ_BOOT(init);`.
 
-Needs `npm install` in firebase/ once. Deploy with:  firebase deploy
+Needs `npm ci` in firebase/ once. Deploys happen in GitHub Actions (see AGENTS.md), not from here.
 """
 import glob, hashlib, os, subprocess, sys
 
+DEMO = '--demo' in sys.argv[1:]
 R = os.path.dirname(os.path.abspath(__file__))
-PUB = os.path.join(R, 'public')
+PUB = os.path.join(R, 'public-demo' if DEMO else 'public')
 os.makedirs(PUB, exist_ok=True)
 
-# 1. Firebase layer
+# 1. Data layer
 fb_tmp = os.path.join(PUB, 'fb.js')
-subprocess.run(['npm', 'run', '--silent', 'bundle'], cwd=os.path.join(R, 'firebase'), check=True)
+esbuild = os.path.join(R, 'firebase', 'node_modules', '.bin', 'esbuild')
+if not os.path.exists(esbuild):
+    sys.exit('esbuild is missing: run `npm ci` in firebase/ first')
+subprocess.run([esbuild, 'src/demo.js' if DEMO else 'src/boot.js', '--bundle', '--minify', '--format=iife', '--target=es2020',
+                '--log-level=warning', '--outfile=' + fb_tmp], cwd=os.path.join(R, 'firebase'), check=True)
 code = open(fb_tmp, 'rb').read()
 fb_name = 'fb-%s.js' % hashlib.sha256(code).hexdigest()[:10]
 for old in glob.glob(os.path.join(PUB, 'fb-*.js')):
@@ -46,6 +53,17 @@ head_end = doc.index('</head>')  # the page's own head comes first; later matche
 assert head_end < doc.index('<body>')
 doc = doc[:head_end] + head_tag + doc[head_end:]
 
+# 4. Safety: a demo build must never contain Firebase, and the real build must never contain demo mode.
+both = doc + code.decode('utf8')
+if DEMO:
+    bad = [x for x in ('firebaseapp.com', 'firestore.googleapis.com', 'identitytoolkit', 'securetoken', 'hifz-tracker-cd6d0', 'AIzaSy')
+           if x in both]
+    assert not bad, 'demo build contains Firebase code or config: %s' % bad
+    assert 'HIFZ_DEMO' in both
+else:
+    assert 'HIFZ_DEMO' not in both, 'the real build contains demo mode'
+    assert 'hifz-tracker-cd6d0' in both
+
 out = os.path.join(PUB, 'index.html')
 open(out, 'w', encoding='utf8').write(doc)
-print(out, round(len(doc.encode()) / 1e6, 2), 'MB;', fb_name, round(len(code) / 1e3), 'kB')
+print(os.path.relpath(out, R), 'DEMO' if DEMO else 'REAL APP', round(len(doc.encode()) / 1e6, 2), 'MB;', fb_name, round(len(code) / 1e3), 'kB')

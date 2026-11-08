@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cd \"$CLAUDE_PROJECT_DIR/firebase\" && if [ ! -d node_modules ]; then npm ci --no-audit --no-fund >/dev/null 2>&1 && echo 'Installed firebase/ dependencies (npm ci).' || echo 'npm ci in firebase/ failed; run it before building or testing.'; fi",
+            "timeout": 300
+          }
+        ]
+      }
+    ]
+  }
+}

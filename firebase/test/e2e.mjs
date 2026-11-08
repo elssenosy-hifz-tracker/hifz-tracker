@@ -1,5 +1,5 @@
 // End-to-end test of the built app (public/) against the Firebase emulators.
-// Run from firebase/:  npm run test:e2e   (needs `python3 ../build_firebase.py` first, Java 11+, Playwright Chromium)
+// Run from firebase/:  npm run test:e2e   (builds first; needs Java 11+ and Chrome, or PW_BUNDLED=1)
 import { chromium } from 'playwright';
 import { writeFileSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';

@@ -8,11 +8,27 @@ The build produces **one self-contained HTML file** plus a small Firebase layer.
 
 ## Firebase (live site)
 
+Changing the app: see **AGENTS.md** (for agents and developers) and **GUIDE.md** (for the school owner). In short, every change
+is a pull request; GitHub Actions (`.github/workflows/ci.yml`) tests it and posts a preview link (demo build with sample data on
+`hifz-tracker-demo.web.app`), and merging to `main` deploys the app and the security rules to the live site.
+When something goes wrong: **docs/RECOVERY.md**.
+
 ```bash
-cd firebase && npm install && cd ..   # once
-python3 build_firebase.py            # writes public/index.html + public/fb-<hash>.js
-firebase deploy                      # rules + site (needs `firebase login` as a project owner)
+cd firebase && npm ci                # once
+npm run dev                          # demo build (sample data, no Firebase) at http://localhost:5173
+npm test                             # demo, security rules and app tests (rules + app tests need Java 11+)
+npm run dev:emulators                # the real build against local Firebase emulators at http://localhost:5050
 ```
+
+Builds: `python3 build_firebase.py` writes `public/` (real app); `python3 build_firebase.py --demo` writes `public-demo/`.
+The demo build swaps the Firebase layer for `firebase/src/demo.js` (an in-browser store seeded from
+`firebase/src/sample-data.js`), and the build refuses to put Firebase config into it. Hosting targets in `firebase.json`:
+`app` = `public/` on hifz-tracker-cd6d0, `demo` = `public-demo/` on hifz-tracker-demo.
+
+Deploy credentials live in GitHub secrets: `GCP_SA_PREVIEW` (service account `gh-preview`: Hosting only) and `GCP_SA_DEPLOY`
+(`gh-deploy`: Hosting, Firestore rules and indexes). Manual `firebase deploy --only hosting:app,hosting:demo,firestore:rules`
+from a laptop logged in as a project owner still works, for emergencies only.
+Firestore has daily backups kept for 7 days (`firebase firestore:backups:schedules:list`).
 
 How it fits together:
 - `firebase/src/boot.js` gives the app the same `claude.use("db" | "user" | "downloads")` objects it was written for,
@@ -27,12 +43,6 @@ How it fits together:
 - Data from the Claude version moves over with the app's own backup: in the old version, Settings → Grading, points,
   holidays, backup → *Download full backup*; on the new site, same place → *Restore from a backup file*.
 
-Tests (Firebase emulators; need Java 11+, e.g. `export JAVA_HOME=/opt/homebrew/opt/openjdk@21`):
-```bash
-cd firebase
-npm run test:rules   # security rules
-npm run test:e2e     # the built app in Chrome: sign-in, roles, restore, data round trip (run build_firebase.py first)
-```
 Locally the app talks to the emulators automatically (add `?live` to use the real project).
 
 ## Build (single file)
@@ -42,8 +52,8 @@ python3 build_portable.py            # writes dist/hifz-tracker-index.html
 python3 build_portable.py out.html   # or choose the output path
 ```
 
-No dependencies beyond Python 3. The output is byte-for-byte the same as the committed
-`hifz-tracker-index.html` (the currently published version).
+No dependencies beyond Python 3. `hifz-tracker-index.html` is the frozen Claude Artifact version this repo started from;
+the build matched it byte for byte at that point, and it is not updated any more.
 
 ### What the build does
 1. Reads `head_en.html` (CSS + HTML shell) and `app_en.js` (core app, ends with `init();`).
@@ -81,7 +91,9 @@ Use `build_portable.py` from now on.
 | `heart/` | Heart artwork, `heartvec.json` (used by the build), and the Python scripts that made it (`mk.py`, `vec.py`, `fit.py`, `lay.py`; they need numpy, scipy, Pillow, opencv, potrace and have old hard-coded paths) |
 | `hifz-tracker-index.html` | Built output of the Claude Artifact version |
 | `build_firebase.py`, `firebase.json`, `.firebaserc`, `firestore.rules`, `firestore.indexes.json` | Firebase build, hosting and security rules |
-| `firebase/` | Firebase layer (`src/boot.js`, `src/config.js`), owners list, rules and end-to-end tests |
+| `firebase/` | Data layers (`src/boot.js` Firebase, `src/demo.js` demo, `src/sample-data.js`), owners list, tests, `scripts/serve.mjs` |
+| `.github/workflows/ci.yml` | Tests, preview links and deploys |
+| `AGENTS.md` (`CLAUDE.md` imports it), `GUIDE.md`, `docs/RECOVERY.md` | How to change, ship and recover the app |
 | `hifz-tracker-arabic.html` | Early Arabic (RTL) version, before the app moved to the modular English build. Historical |
 | `tests/` | Review reports (`A-pedagogy.md`, `B-ux.md`, `C-data.md`) and Playwright tests (`batch1.test.js`, `mock-db.js`). The test expects a built page named `test3.html` with the mock database injected in the working directory |
 | `mockups/`, `ideas/`, `samples/`, `*-example.png` | Design mockups, idea PDF, sample certificate, screenshots. Documentation only, not used by the build |
