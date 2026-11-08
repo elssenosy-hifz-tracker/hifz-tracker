@@ -97,11 +97,11 @@ function renderMushaf(el,sub,st){
   wireMarkRows(el);
   fitPage(el);document.fonts.load('20px "KFGQPC Hafs"').then(()=>fitPage(el)).catch(()=>{});
 }
-async function addMark(st,w,k){try{await db.collection("marks").add({sid:st.id,w,k,date:iso(today()),t:Date.now()})}catch(_){}}
+async function addMark(st,w,k){const tr=k==="tajweed"?tjAutoRule(w):"";try{await db.collection("marks").add({sid:st.id,w,k,...(tr?{tr}:{}),date:iso(today()),t:Date.now()})}catch(_){}}
 const markRow=(m,withDate=true)=>`<div class="ev" data-mid="${m.id}"><time>${withDate?fmtShort(m.date):""}</time><div class="evb"><span class="mword">${mw()[m.w]}</span> <b>${markPlace(m)}</b> · <select class="mkind" aria-label="Kind">${MK_ORDER.map(k=>`<option value="${k}" ${k===m.k?"selected":""}>${ERR_KINDS[k]}</option>`).join("")}</select>${m.k==="tajweed"?tjMarkSel(m):""}${m.fixed?' <span class="chip ok">Fixed</span>':""}<input class="mnote" value="${esc(m.note||"")}" placeholder="Note for this mistake"></div><span class="evx"><button class="link small" data-mfix>${m.fixed?"Undo fixed":"Fixed"}</button><button class="link small" data-mdel>Delete</button></span></div>`;
 function wireMarkRows(el){el.querySelectorAll("[data-mid]").forEach(r=>{const id=r.dataset.mid,m=marks.find(x=>x.id===id);if(!m)return;const ref=db.doc("marks/"+id);
-  r.querySelector(".mkind").onchange=e=>ref.update({k:e.target.value}).catch(()=>{});
-  const tr=r.querySelector(".mtr");if(tr){tr.addEventListener("focus",()=>busy=true);tr.addEventListener("blur",()=>busy=false);tr.onchange=e=>{busy=false;ref.update({tr:e.target.value}).catch(()=>{})}}
+  r.querySelector(".mkind").onchange=e=>{const k=e.target.value,tr=k==="tajweed"&&!m.tr?tjAutoRule(m.w):"";ref.update({k,...(tr?{tr}:{})}).catch(()=>{})};
+  const tr=r.querySelector(".mtr");if(tr){tr.addEventListener("focus",()=>busy=true);tr.addEventListener("blur",()=>busy=false);tr.onchange=e=>{if(e.target.value==="__all"){tr.innerHTML=tjMarkOpts({...m,tr:""},true);tr.focus();return}busy=false;ref.update({tr:e.target.value}).catch(()=>{})}}
   const n=r.querySelector(".mnote");n.addEventListener("focus",()=>busy=true);n.onchange=e=>{busy=false;ref.update({note:e.target.value.trim()}).catch(()=>{})};n.addEventListener("blur",()=>{busy=false});
   r.querySelector("[data-mfix]").onclick=()=>ref.update({fixed:!m.fixed}).catch(()=>{});
   const d=r.querySelector("[data-mdel]");d.onclick=()=>{if(d.dataset.confirm!=="1"){d.dataset.confirm="1";d.textContent="Confirm delete?";return}ref.delete().catch(()=>{})}})}

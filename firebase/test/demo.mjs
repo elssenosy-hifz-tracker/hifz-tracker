@@ -127,8 +127,18 @@ try {
   // a tajweed mistake mark offers the rules in that word first, and keeps the chosen rule
   await page.evaluate(() => { go({ name: 'mushaf', id: 's1' }); view.page = pageOfWord(117); render(true); });
   await page.waitForSelector('.mtr');
-  const mk = await page.evaluate(() => { const s = [...document.querySelectorAll('.mtr')].find((x) => x.value === 'iqlab'); return { chosen: !!s, inWord: s ? [...s.querySelector('optgroup').querySelectorAll('option')].map((o) => o.value) : [] }; });
-  ok('a tajweed mistake shows its rule, with the rules in that word first', mk.chosen && mk.inWord.includes('iqlab'), JSON.stringify(mk));
+  const mk = await page.evaluate(() => { const s = [...document.querySelectorAll('.mtr')].find((x) => x.value === 'iqlab'); return { chosen: !!s, opts: s ? [...s.options].map((o) => o.value).filter(Boolean) : [], inWord: tjWordRules(117) }; });
+  ok('a tajweed mistake offers only the rules in that word (plus "Another rule")', mk.chosen && mk.opts.join() === [...mk.inWord, '__all'].join() && mk.opts.length < 6, JSON.stringify(mk));
+  const sel = await page.$$eval('.mtr', (l) => l.findIndex((x) => x.value === 'iqlab'));
+  await page.locator('.mtr').nth(sel).selectOption('__all');
+  ok('"Another rule" opens the full list', await page.evaluate((i) => document.querySelectorAll('.mtr')[i].options.length === Object.keys(TJ_R).length + 1, sel));
+  // marking a word that has exactly one rule as a tajweed mistake saves that rule straight away
+  const one = await page.evaluate(() => { const ws = [...document.querySelectorAll('.mpage .w')].map((e) => +e.dataset.w); return ws.find((w) => tjWordRules(w).length === 1 && !marks.some((m) => m.w === w)); });
+  await page.check('input[name=mk][value=tajweed]');
+  await page.click(`.mpage .w[data-w="${one}"]`);
+  await page.waitForTimeout(400);
+  ok('a word with one rule gets that rule automatically', await page.evaluate((w) => { const m = marks.find((x) => x.w === w); return !!m && m.k === 'tajweed' && m.tr === tjWordRules(w)[0]; }, one), String(one));
+  await page.check('input[name=mk][value=forgot]');
   await page.evaluate(() => { go({ name: 'list' }); });
 
   // view as teacher
