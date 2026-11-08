@@ -158,7 +158,7 @@ function tjSearch(q){const n=tjNorm(q,false).trim();if(n.length<2)return [];
 let TJ_Q=null,TJ_SC={ok:0,n:0};
 const tjShuffle=a=>{for(let i=a.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[a[i],a[j]]=[a[j],a[i]]}return a};
 function tjNewQ(){const st=tjStats(),sc=view.ts||"all",g=view.pgr||"all",W=mw();
-  const pool=Object.keys(TJ_R).filter(r=>(g==="all"||TJ_R[r][0]===g)&&st.ay[r]);
+  const pool=Object.keys(TJ_R).filter(r=>(g==="all"||(g.startsWith("r:")?r===g.slice(2):TJ_R[r][0]===g.replace(/^g:/,"")))&&st.ay[r]);
   for(let t=0;t<60&&pool.length;t++){const r=pool[Math.random()*pool.length|0];
     const ays=[...st.ay[r].keys()].filter(i=>tjInScope(i,sc));if(!ays.length)continue;
     const ay=ays[Math.random()*ays.length|0],[a,b]=tjAyahRange(ay),an=tjAnalyze(W,tjEnd,a,b),cand=[];
@@ -168,7 +168,7 @@ function tjNewQ(){const st=tjStats(),sc=view.ts||"all",g=view.pgr||"all",W=mw();
     return TJ_Q={ay,r,ci,opts:tjShuffle([r,...same.slice(0,3),...rest].slice(0,4)),ans:null}}
   return TJ_Q=null}
 function tjPracticeHTML(){if(!TJ_Q)tjNewQ();const q=TJ_Q,g=view.pgr||"all",sc=view.ts||"all";
-  const head=`<div class="panel"><div class="fields"><label>Rules to practise<select id="tjPG"><option value="all">All rules</option>${TJ_G.map(([k,ar,en])=>`<option value="${k}" ${k===g?"selected":""}>${ar}${AR?"":" · "+en}</option>`).join("")}</select></label><label>Ayahs from${tjScopeSel(sc)}</label></div>
+  const head=`<div class="panel"><div class="fields"><label>Rules to practise<select id="tjPG"><option value="all">All rules</option>${TJ_G.map(([k,ar,en])=>`<optgroup label="${ar}${AR?"":" · "+en}"><option value="g:${k}" ${"g:"+k===g?"selected":""}>${AR?"كل ":"All: "}${ar}</option>${Object.entries(TJ_R).filter(([,r])=>r[0]===k).map(([id,r])=>`<option value="r:${id}" ${"r:"+id===g?"selected":""}>${r[1]}${AR?"":" · "+r[2]}</option>`).join("")}</optgroup>`).join("")}</select></label><label>Ayahs from${tjScopeSel(sc)}</label></div>
     <div class="actions"><span class="tjscore">${AR?"النتيجة":"Score"}: ${TJ_SC.ok} / ${TJ_SC.n}</span>${TJ_SC.n?'<button class="link small" id="tjReset">Start again</button>':""}</div></div>`;
   if(!q)return head+'<div class="panel"><p class="muted">No questions here. Choose other rules or a bigger part of the Quran.</p></div>';
   const [a,b]=tjAyahRange(q.ay),R=TJ_R[q.r];

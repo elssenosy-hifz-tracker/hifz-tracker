@@ -78,9 +78,13 @@ try {
   await page.click(`.tjopt[data-ans="${wrong}"]`);
   await page.waitForSelector('.tjfb.bad');
   ok('a wrong answer shows the right one', /1 \/ 2/.test(await page.textContent('.tjscore')) && !!(await page.$('.tjopt.ok')));
-  await page.selectOption('#tjPG', 'madd');
+  ok('every rule can be chosen for practice', await page.evaluate(() => Object.keys(TJ_R).every((r) => document.querySelector('#tjPG option[value="r:' + r + '"]'))));
+  await page.selectOption('#tjPG', 'g:madd');
   await page.waitForSelector('.tjopt:not([disabled])');
   ok('practice can be limited to one group of rules', await page.evaluate(() => TJ_R[TJ_Q.r][0] === 'madd'));
+  await page.selectOption('#tjPG', 'r:iqlab');
+  await page.waitForSelector('.tjopt:not([disabled])');
+  ok('practice can be limited to one rule', await page.evaluate(() => TJ_Q.r === 'iqlab' && TJ_Q.opts.length === 4));
   await page.click('[data-tv="search"]');
   await page.fill('#tjQ', 'من بعد');
   await page.click('#tjSF button[type=submit]');
