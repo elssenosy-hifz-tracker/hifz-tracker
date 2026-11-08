@@ -50,7 +50,12 @@ try {
   // Tajweed page: rules index, a rule with its examples, search, coloured mushaf
   await page.click('#nav [data-nav="tajweed"]');
   await page.waitForSelector('.tjrule');
-  ok('Tajweed page lists the rules', await page.evaluate(() => document.querySelectorAll('.tjrule').length >= 15));
+  ok('Tajweed page lists the rules', await page.evaluate(() => document.querySelectorAll('.tjrule').length >= 25 && ['tabii', 'silaS', 'silaK', 'arid', 'leen', 'iwad', 'tafkhim', 'tarqiq'].every((r) => document.querySelector('.tjrule[data-tr=' + r + ']'))));
+  await page.click('.tjrule[data-tr="iwad"]');
+  await page.waitForSelector('.tjres .tjsel');
+  ok('madd iwad page finds examples', await page.evaluate(() => +document.querySelector('.tjstat b').textContent > 500));
+  await page.click('[data-tr=""]');
+  await page.waitForSelector('.tjrule[data-tr="iqlab"]');
   await page.click('.tjrule[data-tr="iqlab"]');
   await page.waitForSelector('.tjres .tjay');
   const iq = await page.evaluate(() => ({ places: +document.querySelector('.tjstat b').textContent, shown: document.querySelectorAll('.tjres .tjay').length, hl: document.querySelectorAll('.tjres .tjsel').length }));
