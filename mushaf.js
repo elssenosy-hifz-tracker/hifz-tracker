@@ -31,7 +31,7 @@ const MUSHAF_CSS=`.mpage{font-family:"KFGQPC Hafs",serif;direction:rtl;line-heig
 .bs{justify-content:center}
 .pno{text-align:center;font-size:.55em;color:#7a6a3a;line-height:1.6}`;
 function pageHTML(pg,markMap,tj){
-  const W=mw(),E=aend(),a=MUS.p[pg-1],b=pg<604?MUS.p[pg]:W.length,c=pg<=2,T=tj?(tjInject(),tjRange(W,w=>!!E[w],a,b)):null;
+  const W=mw(),E=aend(),a=MUS.p[pg-1],b=pg<604?MUS.p[pg]:W.length,c=pg<=2,T=tj?(tjInject(),tjRange(W,w=>!!E[w],a,b,null,null,tj==="all")):null;
   let html="",li=bsr(MUS.l,a);
   for(;li<MUS.l.length&&MUS.l[li]<b;li++){
     const x=MUS.l[li],y=li+1<MUS.l.length?MUS.l[li+1]:W.length;
@@ -98,9 +98,10 @@ function renderMushaf(el,sub,st){
   fitPage(el);document.fonts.load('20px "KFGQPC Hafs"').then(()=>fitPage(el)).catch(()=>{});
 }
 async function addMark(st,w,k){try{await db.collection("marks").add({sid:st.id,w,k,date:iso(today()),t:Date.now()})}catch(_){}}
-const markRow=(m,withDate=true)=>`<div class="ev" data-mid="${m.id}"><time>${withDate?fmtShort(m.date):""}</time><div class="evb"><span class="mword">${mw()[m.w]}</span> <b>${markPlace(m)}</b> · <select class="mkind" aria-label="Kind">${MK_ORDER.map(k=>`<option value="${k}" ${k===m.k?"selected":""}>${ERR_KINDS[k]}</option>`).join("")}</select>${m.fixed?' <span class="chip ok">Fixed</span>':""}<input class="mnote" value="${esc(m.note||"")}" placeholder="Note for this mistake"></div><span class="evx"><button class="link small" data-mfix>${m.fixed?"Undo fixed":"Fixed"}</button><button class="link small" data-mdel>Delete</button></span></div>`;
+const markRow=(m,withDate=true)=>`<div class="ev" data-mid="${m.id}"><time>${withDate?fmtShort(m.date):""}</time><div class="evb"><span class="mword">${mw()[m.w]}</span> <b>${markPlace(m)}</b> · <select class="mkind" aria-label="Kind">${MK_ORDER.map(k=>`<option value="${k}" ${k===m.k?"selected":""}>${ERR_KINDS[k]}</option>`).join("")}</select>${m.k==="tajweed"?tjMarkSel(m):""}${m.fixed?' <span class="chip ok">Fixed</span>':""}<input class="mnote" value="${esc(m.note||"")}" placeholder="Note for this mistake"></div><span class="evx"><button class="link small" data-mfix>${m.fixed?"Undo fixed":"Fixed"}</button><button class="link small" data-mdel>Delete</button></span></div>`;
 function wireMarkRows(el){el.querySelectorAll("[data-mid]").forEach(r=>{const id=r.dataset.mid,m=marks.find(x=>x.id===id);if(!m)return;const ref=db.doc("marks/"+id);
   r.querySelector(".mkind").onchange=e=>ref.update({k:e.target.value}).catch(()=>{});
+  const tr=r.querySelector(".mtr");if(tr){tr.addEventListener("focus",()=>busy=true);tr.addEventListener("blur",()=>busy=false);tr.onchange=e=>{busy=false;ref.update({tr:e.target.value}).catch(()=>{})}}
   const n=r.querySelector(".mnote");n.addEventListener("focus",()=>busy=true);n.onchange=e=>{busy=false;ref.update({note:e.target.value.trim()}).catch(()=>{})};n.addEventListener("blur",()=>{busy=false});
   r.querySelector("[data-mfix]").onclick=()=>ref.update({fixed:!m.fixed}).catch(()=>{});
   const d=r.querySelector("[data-mdel]");d.onclick=()=>{if(d.dataset.confirm!=="1"){d.dataset.confirm="1";d.textContent="Confirm delete?";return}ref.delete().catch(()=>{})}})}
@@ -119,7 +120,7 @@ function openSheet(el,st,w){
 // ---------- print mistakes ----------
 function mistakesIn(st,from,to){
   const W=mw(),out=[];
-  for(const m of markRange(marksOf(st),from,to)){const p=wordPlace(m.w);out.push({date:m.date,s:p.s,a:p.a,word:W[m.w],k:m.k,note:m.note||"",fixed:!!m.fixed,w:m.w})}
+  for(const m of markRange(marksOf(st),from,to)){const p=wordPlace(m.w);out.push({date:m.date,s:p.s,a:p.a,word:W[m.w],k:m.k,tr:m.tr||"",note:m.note||"",fixed:!!m.fixed,w:m.w})}
   for(const e of events)if(e.sid===st.id&&e.date>=from&&e.date<=to&&Array.isArray(e.errs))for(const x of e.errs)out.push({date:e.date,s:x.s,a:x.a,word:"",k:x.k,note:"",w:null});
   return out.sort((x,y)=>x.s-y.s||x.a-y.a||x.date.localeCompare(y.date))}
 function rowMistakesIn(st,from,to){const map=new Map();
@@ -129,7 +130,7 @@ function notesIn(st,from,to){return events.filter(e=>e.sid===st.id&&e.date>=from
 function mistakesHTML(st,from,to,o){
   const ms=mistakesIn(st,from,to),rows=rowMistakesIn(st,from,to),notes=notesIn(st,from,to);
   let h="";
-  if(o.list){h+=`<h2>Mistakes</h2>${ms.length?`<table class="mlist"><tr><th>Place</th><th>Word</th><th>Kind</th><th>Date</th><th>Note</th></tr>${ms.map(x=>`<tr><td>${SURAH_NAMES[x.s]} ${x.a}</td><td class="mword">${x.word}</td><td>${ERR_KINDS[x.k]||x.k}${x.fixed?" (fixed)":""}</td><td>${fmtShort(x.date)}</td><td>${esc(x.note)}</td></tr>`).join("")}</table>`:'<p class="muted">No mistakes marked in this period.</p>'}`;
+  if(o.list){h+=`<h2>Mistakes</h2>${ms.length?`<table class="mlist"><tr><th>Place</th><th>Word</th><th>Kind</th><th>Date</th><th>Note</th></tr>${ms.map(x=>`<tr><td>${SURAH_NAMES[x.s]} ${x.a}</td><td class="mword">${x.word}</td><td>${ERR_KINDS[x.k]||x.k}${x.tr&&TJ_R[x.tr]?" · "+TJ_R[x.tr][1]:""}${x.fixed?" (fixed)":""}</td><td>${fmtShort(x.date)}</td><td>${esc(x.note)}</td></tr>`).join("")}</table>`:'<p class="muted">No mistakes marked in this period.</p>'}`;
     if(rows.length)h+=`<h2>Review mistakes by surah</h2><table><tr><th>Surah</th><th>Mistakes</th><th>When</th></tr>${rows.map(r=>`<tr><td>${SURAH_NAMES[r.s]}</td><td>${r.m}</td><td>${r.parts.join("<br>")}</td></tr>`).join("")}</table>`}
   if(o.notes)h+=`<h2>Teacher's notes</h2>${notes.length?notes.map(n=>`<p>${fmtShort(n.date)}: ${esc(n.text)}</p>`).join(""):'<p class="muted">No notes in this period.</p>'}`;
   let pages=[];
