@@ -64,6 +64,27 @@ try {
   await page.waitForTimeout(300);
   const iqB = await page.evaluate(() => +document.querySelector('.tjstat b').textContent);
   ok('examples can be limited to one surah', iqB > 0 && iqB < iq.places, String(iqB));
+  // practice: a marked letter, four choices, the score counts, a rule group can be chosen
+  await page.click('[data-tv="practice"]');
+  await page.waitForSelector('.tjopt');
+  const q1 = await page.evaluate(() => ({ opts: document.querySelectorAll('.tjopt').length, marks: document.querySelectorAll('.tjay .tjq').length, hints: document.querySelectorAll('.tjay [data-tj], .tjay [class^="tj-"]').length, right: TJ_Q.r }));
+  ok('practice shows one marked letter and four choices, without colours', q1.opts === 4 && q1.marks === 1 && q1.hints === 0, JSON.stringify(q1));
+  await page.click(`.tjopt[data-ans="${q1.right}"]`);
+  await page.waitForSelector('.tjfb.ok');
+  ok('a right answer is marked correct and counted', /1 \/ 1/.test(await page.textContent('.tjscore')));
+  await page.click('#tjNextQ');
+  await page.waitForSelector('.tjopt:not([disabled])');
+  const wrong = await page.evaluate(() => TJ_Q.opts.find((r) => r !== TJ_Q.r));
+  await page.click(`.tjopt[data-ans="${wrong}"]`);
+  await page.waitForSelector('.tjfb.bad');
+  ok('a wrong answer shows the right one', /1 \/ 2/.test(await page.textContent('.tjscore')) && !!(await page.$('.tjopt.ok')));
+  ok('every rule can be chosen for practice', await page.evaluate(() => Object.keys(TJ_R).every((r) => document.querySelector('#tjPG option[value="r:' + r + '"]'))));
+  await page.selectOption('#tjPG', 'g:madd');
+  await page.waitForSelector('.tjopt:not([disabled])');
+  ok('practice can be limited to one group of rules', await page.evaluate(() => TJ_R[TJ_Q.r][0] === 'madd'));
+  await page.selectOption('#tjPG', 'r:iqlab');
+  await page.waitForSelector('.tjopt:not([disabled])');
+  ok('practice can be limited to one rule', await page.evaluate(() => TJ_Q.r === 'iqlab' && TJ_Q.opts.length === 4));
   await page.click('[data-tv="search"]');
   await page.fill('#tjQ', 'من بعد');
   await page.click('#tjSF button[type=submit]');
