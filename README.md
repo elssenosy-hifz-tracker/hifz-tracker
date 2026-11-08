@@ -20,7 +20,8 @@ npm test                             # demo, security rules and app tests (rules
 npm run dev:emulators                # the real build against local Firebase emulators at http://localhost:5050
 ```
 
-Builds: `python3 build_firebase.py` writes `public/` (real app); `python3 build_firebase.py --demo` writes `public-demo/`.
+Builds: `npm run build` (or `python3 build_firebase.py` and `python3 build_firebase.py --demo`) writes `public/` (real app) and `public-demo/`.
+`npm run check-setup` lists missing tools with install commands (Windows: winget).
 The demo build swaps the Firebase layer for `firebase/src/demo.js` (an in-browser store seeded from
 `firebase/src/sample-data.js`), and the build refuses to put Firebase config into it. Hosting targets in `firebase.json`:
 `app` = `public/` on hifz-tracker-cd6d0, `demo` = `public-demo/` on hifz-tracker-demo.

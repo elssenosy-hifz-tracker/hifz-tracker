@@ -1,6 +1,7 @@
 // Test of the demo build (public-demo/): sample data, roles, saving, reset, and no Firebase traffic.
 // Run from firebase/:  npm run test:demo   (builds the demo first; needs Chrome, or PW_BUNDLED=1 for Playwright's Chromium)
 import { chromium } from 'playwright';
+import { fileURLToPath } from 'node:url';
 import { serve } from '../scripts/serve.mjs';
 
 const PORT = 5174;
@@ -10,7 +11,7 @@ const ok = (name, cond, extra = '') => { results.push(`${cond ? 'PASS' : 'FAIL'}
 // Anything Firebase-shaped is forbidden; fonts and other public assets the app uses are fine.
 const FIREBASE = /firebaseio|firebaseapp|firestore\.googleapis|identitytoolkit|securetoken|firebaseinstallations|hifz-tracker-cd6d0/;
 
-const server = await serve(new URL('../../public-demo', import.meta.url).pathname, PORT);
+const server = await serve(fileURLToPath(new URL('../../public-demo', import.meta.url)), PORT);
 const browser = await chromium.launch(process.env.PW_BUNDLED ? {} : { channel: 'chrome' });
 try {
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });

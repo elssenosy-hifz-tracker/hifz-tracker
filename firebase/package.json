@@ -3,13 +3,16 @@
   "private": true,
   "description": "Firebase layer for Hifz Tracker: replaces the Claude Artifact runtime (db, user, downloads) and adds sign-in.",
   "scripts": {
-    "dev": "python3 ../build_firebase.py --demo && node scripts/serve.mjs",
-    "dev:emulators": "python3 ../build_firebase.py && firebase emulators:start --only auth,firestore,hosting:app --project demo-hifz",
-    "build": "python3 ../build_firebase.py && python3 ../build_firebase.py --demo",
+    "build": "node scripts/py.mjs ../build_firebase.py && node scripts/py.mjs ../build_firebase.py --demo",
+    "build:app": "node scripts/py.mjs ../build_firebase.py",
+    "build:demo": "node scripts/py.mjs ../build_firebase.py --demo",
+    "dev": "node scripts/py.mjs ../build_firebase.py --demo && node scripts/serve.mjs",
+    "dev:emulators": "node scripts/py.mjs ../build_firebase.py && firebase emulators:start --only auth,firestore,hosting:app --project demo-hifz",
     "test": "npm run test:demo && npm run test:rules && npm run test:e2e",
-    "test:demo": "python3 ../build_firebase.py --demo && node test/demo.mjs",
+    "test:demo": "node scripts/py.mjs ../build_firebase.py --demo && node test/demo.mjs",
     "test:rules": "firebase emulators:exec --only firestore --project demo-hifz \"node --test test/rules.test.mjs\"",
-    "test:e2e": "python3 ../build_firebase.py && firebase emulators:exec --only auth,firestore,hosting:app --project demo-hifz \"node test/e2e.mjs\""
+    "test:e2e": "node scripts/py.mjs ../build_firebase.py && firebase emulators:exec --only auth,firestore,hosting:app --project demo-hifz \"node test/e2e.mjs\"",
+    "check-setup": "node scripts/check-setup.mjs"
   },
   "dependencies": {
     "firebase": "13.1.0"

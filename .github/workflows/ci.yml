@@ -1,5 +1,6 @@
 # Test, preview and deploy. This is the ONLY way changes reach the live site.
 #
+# Tests run on Linux (everything) and Windows (build + demo test; the school owner works on Windows).
 #   pull request  -> test -> preview: demo build (sample data, no Firebase) on a temporary link,
 #                                     posted as a comment on the pull request
 #   push to main  -> test -> deploy:  the real app to https://hifz-tracker-cd6d0.web.app,
@@ -79,9 +80,39 @@ jobs:
           path: firebase/*.log
           if-no-files-found: ignore
 
+  windows:
+    name: Windows (build + demo test)
+    runs-on: windows-latest
+    timeout-minutes: 20
+    concurrency:
+      group: windows-${{ github.event.pull_request.number || github.sha }}
+      cancel-in-progress: true
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: firebase/package-lock.json
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+      - name: Install
+        working-directory: firebase
+        run: npm ci --no-audit --no-fund
+      - name: Setup check
+        working-directory: firebase
+        run: npm run check-setup
+      - name: Build both versions
+        working-directory: firebase
+        run: npm run build
+      - name: Demo build test (installed Chrome)
+        working-directory: firebase
+        run: npm run test:demo
+
   preview:
     name: Preview link
-    needs: test
+    needs: [test, windows]
     if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -135,7 +166,7 @@ jobs:
 
   deploy:
     name: Deploy to the live site
-    needs: test
+    needs: [test, windows]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 15

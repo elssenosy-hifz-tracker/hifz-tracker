@@ -18,5 +18,5 @@ doc = ('<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="v
        + h[:t] + '</head><body>' + h[t:] + '<script>\n' + js + '</script>\n</body></html>')
 out = sys.argv[1] if len(sys.argv) > 1 else os.path.join(R, 'dist', 'hifz-tracker-index.html')
 os.makedirs(os.path.dirname(os.path.abspath(out)), exist_ok=True)
-open(out, 'w', encoding='utf8').write(doc)
+open(out, 'w', encoding='utf8', newline='\n').write(doc)
 print(out, round(len(doc.encode())/1e6, 2), 'MB')
