@@ -46,23 +46,25 @@ function quickSession(el,f,st,c){
     <div class="qg q4">${[["present","✓","On time"],["late","⏰","Late"],["absent","✕","Absent"],["excused","✉","Excused"]].map(([k,i,l])=>`<button type="button" class="qb" data-qatt="${k}"><i>${i}</i>${l}</button>`).join("")}</div>
     <div id="qArr"></div></div>
    <div id="qWork">
-   <div class="qcard"><div class="qh">2 · New hifz <span class="n">${esc(planH)}</span></div>
+   <div class="qcard" id="qHC"><div class="qh">2 · New hifz <span class="n">${esc(planH)}</span></div>
     <div class="qg q4"><button type="button" class="qb" data-qh="all" ${defEnd==null?"disabled":""}><i>✓</i>Recited all</button><button type="button" class="qb" data-qh="part" ${!ps.length?"disabled":""}><i>½</i>Part of it</button><button type="button" class="qb" data-qh="more" ${!ps.length?"disabled":""}><i>＋</i>More</button><button type="button" class="qb" data-qh="nr"><i>✕</i>Did not recite</button></div>
-    <div class="qwr"><button type="button" class="link sm" id="qWrite">✎ Write what he recited</button></div><div class="qcust" id="qCust" hidden></div>
-    <button type="button" class="qb wide qrep" id="qRep"><i>↻</i><span class="qrt">Repeat next class</span><small class="qrs">Saves his mistakes, keeps the same portion for next class</small></button>
+    <button type="button" class="qxt" data-qx="qHC">✎ Mistakes and details</button>
+    <div class="qwr qx"><button type="button" class="link sm" id="qWrite">✎ Write what he recited</button></div><div class="qcust" id="qCust" hidden></div>
+    <button type="button" class="qb wide qrep qx" id="qRep"><i>↻</i><span class="qrt">Repeat next class</span><small class="qrs">Saves his mistakes, keeps the same portion for next class</small></button>
     <div class="qstop" id="qStop" hidden><span id="qStopL">Stopped at</span> <select id="qStopS">${ps.map((x,i)=>`<option value="${i}">${SURAH_NAMES[x.s]}</option>`).join("")}</select> ayah <input type="number" id="qStopA" min="1" inputmode="numeric"> <span class="small muted" id="qStopOf"></span><div class="qwhy" id="qWhy"><button type="button" class="qt" data-qwhy="time">⏱ Time ran out</button><button type="button" class="qt" data-qwhy="stuck">✋ Could not continue</button></div></div>
-    <button type="button" class="sm qmh1" id="qMusH">📖 Open in mushaf, tap the mistakes</button><div class="qkinds" id="qHm"></div>
+    <div class="qx qxb"><button type="button" class="sm qmh1" id="qMusH">📖 Open in mushaf, tap the mistakes</button><div class="qkinds" id="qHm"></div></div>
     <div class="qgr" id="qHg"></div>
-    <button type="button" class="link sm" id="qNone">No new hifz today</button></div>
-   <div class="qcard"><div class="qh">3 · Review <span class="n">tap a surah not read</span></div>
+    <button type="button" class="link sm qx" id="qNone">No new hifz today</button></div>
+   <div class="qcard" id="qRC"><div class="qh">3 · Review <span class="n">tap a surah not read</span></div>
     <div class="qtype">${[["near","Near"],["far","Far"],["both","Near and far"]].map(([k,l])=>`<button type="button" class="qt" data-qrt="${k}">${l}</button>`).join("")}</div>
-    <div id="qSmart"></div><div class="qchips" id="qChips"></div><button type="button" class="sm qmh1" id="qMusR">📖 Open review in mushaf, tap the mistakes</button>
-    <div class="qadd"><button type="button" class="sm" id="qRadd">＋ Add surah</button><div class="qstop" id="qRaddF" hidden><select id="qRaS">${errSurahs(st).map(x=>`<option value="${x}">${SURAH_NAMES[x]}</option>`).join("")}</select> ayah <input type="number" id="qRa1" min="1" inputmode="numeric" aria-label="From ayah"> to <input type="number" id="qRa2" min="1" inputmode="numeric" aria-label="To ayah"> <button type="button" class="primary sm" id="qRaOk">Add</button></div></div>
-    <div class="qkinds" id="qRm"></div>
+    <div id="qSmart"></div><div class="qchips" id="qChips"></div><button type="button" class="qxt" data-qx="qRC">✎ Mistakes and details</button><button type="button" class="sm qmh1 qx" id="qMusR">📖 Open review in mushaf, tap the mistakes</button>
+    <div class="qadd qx"><button type="button" class="sm" id="qRadd">＋ Add surah</button><div class="qstop" id="qRaddF" hidden><select id="qRaS">${errSurahs(st).map(x=>`<option value="${x}">${SURAH_NAMES[x]}</option>`).join("")}</select> ayah <input type="number" id="qRa1" min="1" inputmode="numeric" aria-label="From ayah"> to <input type="number" id="qRa2" min="1" inputmode="numeric" aria-label="To ayah"> <button type="button" class="primary sm" id="qRaOk">Add</button></div></div>
+    <div class="qx qxb"><div class="qkinds" id="qRm"></div></div>
     <div class="qgr" id="qRg"></div>
     <button type="button" class="qb wide" id="qRnr">Did not recite review at all</button></div>
    </div>`;
   f.prepend(box);
+  box.addEventListener("click",e=>{const b=e.target.closest("[data-qx]");if(!b)return;const c=box.querySelector("#"+b.dataset.qx);c.classList.toggle("qopen");const o=c.classList.contains("qopen");b.textContent=o?"▴ Hide mistakes and details":"✎ Mistakes and details";b.setAttribute("aria-expanded",String(o))});
   // move old parts into "More details"
   const more=document.createElement("details");more.id="qMore";more.className="qcard";
   more.innerHTML=`<summary><b>＋ More details</b> <span class="small muted">homework · behaviour · left early · mistake places · note · date</span></summary><div class="qmb"></div>`;
@@ -93,6 +95,7 @@ function quickSession(el,f,st,c){
     hs.dispatchEvent(new Event("change"));busy=true;draw()};
   const setAtt=k=>{q.att=k;const r=f.querySelector(`input[name=att][value="${k}"]`);if(r){r.checked=true;r.dispatchEvent(new Event("change"))}draw()};
   const draw=()=>{
+    {const h=f.querySelector("#qHC"),r=f.querySelector("#qRC");if(h&&(q.hm>0||q.rep||q.h==="custom"))h.classList.add("qopen");if(r&&q.rm>0)r.classList.add("qopen");f.querySelectorAll("[data-qx]").forEach(b=>{const o=f.querySelector("#"+b.dataset.qx).classList.contains("qopen");b.textContent=o?"▴ Hide mistakes and details":"✎ Mistakes and details";b.setAttribute("aria-expanded",String(o))})}
     f.querySelectorAll("[data-qatt]").forEach(b=>{const on=b.dataset.qatt===q.att;b.className="qb"+(on?(q.att==="present"?" on":q.att==="late"?" onw":q.att==="absent"?" onb":" oni"):"")});
     f.querySelector("#qArr").hidden=q.att!=="late";
     const att=["present","late"].includes(q.att);f.querySelector("#qWork").hidden=!att;
