@@ -325,7 +325,7 @@ function renderList(el,sub,ta){
   if(cur!=="all"&&cur!=="none"&&cur!=="arch"&&!valid.has(cur))cur="all";if(cur==="none"&&!orphans.length)cur="all";
   const memL=s=>{useOrder(s);return (Number(s.pos)||0)+PREV_LINES};
   const shown=(cur==="all"?students.filter(s=>{const c=classes.find(x=>x.id===s.cls);return !c||schVisible(c)}):cur==="none"?orphans:students.filter(s=>s.cls===cur)).map(s=>[memL(s),s]).sort((a,b)=>a[0]-b[0]||String(a[1].name).localeCompare(String(b[1].name))).map(x=>x[1]);
-  sub.textContent=`${shown.length} ${shown.length===1?"student":"students"}${cur!=="all"&&cur!=="none"?" in "+clsName(cur):""} · ${fmt(today())}`;
+  sub.textContent=`Welcome · ${shown.length} ${shown.length===1?"student":"students"}${cur!=="all"&&cur!=="none"?" in "+clsName(cur):""} · ${fmt(today())}`;
   const b=document.createElement("button");b.className="primary adminonly";b.textContent="Add student";b.onclick=()=>go({name:"add",cls:cur});ta.append(b);
 
   const tabs=`<div class="filters" role="tablist">${[["all","All students",students.length],...classes.filter(schVisible).map(c=>[c.id,c.name,students.filter(s=>s.cls===c.id).length]),...(orphans.length?[["none","No class",orphans.length]]:[]),...(arch.length?[["arch","Archived",arch.length]]:[])].map(([k,n,c])=>`<button class="fbtn ${k===cur?"on":""}" data-cls="${k}" role="tab" aria-selected="${k===cur}">${esc(n)} <span class="cnt">${c}</span></button>`).join("")}<button class="link small adminonly" id="mngCls">Settings: classes, points, holidays, backup</button></div>`;

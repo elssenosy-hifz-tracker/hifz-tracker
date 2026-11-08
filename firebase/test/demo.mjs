@@ -28,6 +28,7 @@ try {
   await ready();
   ok('demo app starts with the sample school', await page.evaluate(() => students.length === 6 && events.length > 20 && TEACHERS.length === 4));
   ok('preview banner is shown', /made-up sample data/i.test(await page.textContent('#hifzDemo')));
+  ok('home screen greets with Welcome', /^Welcome · 6 students/.test(await page.textContent('#sub')));
   ok('starts as owner (not substitute mode)', !(await page.evaluate(() => document.body.classList.contains('sub'))));
 
   // a change survives a reload (saved in this browser)
