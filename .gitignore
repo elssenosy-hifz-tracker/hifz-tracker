@@ -1,0 +1,18 @@
+dist/
+__pycache__/
+*.pyc
+node_modules/
+.DS_Store
+
+# Firebase local state and logs
+.firebase/
+firebase-debug.log*
+firestore-debug.log*
+ui-debug.log*
+
+# Local env files
+.env
+.env.*
+
+# Test build output (tests/batch1.test.js expects this in the working dir)
+test3.html
