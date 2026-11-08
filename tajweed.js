@@ -40,7 +40,11 @@ const TJ_CSS=Object.entries(TJ_COL).map(([k,c])=>`.tj-${k}{color:${c}${k==="sil"
 .tjrule .tjn{display:flex;align-items:center;gap:8px;font-weight:700;flex-wrap:wrap}.tjrule .tjn .tjar{font-size:1.25em}.tjlet{font-family:"KFGQPC Hafs",serif;color:var(--muted);direction:rtl}
 .tjay{font-family:"KFGQPC Hafs",serif;direction:rtl;font-size:24px;line-height:2.1;margin:0;color:#1b1b1b}.tjres .ev{display:block}.tjres .tjplace{font-size:13px;color:var(--muted);font-weight:600}
 .tjstat{display:flex;gap:10px;flex-wrap:wrap}.tjstat div{flex:1;min-width:120px;border:1px solid var(--line);border-radius:12px;padding:8px 12px;text-align:center}.tjstat b{display:block;font-size:22px}
-.tjexp{direction:rtl;font-size:17px;line-height:1.8;margin:.3em 0}`;
+.tjexp{direction:rtl;font-size:17px;line-height:1.8;margin:.3em 0}
+.tjq{background:rgba(255,200,40,.5);outline:2px solid #e0a800;border-radius:.15em}.tjopts{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px;margin-top:8px}
+.tjopt{display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap;padding:12px;border:1px solid var(--line);border-radius:12px;background:var(--surface);font:inherit;color:inherit;cursor:pointer;min-height:56px}.tjopt .tjar{font-size:1.4em}
+.tjopt.ok{background:#e3f4e7;border-color:#2e8b47}.tjopt.bad{background:#fbe4e2;border-color:#c0392b}.tjopt:disabled{cursor:default;color:inherit;opacity:1}.tjfb{margin-top:10px;padding:10px 12px;border-radius:12px}.tjfb.ok{background:#e3f4e7}.tjfb.bad{background:#fbe4e2}
+.tjscore{font-weight:700;font-size:18px}`;
 let tjCssOn=false;function tjInject(){if(tjCssOn)return;tjCssOn=true;const st=document.createElement("style");st.textContent=TJ_CSS;document.head.append(st)}
 const tjIsL=c=>(c>=0x621&&c<=0x63A)||(c>=0x641&&c<=0x64A)||c===0x671||c===0x640;
 const TJ_QQ=new Set([0x642,0x637,0x628,0x62C,0x62F]),TJ_THROAT=new Set([0x621,0x623,0x625,0x624,0x626,0x647,0x639,0x62D,0x63A,0x62E]);
@@ -113,11 +117,12 @@ function tjAnalyze(W,isEnd,a,b){
     if(r==="idgG"){const n=C[i].b===0x646?nextL(i,false):nextL(i,true);if(n&&n.m.has(0x651)&&!n.m.has(0x653)){const j=C.indexOf(n);if(j>=0)part[j]=r}}}
   return {C,first,rid,part,ext}}
 // HTML of words a..b-1. Without `only`: every rule in its colour. With `only`: just that rule, highlighted.
-function tjRange(W,isEnd,a,b,only){
+// With `pick` (a letter index from tjAnalyze of the same range): only that letter is marked, with no colour or rule name (practice).
+function tjRange(W,isEnd,a,b,only,pick){
   const {C,first,rid,part,ext}=tjAnalyze(W,isEnd,a,b),out=[];
-  const cls=i=>{const r=rid[i],p=part[i];if(only){if(r!==only&&p!==only&&!(ext[i]&&ext[i].includes(only)))return "";return `tj-${TJ_R[only][3]||"hl"} tjsel`}
+  const cls=i=>{if(pick!=null)return i===pick?"tjq":"";const r=rid[i],p=part[i];if(only){if(r!==only&&p!==only&&!(ext[i]&&ext[i].includes(only)))return "";return `tj-${TJ_R[only][3]||"hl"} tjsel`}
     const c=(r&&TJ_R[r][3])||(p&&!r&&TJ_R[p][3])||"";return c?"tj-"+c:""};
-  const names=i=>{const x=[];for(const r of [rid[i],part[i],...(ext[i]||[])])if(r&&!x.includes(r))x.push(r);return x.join(" ")};
+  const names=i=>{if(pick!=null)return "";const x=[];for(const r of [rid[i],part[i],...(ext[i]||[])])if(r&&!x.includes(r))x.push(r);return x.join(" ")};
   const open=k=>{const [c,n]=k.split("|");return n?`<span${c?` class="${c}"`:""} data-tj="${n}">`:c?`<span class="${c}">`:""},close=k=>k&&k!=="|"?"</span>":"";
   for(let w=a;w<b;w++){let h="",cur=null,buf="";const s=first.get(w),e=first.has(w+1)?first.get(w+1):C.length;
     for(let i=s;i<e;i++){const k=cls(i)+"|"+names(i);if(k!==cur){if(buf)h+=open(cur)+buf+close(cur);buf="";cur=k}buf+=C[i].t}
@@ -149,6 +154,31 @@ function tjSearch(q){const n=tjNorm(q,false).trim();if(n.length<2)return [];
   if(!TJ_NORM){const W=mw();TJ_NORM=[];for(let i=0;i<MUS.a.length;i++){const [a,b]=tjAyahRange(i),t=W.slice(a,b).join(" ");TJ_NORM.push([tjNorm(t,false),tjNorm(t,true)])}}
   const out=[];TJ_NORM.forEach(([x,y],i)=>{if(x.includes(n)||y.includes(n))out.push(i)});return out}
 
+// ---------- practice: an ayah with one letter marked, "which rule?", four choices ----------
+let TJ_Q=null,TJ_SC={ok:0,n:0};
+const tjShuffle=a=>{for(let i=a.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[a[i],a[j]]=[a[j],a[i]]}return a};
+function tjNewQ(){const st=tjStats(),sc=view.ts||"all",g=view.pgr||"all",W=mw();
+  const pool=Object.keys(TJ_R).filter(r=>(g==="all"||TJ_R[r][0]===g)&&st.ay[r]);
+  for(let t=0;t<60&&pool.length;t++){const r=pool[Math.random()*pool.length|0];
+    const ays=[...st.ay[r].keys()].filter(i=>tjInScope(i,sc));if(!ays.length)continue;
+    const ay=ays[Math.random()*ays.length|0],[a,b]=tjAyahRange(ay),an=tjAnalyze(W,tjEnd,a,b),cand=[];
+    an.C.forEach((k,i)=>{if(k.w>=b||!k.L)return;if(an.rid[i]===r||(an.ext[i]&&an.ext[i].includes(r)))cand.push(i)});if(!cand.length)continue;
+    const ci=cand[Math.random()*cand.length|0],also=new Set([an.rid[ci],an.part[ci],...(an.ext[ci]||[])].filter(Boolean));
+    const same=tjShuffle(Object.keys(TJ_R).filter(x=>!also.has(x)&&TJ_R[x][0]===TJ_R[r][0])),rest=tjShuffle(Object.keys(TJ_R).filter(x=>!also.has(x)&&TJ_R[x][0]!==TJ_R[r][0]));
+    return TJ_Q={ay,r,ci,opts:tjShuffle([r,...same.slice(0,3),...rest].slice(0,4)),ans:null}}
+  return TJ_Q=null}
+function tjPracticeHTML(){if(!TJ_Q)tjNewQ();const q=TJ_Q,g=view.pgr||"all",sc=view.ts||"all";
+  const head=`<div class="panel"><div class="fields"><label>Rules to practise<select id="tjPG"><option value="all">All rules</option>${TJ_G.map(([k,ar,en])=>`<option value="${k}" ${k===g?"selected":""}>${ar}${AR?"":" · "+en}</option>`).join("")}</select></label><label>Ayahs from${tjScopeSel(sc)}</label></div>
+    <div class="actions"><span class="tjscore">${AR?"النتيجة":"Score"}: ${TJ_SC.ok} / ${TJ_SC.n}</span>${TJ_SC.n?'<button class="link small" id="tjReset">Start again</button>':""}</div></div>`;
+  if(!q)return head+'<div class="panel"><p class="muted">No questions here. Choose other rules or a bigger part of the Quran.</p></div>';
+  const [a,b]=tjAyahRange(q.ay),R=TJ_R[q.r];
+  return head+`<div class="panel"><div class="tjplace small muted">${tjPlace(q.ay)} · ${SURAH_NAMES[AY_SURAH[q.ay]]} ${q.ay-SURAH_FIRST[AY_SURAH[q.ay]]+1}</div>
+    <p class="tjay">${tjRange(mw(),tjEnd,a,b,null,q.ci).join(" ")} <span class="ae">۝<b>${toAr(aend()[b-1])}</b></span></p>
+    <h3>What is the rule on the highlighted letter?</h3>
+    <div class="tjopts">${q.opts.map(r=>`<button class="tjopt${q.ans?(r===q.r?" ok":r===q.ans?" bad":""):""}" data-ans="${r}" ${q.ans?"disabled":""}><span class="tjar">${TJ_R[r][1]}</span>${AR?"":`<span class="small muted">${TJ_R[r][2]}</span>`}</button>`).join("")}</div>
+    ${q.ans?`<div class="tjfb ${q.ans===q.r?"ok":"bad"}"><b>${q.ans===q.r?(AR?"إجابة صحيحة!":"Correct!"):(AR?"الإجابة الصحيحة: ":"The answer is ")+R[1]}</b><p class="tjexp">${R[4]}</p>${AR?"":`<p class="small">${R[5]}</p>`}</div>
+    <div class="actions"><button class="primary" id="tjNextQ">Next question</button><button class="link small" data-tr="${q.r}" data-tv="rules">More examples of this rule</button></div>`:""}</div>`}
+
 // ---------- the Tajweed page ----------
 const tjScopeSel=sc=>`<select id="tjScope" aria-label="Where to look"><option value="all">Whole Quran</option><optgroup label="Surah">${SURAH_NAMES.map((n,s)=>`<option value="s${s}" ${sc==="s"+s?"selected":""}>${s+1}. ${n}</option>`).join("")}</optgroup><optgroup label="Juz">${Array.from({length:30},(_,j)=>`<option value="j${j+1}" ${sc==="j"+(j+1)?"selected":""}>Juz ${j+1}</option>`).join("")}</optgroup></select>`;
 function tjIndexHTML(){return TJ_G.map(([g,ar,en])=>`<div class="panel"><h3><span class="tjar">${ar}</span>${AR?"":` <span class="small muted">${en}</span>`}</h3><div class="tjrules">${Object.entries(TJ_R).filter(([,r])=>r[0]===g).map(([id,r])=>`<button class="tjrule" data-tr="${id}"><span class="tjn"><i class="tjdot" style="background:${r[3]?TJ_COL[r[3]]:"transparent"};border:1px solid ${r[3]?TJ_COL[r[3]]:"#bbb"}"></i><span class="tjar">${r[1]}</span>${AR?"":`<span class="small muted">${r[2]}</span>`}</span><span class="small muted" dir="auto" data-noar>${AR?r[4]:r[5]}</span><span class="tjlet">${r[6]}</span></button>`).join("")}</div></div>`).join("")+`<p class="small muted">The rules are worked out from the signs written in the Uthmani mushaf text (Hafs). Rules without a colour in the mushaf (such as iẓhār, madd ṭabīʿī, tafkhīm) are shown highlighted on their own pages.</p>`}
@@ -174,14 +204,18 @@ function tjMushafHTML(){const pg=view.tp||1,z=view.tz||0,ps=wordPlace(MUS.p[pg-1
   <div class="mwrap"><div class="mbox${z?" big"+z:""}">${pageHTML(pg,null,true)}</div></div>
   <div class="panel">${tjKeyHTML()}</div><p class="small muted mcap">Page ${pg} · juz ${juzOfPage(pg)} · ${SURAH_NAMES[ps.s]}. Swipe or use the arrow keys to turn pages.</p>`}
 function renderTajweed(el,sub){injectFont();tjInject();const tv=view.tv||"rules";sub.textContent="Tajweed";
-  const tabs=`<div class="filters tjtabs">${[["rules","Rules"],["search","Search"],["mushaf","Coloured mushaf"]].map(([k,l])=>`<button class="fbtn ${k===tv?"on":""}" data-tv="${k}">${l}</button>`).join("")}</div>`;
-  const body=tv==="search"?tjSearchHTML():tv==="mushaf"?tjMushafHTML():view.tr&&TJ_R[view.tr]?tjRuleHTML(view.tr):tjIndexHTML();
+  const tabs=`<div class="filters tjtabs">${[["rules","Rules"],["practice","Practice"],["search","Search"],["mushaf","Coloured mushaf"]].map(([k,l])=>`<button class="fbtn ${k===tv?"on":""}" data-tv="${k}">${l}</button>`).join("")}</div>`;
+  const body=tv==="practice"?tjPracticeHTML():tv==="search"?tjSearchHTML():tv==="mushaf"?tjMushafHTML():view.tr&&TJ_R[view.tr]?tjRuleHTML(view.tr):tjIndexHTML();
   el.innerHTML=`<div class="panel"><h2>Tajweed</h2><p class="small muted">The rules of tajweed with examples from the mushaf.</p>${tabs}</div>${body}`;
   const set=o=>{busy=false;Object.assign(view,o);render(true);if(!("tn" in o)||o.tn===20)scrollTo(0,0)};
-  el.querySelectorAll("[data-tv]").forEach(b=>b.onclick=()=>set({tv:b.dataset.tv,tn:20}));
-  el.querySelectorAll("[data-tr]").forEach(b=>b.onclick=()=>set({tr:b.dataset.tr,ts:"all",tn:20}));
+  el.querySelectorAll("[data-tv]:not([data-tr])").forEach(b=>b.onclick=()=>set({tv:b.dataset.tv,tn:20}));
+  el.querySelectorAll("[data-tr]").forEach(b=>b.onclick=()=>set({tr:b.dataset.tr,tv:"rules",ts:"all",tn:20}));
   el.querySelectorAll("[data-tsc]").forEach(b=>b.onclick=()=>set({ts:b.dataset.tsc,tn:20}));
-  const sc=el.querySelector("#tjScope");if(sc)sc.onchange=()=>set({ts:sc.value,tn:20});
+  const sc=el.querySelector("#tjScope");if(sc)sc.onchange=()=>{if(tv==="practice")TJ_Q=null;set({ts:sc.value,tn:20})};
+  if(tv==="practice"){const pg=el.querySelector("#tjPG");pg.onchange=()=>{TJ_Q=null;set({pgr:pg.value})};
+    el.querySelectorAll("[data-ans]").forEach(b=>b.onclick=()=>{if(!TJ_Q||TJ_Q.ans)return;TJ_Q.ans=b.dataset.ans;TJ_SC.n++;if(TJ_Q.ans===TJ_Q.r)TJ_SC.ok++;busy=false;render(true)});
+    const nx=el.querySelector("#tjNextQ");if(nx)nx.onclick=()=>{TJ_Q=null;busy=false;render(true);scrollTo(0,0)};
+    const rs=el.querySelector("#tjReset");if(rs)rs.onclick=()=>{TJ_SC={ok:0,n:0};TJ_Q=null;busy=false;render(true)}}
   const more=el.querySelector("#tjMore");if(more)more.onclick=()=>set({tn:(view.tn||20)+20});
   const f=el.querySelector("#tjSF");if(f){const q=f.querySelector("#tjQ");q.addEventListener("focus",()=>busy=true);q.addEventListener("blur",()=>busy=false);f.onsubmit=e=>{e.preventDefault();set({tq:q.value.trim(),tn:20})}}
   if(tv==="mushaf"){const pg=view.tp||1,goPg=n=>set({tp:Math.min(604,Math.max(1,n))});
@@ -202,4 +236,4 @@ function tjTip(e){let tip=document.getElementById("tjTip");const s=view.name==="
 document.addEventListener("mouseover",tjTip);document.addEventListener("click",tjTip);
 addEventListener("scroll",()=>{const t=document.getElementById("tjTip");if(t)t.hidden=true},{passive:true});
 document.addEventListener("keydown",e=>{if(view.name!=="tajweed"||view.tv!=="mushaf"||/INPUT|SELECT|TEXTAREA/.test(document.activeElement&&document.activeElement.tagName))return;if(e.key==="ArrowLeft"){view.tp=Math.min(604,(view.tp||1)+1);render(true)}else if(e.key==="ArrowRight"){view.tp=Math.max(1,(view.tp||1)-1);render(true)}});
-Object.assign(AR_DICT,{"Tajweed":"التجويد","Rules":"الأحكام","Search":"بحث","Coloured mushaf":"المصحف الملون","← All rules":"← كل الأحكام","Whole Quran":"القرآن كله","Show examples from":"أمثلة من","Most in:":"أكثر السور ورودًا:","Search the mushaf":"ابحث في المصحف","The rules of tajweed with examples from the mushaf.":"أحكام التجويد مع أمثلة من المصحف.","Type a word or part of an ayah; diacritics are not needed. Results show the tajweed colours.":"اكتب كلمة أو جزءًا من آية، ولا حاجة للتشكيل. تظهر النتائج بألوان التجويد.","Nothing found. Try fewer letters.":"لا توجد نتائج. جرّب حروفًا أقل.","No examples here.":"لا توجد أمثلة هنا.","Letters:":"الحروف:","The rules are worked out from the signs written in the Uthmani mushaf text (Hafs). Rules without a colour in the mushaf (such as iẓhār, madd ṭabīʿī, tafkhīm) are shown highlighted on their own pages.":"تُستخرج الأحكام من العلامات المكتوبة في رسم المصحف العثماني (رواية حفص). الأحكام غير الملونة في المصحف (مثل الإظهار والمد الطبيعي والتفخيم) تظهر مظللة في صفحاتها.","Where to look":"مكان البحث"});
+Object.assign(AR_DICT,{"Tajweed":"التجويد","Rules":"الأحكام","Search":"بحث","Coloured mushaf":"المصحف الملون","← All rules":"← كل الأحكام","Whole Quran":"القرآن كله","Show examples from":"أمثلة من","Most in:":"أكثر السور ورودًا:","Search the mushaf":"ابحث في المصحف","The rules of tajweed with examples from the mushaf.":"أحكام التجويد مع أمثلة من المصحف.","Type a word or part of an ayah; diacritics are not needed. Results show the tajweed colours.":"اكتب كلمة أو جزءًا من آية، ولا حاجة للتشكيل. تظهر النتائج بألوان التجويد.","Nothing found. Try fewer letters.":"لا توجد نتائج. جرّب حروفًا أقل.","No examples here.":"لا توجد أمثلة هنا.","Letters:":"الحروف:","Practice":"تدرّب","Rules to practise":"الأحكام التي تتدرب عليها","All rules":"كل الأحكام","Ayahs from":"الآيات من","Start again":"ابدأ من جديد","What is the rule on the highlighted letter?":"ما الحكم في الموضع المظلل؟","Next question":"السؤال التالي","More examples of this rule":"أمثلة أخرى لهذا الحكم","No questions here. Choose other rules or a bigger part of the Quran.":"لا توجد أسئلة هنا. اختر أحكامًا أخرى أو جزءًا أكبر من القرآن.","The rules are worked out from the signs written in the Uthmani mushaf text (Hafs). Rules without a colour in the mushaf (such as iẓhār, madd ṭabīʿī, tafkhīm) are shown highlighted on their own pages.":"تُستخرج الأحكام من العلامات المكتوبة في رسم المصحف العثماني (رواية حفص). الأحكام غير الملونة في المصحف (مثل الإظهار والمد الطبيعي والتفخيم) تظهر مظللة في صفحاتها.","Where to look":"مكان البحث"});
