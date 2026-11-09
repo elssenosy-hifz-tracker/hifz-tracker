@@ -9,8 +9,9 @@ The build produces **one self-contained HTML file** plus a small Firebase layer.
 ## Firebase (live site)
 
 Changing the app: see **AGENTS.md** (for agents and developers) and **GUIDE.md** (for the school owner). In short, every change
-is a pull request; GitHub Actions (`.github/workflows/ci.yml`) tests it and posts a preview link (demo build with sample data on
-`hifz-tracker-demo.web.app`), and merging to `main` deploys the app and the security rules to the live site.
+is a pull request, tested on the laptop first; GitHub Actions (`.github/workflows/ci.yml`) posts a preview link (demo build with
+sample data on `hifz-tracker-demo.web.app`), and merging to `main` tests again, then deploys the app and the security rules to
+the live site.
 When something goes wrong: **docs/RECOVERY.md**.
 
 ```bash

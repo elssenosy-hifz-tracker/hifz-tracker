@@ -1,10 +1,11 @@
 # Test, preview and deploy. This is the ONLY way changes reach the live site.
 #
-# Tests run on Linux (everything) and Windows (build + demo test; the school owner works on Windows).
-#   pull request  -> test -> preview: demo build (sample data, no Firebase) on a temporary link,
-#                                     posted as a comment on the pull request
-#   push to main  -> test -> deploy:  the real app to https://hifz-tracker-cd6d0.web.app,
-#                                     Firestore security rules, and the demo of main to https://hifz-tracker-demo.web.app
+# To save Actions minutes, pull requests are not tested here: the laptop runs the full `npm test` before pushing
+# (AGENTS.md). The tests run here once more before anything goes live.
+#   pull request  -> preview:        demo build (sample data, no Firebase) on a temporary link,
+#                                    posted as a comment on the pull request
+#   push to main  -> test -> deploy: the real app to https://hifz-tracker-cd6d0.web.app,
+#                                    Firestore security rules, and the demo of main to https://hifz-tracker-demo.web.app
 #
 # Secrets (set by the repo owner): GCP_SA_PREVIEW (can only deploy Hosting), GCP_SA_DEPLOY (Hosting + rules).
 name: CI
@@ -25,10 +26,11 @@ env:
 jobs:
   test:
     name: Test
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 25
     concurrency:
-      group: test-${{ github.event.pull_request.number || github.sha }}
+      group: test-${{ github.sha }}
       cancel-in-progress: true
     env:
       PW_BUNDLED: '1' # Playwright's own Chromium (no Chrome on the runner)
@@ -64,7 +66,7 @@ jobs:
       - name: App test (sign-in, roles, backup restore) against Firebase emulators
         working-directory: firebase
         run: npm run test:e2e
-      - name: Keep the tested builds for preview / deploy
+      - name: Keep the tested builds for deploy
         uses: actions/upload-artifact@v7
         with:
           name: site
@@ -80,13 +82,17 @@ jobs:
           path: firebase/*.log
           if-no-files-found: ignore
 
-  windows:
-    name: Windows (build + demo test)
-    runs-on: windows-latest
-    timeout-minutes: 20
+  preview:
+    name: Preview link
+    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
     concurrency:
-      group: windows-${{ github.event.pull_request.number || github.sha }}
+      group: preview-${{ github.event.pull_request.number }}
       cancel-in-progress: true
+    permissions:
+      contents: read
+      pull-requests: write
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -97,36 +103,11 @@ jobs:
       - uses: actions/setup-python@v7
         with:
           python-version: '3.12'
-      - name: Install
+      - name: Build the demo
         working-directory: firebase
-        run: npm ci --no-audit --no-fund
-      - name: Setup check
-        working-directory: firebase
-        run: npm run check-setup
-      - name: Build both versions
-        working-directory: firebase
-        run: npm run build
-      - name: Demo build test (installed Chrome)
-        working-directory: firebase
-        run: npm run test:demo
-
-  preview:
-    name: Preview link
-    needs: [test, windows]
-    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    permissions:
-      contents: read
-      pull-requests: write
-    steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 22
-      - uses: actions/download-artifact@v8
-        with:
-          name: site
+        run: |
+          npm ci --no-audit --no-fund
+          npm run build:demo
       - uses: google-github-actions/auth@v3
         with:
           credentials_json: ${{ secrets.GCP_SA_PREVIEW }}
@@ -153,9 +134,9 @@ jobs:
           body="<!-- hifz-preview -->
           **Preview:** $URL
 
-          Tests passed. This preview runs the change with **made-up sample data** in your browser only; it cannot touch the real school.
+          This preview runs the change with **made-up sample data** in your browser only; it cannot touch the real school.
           Use *View as* at the top to try each role. Built from ${SHA:0:7}; the link expires in 14 days.
-          Merging this pull request puts the change live on https://hifz-tracker-cd6d0.web.app a few minutes later."
+          Merging this pull request tests it again and puts the change live on https://hifz-tracker-cd6d0.web.app a few minutes later."
           body=$(printf '%s\n' "$body" | sed 's/^          //')
           id=$(gh api "repos/$GITHUB_REPOSITORY/issues/$PR/comments" --paginate --jq '.[] | select(.body | startswith("<!-- hifz-preview -->")) | .id' | head -1)
           if [ -n "$id" ]; then
@@ -166,7 +147,7 @@ jobs:
 
   deploy:
     name: Deploy to the live site
-    needs: [test, windows]
+    needs: [test]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 15
