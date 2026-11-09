@@ -81,6 +81,10 @@ const downloadsApi = {
   },
 };
 
+// each preview link is a new site to the browser, so the first-visit tour would show every time; Help still shows it,
+// and ?tour shows it as a new device would
+if (!new URLSearchParams(location.search).has('tour')) ls.set('hifz.tour', '1');
+
 const urlRole = new URLSearchParams(location.search).get('as');
 const roleId = DEMO_USERS[urlRole] ? urlRole : DEMO_USERS[ls.get(ROLE_KEY)] ? ls.get(ROLE_KEY) : 'owner';
 const me = DEMO_USERS[roleId];
