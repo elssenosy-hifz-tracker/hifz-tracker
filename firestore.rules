@@ -9,7 +9,8 @@ rules_version = '2';
 //     teacher     read everything; record in any group of the schools they work in (teachers/<tid>.schools,
 //                 kept to include the schools of their own groups by the admins' app), in their own groups
 //                 (classes.teacher) and in groups they have substitute access to (access/<cid>_<tid>): sessions,
-//                 attendance, mushaf marks, class log, a student's position and practice fields. Start a new
+//                 attendance, mushaf marks, class log, a student's position and practice fields. In their own and
+//                 substitute groups also a student's surahs (Edit details). Start a new
 //                 group of their own and add new students to their own groups. Substitute notes, substitute
 //                 access and absences only as the main teacher. Nothing that changes the school's setup.
 //     supervisor  read only.
@@ -156,12 +157,17 @@ service cloud.firestore {
         && canRecordStudent(request.resource.data.get('sid', ''));
       allow delete: if isTeacher() && canRecordStudent(resource.data.get('sid', ''));
     }
-    // A student's position, fixed mistakes, review focus and tajweed practice; never name, group or other details.
+    // A student's position, fixed mistakes, review focus and tajweed practice, and the student's surahs (where new
+    // hifz starts and its order, surahs memorized before, position log); never name, group or other details.
     // A teacher may also add a new student, only into a group they are the main teacher of, with only the fields of
     // the Add student form (no archive flag, no log); after that only admins change the details, group or delete.
     match /students/{id} {
       allow update: if isTeacher() && canRecordClass(resource.data.get('cls', ''))
         && changedOnly(['pos', 'fixed', 'focus', 'tjp']);
+      allow update: if isTeacher() && canTeachClass(resource.data.get('cls', ''))
+        && changedOnly(['pos', 'fixed', 'focus', 'tjp', 'order', 'startS', 'prevS', 'prev', 'posLog'])
+        && request.resource.data.get('prevS', []) is list && request.resource.data.get('prev', []) is list
+        && request.resource.data.get('posLog', []) is list && request.resource.data.get('order', '') is string;
       allow create: if isTeacher() && safeId(id) && safeData(id)
         && isMainTeacher(request.resource.data.get('cls', ''))
         && request.resource.data.keys().hasOnly(['name', 'cls', 'order', 'startS', 'prevS', 'prev', 'amount', 'farDays',

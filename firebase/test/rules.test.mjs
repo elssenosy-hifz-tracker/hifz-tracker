@@ -79,6 +79,7 @@ test('teachers read everything and record in their own group', async () => {
   await assertSucceeds(deleteDoc(doc(db, 'events/e2')));
   await assertSucceeds(setDoc(doc(db, 'marks/m1'), { sid: 's1', w: 5, k: 'hifz' }));
   await assertSucceeds(updateDoc(doc(db, 'students/s1'), { pos: 10, fixed: ['a'], focus: null, tjp: {} }));
+  await assertSucceeds(updateDoc(doc(db, 'students/s1'), { order: 'fatiha', startS: 0, prevS: [113, 112], prev: [], pos: 40, posLog: [{ at: 1, from: 10, to: 40, why: 'edit' }] }));
   await assertSucceeds(setDoc(doc(db, 'meetings/c1_2026-11-09'), { cls: 'c1', date: '2026-11-09', status: 'held' }));
   await assertSucceeds(setDoc(doc(db, 'events/a_s1_2026-11-09'), { sid: 's1', date: '2026-11-09', type: 'session', att: 'present' }));
   await assertSucceeds(updateDoc(doc(db, 'classes/c1'), { tajweed: { 0: '2026-11-09' } }));
@@ -113,6 +114,7 @@ test('teachers record in any group of the schools they work in (covering a class
   await assertSucceeds(setDoc(doc(db, 'requests/r2'), { sid: 's2', from: 'c2', to: 'c1', status: 'open' }));
   // ... but not the main teacher's or the admin's part of that group
   await assertFails(updateDoc(doc(db, 'students/s2'), { name: 'Changed' }));
+  await assertFails(updateDoc(doc(db, 'students/s2'), { prevS: [113] })); // surahs: only own and substitute groups
   await assertFails(setDoc(doc(db, 'students/s8'), { name: 'New', cls: 'c2' }));
   await assertFails(setDoc(doc(db, 'groupnotes/c2'), { text: 'x', by: 't1', at: 1 }));
   await assertFails(setDoc(doc(db, 'access/c2_t1'), { cid: 'c2', tid: 't1', kind: 'always', from: '2026-11-09' }));
@@ -136,6 +138,9 @@ test('teachers cannot write in other groups or change the school setup', async (
   await assertFails(setDoc(doc(db, 'events/e6'), { type: 'session' }));
   await assertFails(setDoc(doc(db, 'marks/m2'), { sid: 's2', w: 5 }));
   await assertFails(updateDoc(doc(db, 'students/s2'), { pos: 10 }));
+  await assertFails(updateDoc(doc(db, 'students/s2'), { prevS: [113] })); // another group's student
+  await assertFails(updateDoc(doc(db, 'students/s1'), { prevS: [113], amount: 20 })); // surahs plus another detail
+  await assertFails(updateDoc(doc(db, 'students/s1'), { prevS: 'all' }));
   await assertFails(updateDoc(doc(db, 'students/s1'), { name: 'Changed' }));
   await assertFails(updateDoc(doc(db, 'students/s1'), { cls: 'c2' }));
   await assertFails(setDoc(doc(db, 'students/s9'), { name: 'New', cls: 'c2' })); // a new student in another group
