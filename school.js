@@ -25,6 +25,8 @@ function canEditCls(cid){if(!schoolOn())return true;if(isSupervisor())return fal
 function canEditSid(sid){const st=allStudents.find(s=>s.id===sid);return st?canEditCls(st.cls):true}
 const myMainCls=()=>{const t=meTeacher();return t?classes.filter(c=>c.teacher===t.id):[]};
 // A teacher may add students to the groups they teach and start a new group of their own (rules: students and classes create).
+// A teacher of the student's group (main or substitute) may change the student's surahs in "Edit details" (rules: students update).
+function tchSurahsOnly(st){return !!(st&&SUB&&schoolOn()&&!isSupervisor()&&!isAdminV()&&meTeacher()&&canEditCls(st.cls))}
 function tchCanAdd(){return SUB&&schoolOn()&&!isSupervisor()&&!!meTeacher()}
 function myAddCls(){return tchCanAdd()?myMainCls():[]}
 const tchNewSchool=()=>{const c=myMainCls().find(x=>schOfCls(x.id));if(c)return schOfCls(c.id);if(CUR_SCH!=="all"&&schById(CUR_SCH))return CUR_SCH;return (SCHOOLS[0]||{}).id||""};

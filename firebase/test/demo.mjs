@@ -236,6 +236,26 @@ try {
   await page.evaluate(() => { localStorage.removeItem('hifz.cls'); go({ name: 'list' }); });
   await page.waitForSelector('.slist .row');
   ok('a teacher starts on their own class in Students', await page.evaluate(() => document.querySelectorAll('.slist .row').length === 3 && document.querySelector('[data-cls].on').dataset.cls === 'c1'));
+  // a teacher changes a student's surahs in "Edit details" (only in their own groups, only the surahs)
+  const sids = await page.evaluate(() => ({ mine: students.find((s) => canEditCls(s.cls)).id, other: students.find((s) => !canEditCls(s.cls)).id }));
+  await page.evaluate((id) => go({ name: 'student', id }), sids.other);
+  await page.waitForSelector('#editBtn', { state: 'attached' });
+  const otherEd = await page.evaluate((id) => { const hid = getComputedStyle(document.getElementById('editBtn')).display === 'none'; go({ name: 'edit', id }); return { hid, view: view.name }; }, sids.other);
+  ok('a teacher cannot edit a student in another group', otherEd.hid && otherEd.view !== 'edit', JSON.stringify(otherEd));
+  await page.evaluate((id) => go({ name: 'student', id }), sids.mine);
+  await page.click('#sMore > summary');
+  await page.click('#editBtn');
+  await page.waitForSelector('#fForm');
+  const pick = await page.evaluate(() => { const b = [...document.querySelectorAll('.prevgrid input[data-ps]')].find((i) => !i.checked); return { s: b && Number(b.dataset.ps), nameOff: document.getElementById('f_name').disabled, amtOff: document.getElementById('f_amount').disabled, surahOn: !document.getElementById('f_surah').disabled }; });
+  ok('a teacher edits only the surahs of their own student', pick.s != null && pick.nameOff && pick.amtOff && pick.surahOn, JSON.stringify(pick));
+  await page.evaluate(() => { document.querySelector('.prevbox').open = true; });
+  await page.check(`.prevgrid input[data-ps="${pick.s}"]`);
+  await page.click('#fForm button[type="submit"]');
+  await page.waitForFunction(() => view.name === 'student', null, { timeout: 10000 }).catch(() => {});
+  if (await page.evaluate(() => view.name === 'edit')) { await page.click('#fForm button[type="submit"]'); await page.waitForFunction(() => view.name === 'student', null, { timeout: 10000 }); }
+  ok("the teacher's surah change is saved", await page.evaluate(({ id, s }) => (allStudents.find((x) => x.id === id).prevS || []).includes(s), { id: sids.mine, s: pick.s }));
+  await page.evaluate(() => go({ name: 'list' }));
+  await page.waitForSelector('.slist .row');
   // a teacher adds a student, only into a group they teach
   await page.click('#topActions button.primary:has-text("Add student")');
   await page.waitForSelector('#fForm');

@@ -280,7 +280,7 @@ function renderCore(force){
   ta.innerHTML="";
   if(!loaded){sub.textContent="Loading students…";el.innerHTML=`<div class="empty">Loading the student list…</div>`;return}
   if(storeMissing){sub.textContent="";el.innerHTML=`<div class="banner bad">The student records can't be reached from this window. Open the page while signed in to your account.</div>`;return}
-  if(SUB&&["classes","edit","add","fees","place","settings","school","waitlist"].includes(view.name)&&!(view.name==="add"&&tchCanAdd()))view={name:"list"};
+  if(SUB&&["classes","edit","add","fees","place","settings","school","waitlist"].includes(view.name)&&!(view.name==="add"&&tchCanAdd())&&!(view.name==="edit"&&tchSurahsOnly(allStudents.find(s=>s.id===view.id))))view={name:"list"};
   try{schoolGuard()}catch(e){console.error(e)}
   if(view.name==="schools")return renderSchools(el,sub);if(view.name==="schoolv")return renderSchoolV(el,sub);if(view.name==="teacher")return renderTeacher(el,sub);if(view.name==="gmove")return renderGMove(el,sub);if(view.name==="handover")return renderHandover(el,sub);if(view.name==="school")return renderSchool(el,sub);if(view.name==="sover")return renderSover(el,sub);if(view.name==="waitlist")return renderWaitlist(el,sub);
   if(view.name==="today")return renderToday(el,sub,ta);if(view.name==="reports")return renderReports(el,sub);if(view.name==="settings")return renderSettings(el,sub);if(view.name==="wsum")return renderWsum(el,sub);if(view.name==="star")return renderStar(el,sub);if(view.name==="buddy")return renderBuddy(el,sub);
@@ -371,7 +371,7 @@ function renderStudent(el,sub,st){
     <details class="sfold sjuz"><summary>Juz map and attendance</summary><div class="juzgrid">${JUZ_ORDER.map(j=>`<span class="${s.passed.has(j)?"tested":s.done.includes(j)?"done":j===cj?"cur":""}" title="Juz ${j}">${j}</span>`).join("")}</div>
     <p class="small muted">Green: juz passed its test. Teal: memorized, not tested yet. Last 30 days: present ${pres.filter(attended).length} (late ${pres.filter(e=>e.att==="late").length}), absent ${pres.filter(e=>e.att==="absent").length}, excused ${pres.filter(e=>e.att==="excused").length}.</p></details>
     <div class="bigacts"><button class="primary" id="sesBtn">✎ Record session</button><button class="primary" id="musBtn">📖 Mushaf</button></div>
-    <details class="smore" id="sMore"><summary>More</summary><div class="smenu"><b class="small muted">Tests</b><div class="actions"><button id="tmBtn">Test mode</button><button id="jtBtn">Juz test</button><button id="mtBtn">Monthly test</button><button id="otBtn">Other record</button></div><b class="small muted">Reports and parents</b><div class="actions"><button id="repBtn">Report</button><button id="yrBtn">Year report</button><button id="weekBtn">Plan sheet</button><button id="mprBtn">Print mistakes</button><button id="waBtn">Message parents</button></div><b class="small muted">Student</b><div class="actions"><button id="histBtn">Student history</button><button id="editBtn">Edit details</button></div></div></details>
+    <details class="smore" id="sMore"><summary>More</summary><div class="smenu"><b class="small muted">Tests</b><div class="actions"><button id="tmBtn">Test mode</button><button id="jtBtn">Juz test</button><button id="mtBtn">Monthly test</button><button id="otBtn">Other record</button></div><b class="small muted">Reports and parents</b><div class="actions"><button id="repBtn">Report</button><button id="yrBtn">Year report</button><button id="weekBtn">Plan sheet</button><button id="mprBtn">Print mistakes</button><button id="waBtn">Message parents</button></div><b class="small muted">Student</b><div class="actions"><button id="histBtn">Student history</button><button id="editBtn" class="${tchSurahsOnly(st)?"tok":""}">Edit details</button></div></div></details>
   </div>
   ${st.archived?`<div class="banner warn">${esc(st.name)} is archived since ${fmtShort(st.archived)}: hidden from the lists and reports. <button class="primary adminonly" id="unarchBtn">Restore student</button></div>`:""}
   ${s.done.length>=30?`<div class="banner ok">${esc(st.name)} has completed the whole Quran. <button class="primary" id="khatmCert" ${downloads?"":"hidden"}>Download khatm certificate</button> <span class="small muted" id="k_msg"></span></div>`:""}
@@ -703,6 +703,7 @@ function renderForm(el,sub,st){
   const isNew=!st,tchAdd=isNew&&SUB,cls=tchAdd?myAddCls():classes; // a teacher adds only into their own groups
   st=st||{name:"",amount:5,days:[6,0,1,2,3,4],start:iso(today()),pos:0,order:"nas",cls:view.cls&&cls.some(c=>c.id===view.cls)?view.cls:(cls[0]||{id:tchAdd?"__new":undefined}).id};
   useOrder(st);
+  const lim=!isNew&&tchSurahsOnly(st); // a teacher changes only the student's surahs
   sub.textContent=isNew?"New student":"Edit "+st.name;
   const la=lastAyahOf(st.pos);
   const surahOpts=(sel)=>{let lastJ=null;return SEQ_SURAHS.map(s=>{const j=surahStartJuz(s);let o="";if(j!==lastJ){o+=(lastJ!==null?"</optgroup>":"")+`<optgroup label="Juz ${j}">`;lastJ=j}
@@ -736,11 +737,13 @@ function renderForm(el,sub,st){
         <label>Surah<select id="f_surah"><option value="-1" ${la?"":"selected"}>New hifz not started</option>${surahOpts(la?la.s:-1)}</select></label>
         <label>Up to ayah<input type="number" id="f_ayah" min="1" value="${la?la.a2:""}" inputmode="numeric"></label>
       </div></div>
-    <p class="note" id="f_ordnote"></p>${tchAdd?`<p class="note">After you add the student, only an admin can change these details, move the student to another group or delete them.</p>`:""}
+    <p class="note" id="f_ordnote"></p>${lim?`<p class="note">You can change the student's surahs here. An admin changes the other details.</p>`:""}${tchAdd?`<p class="note">After you add the student, you can still change their surahs. Only an admin can change the other details, move the student to another group or delete them.</p>`:""}
     <div class="actions"><button class="primary" type="submit">${isNew?"Add student":"Save changes"}</button>${isNew?"":`<button type="button" id="archBtn">${st.archived?"Restore student":"Archive student"}</button><button type="button" id="delBtn">Delete student</button>`}<span class="small muted" id="f_msg"></span></div>
   </form>`;
   wireBack(el);
   const f=el.querySelector("#fForm");trackForm(f);
+  if(lim){f.querySelectorAll("#f_name,#f_cls,#f_read,#f_rstart,#f_rfrom,#f_amount,#f_far,#f_start,#f_phone,.days input").forEach(i=>i.disabled=true);
+    f.querySelectorAll("#f_name,#f_cls,#f_read,#f_rstart,#f_rfrom,#f_amount,#f_far,#f_start,#f_phone").forEach(i=>i.closest("label").hidden=true);f.querySelector(".days").parentElement.hidden=true}
   const sel=f.querySelector("#f_surah"),ay=f.querySelector("#f_ayah");
   sel.onchange=()=>{const s=Number(sel.value);if(s>=0){ay.max=QD.verses[s];ay.value=QD.verses[s]}else ay.value=""};
   const ord=f.querySelector("#f_order"),ordNote=f.querySelector("#f_ordnote");
@@ -776,7 +779,8 @@ function renderForm(el,sub,st){
           f.dataset.ngid=(await db.collection("classes").add(g)).id}
         data.cls=f.dataset.ngid}
       if(isNew){const r=await db.collection("students").add(data);for(let i=0;i<30&&!allStudents.some(s=>s.id===r.id);i++)await new Promise(w=>setTimeout(w,100));busy=false;go({name:"student",id:r.id})}
-      else{await db.doc("students/"+st.id).update(data);busy=false;go({name:"student",id:st.id})}}
+      else{const up=lim?Object.fromEntries(["order","startS","prevS","prev","pos","posLog"].filter(k=>k in data).map(k=>[k,data[k]])):data;
+        await db.doc("students/"+st.id).update(up);busy=false;go({name:"student",id:st.id})}}
     catch(e){msg.textContent="Not saved. Check your connection and try again."}
   };
   const ab=f.querySelector("#archBtn");if(ab)ab.onclick=async()=>{await setArchived(st,!st.archived);busy=false;go(st.archived?{name:"student",id:st.id}:{name:"list"})};
