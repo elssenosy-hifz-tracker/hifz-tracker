@@ -8,7 +8,8 @@ rules_version = '2';
 //     admin       read and write everything, manage teachers and members.
 //     teacher     read everything; record only in their own groups (classes.teacher) and in groups they have
 //                 substitute access to (access/<cid>_<tid>): sessions, attendance, mushaf marks, class log,
-//                 a student's position and practice fields. Nothing that changes the school's setup.
+//                 a student's position and practice fields; add a new student to their own group.
+//                 Nothing that changes the school's setup.
 //     supervisor  read only.
 //   feedback    anyone above may send a suggestion or problem; only admins read them.
 //   anyone else nothing.
@@ -141,9 +142,18 @@ service cloud.firestore {
       allow delete: if isTeacher() && canTeachStudent(resource.data.get('sid', ''));
     }
     // A student's position, fixed mistakes, review focus and tajweed practice; never name, group or other details.
+    // A teacher may also add a new student, only into a group they are the main teacher of, with only the fields of
+    // the Add student form (no archive flag, no log); after that only admins change the details, group or delete.
     match /students/{id} {
       allow update: if isTeacher() && canTeachClass(resource.data.get('cls', ''))
         && changedOnly(['pos', 'fixed', 'focus', 'tjp']);
+      allow create: if isTeacher() && safeId(id) && safeData(id)
+        && isMainTeacher(request.resource.data.get('cls', ''))
+        && request.resource.data.keys().hasOnly(['name', 'cls', 'order', 'startS', 'prevS', 'prev', 'amount', 'farDays',
+                                                 'readPages', 'readStart', 'readFrom', 'start', 'phone', 'days', 'pos',
+                                                 'created'])
+        && request.resource.data.name is string && request.resource.data.name.size() > 0
+        && request.resource.data.name.size() <= 200;
     }
     // Class log (id <cid>_<date>).
     match /meetings/{id} {

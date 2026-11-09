@@ -280,7 +280,7 @@ function renderCore(force){
   ta.innerHTML="";
   if(!loaded){sub.textContent="Loading students…";el.innerHTML=`<div class="empty">Loading the student list…</div>`;return}
   if(storeMissing){sub.textContent="";el.innerHTML=`<div class="banner bad">The student records can't be reached from this window. Open the page while signed in to your account.</div>`;return}
-  if(SUB&&["classes","edit","add","fees","place","settings","school","waitlist"].includes(view.name))view={name:"list"};
+  if(SUB&&["classes","edit","add","fees","place","settings","school","waitlist"].includes(view.name)&&!(view.name==="add"&&myAddCls().length))view={name:"list"};
   try{schoolGuard()}catch(e){console.error(e)}
   if(view.name==="schools")return renderSchools(el,sub);if(view.name==="schoolv")return renderSchoolV(el,sub);if(view.name==="teacher")return renderTeacher(el,sub);if(view.name==="gmove")return renderGMove(el,sub);if(view.name==="handover")return renderHandover(el,sub);if(view.name==="school")return renderSchool(el,sub);if(view.name==="sover")return renderSover(el,sub);if(view.name==="waitlist")return renderWaitlist(el,sub);
   if(view.name==="today")return renderToday(el,sub,ta);if(view.name==="reports")return renderReports(el,sub);if(view.name==="settings")return renderSettings(el,sub);if(view.name==="wsum")return renderWsum(el,sub);if(view.name==="star")return renderStar(el,sub);if(view.name==="buddy")return renderBuddy(el,sub);
@@ -329,7 +329,7 @@ function renderList(el,sub,ta){
   const memL=s=>{useOrder(s);return (Number(s.pos)||0)+PREV_LINES};
   const shown=(cur==="all"?students.filter(s=>{const c=classes.find(x=>x.id===s.cls);return !c||schVisible(c)}):cur==="none"?orphans:students.filter(s=>s.cls===cur)).map(s=>[memL(s),s]).sort((a,b)=>a[0]-b[0]||String(a[1].name).localeCompare(String(b[1].name))).map(x=>x[1]);
   sub.textContent=`${shown.length} ${shown.length===1?"student":"students"}${cur!=="all"&&cur!=="none"?" in "+clsName(cur):""} · ${fmt(today())}`;
-  const b=document.createElement("button");b.className="primary adminonly";b.textContent="Add student";b.onclick=()=>go({name:"add",cls:cur});ta.append(b);
+  const b=document.createElement("button");b.className=SUB&&myAddCls().length?"primary":"primary adminonly";b.textContent="Add student";b.onclick=()=>go({name:"add",cls:cur});ta.append(b);
 
   const tabs=`<div class="filters" role="tablist">${[["all","All students",students.length],...classes.filter(schVisible).map(c=>[c.id,c.name,students.filter(s=>s.cls===c.id).length]),...(orphans.length?[["none","No class",orphans.length]]:[]),...(arch.length?[["arch","Archived",arch.length]]:[])].map(([k,n,c])=>`<button class="fbtn ${k===cur?"on":""}" data-cls="${k}" role="tab" aria-selected="${k===cur}">${esc(n)} <span class="cnt">${c}</span></button>`).join("")}</div>`;
   const wireTabs=()=>{el.querySelectorAll("[data-openc]").forEach(b=>b.onclick=()=>go({name:"class",id:b.dataset.openc,date:iso(today())}));el.querySelectorAll("[data-crep]").forEach(b=>b.onclick=()=>go({name:"crep",id:b.dataset.crep}));el.querySelectorAll("[data-cls]").forEach(b=>b.onclick=()=>{setListCls(b.dataset.cls);render(true)});wireAlerts(el);wireSearch(el);{const g=el.querySelector("[data-gows]");if(g)g.onclick=()=>go({name:"wsum",cls:cur!=="all"?cur:undefined});const h=el.querySelector("[data-gostar]");if(h)h.onclick=()=>go({name:"star",cls:cur!=="all"?cur:undefined})}wireClassSign(el);wireTests(el)};
@@ -700,7 +700,8 @@ function prevGroups(st){
   if(nas)groups.reverse();
   return groups.map(([j,ss])=>`<div class="pgrp"><label class="chk pj"><input type="checkbox" data-pj="${j}"> Juz ${j}</label><div class="pss">${ss.map(x=>`<label class="chk"><input type="checkbox" data-ps="${x}" data-psj="${j}" ${isOn(x)?"checked":""}> ${SURAH_NAMES[x]}</label>`).join("")}</div></div>`).join("")}
 function renderForm(el,sub,st){
-  const isNew=!st;st=st||{name:"",amount:5,days:[6,0,1,2,3,4],start:iso(today()),pos:0,order:"nas",cls:view.cls&&classes.some(c=>c.id===view.cls)?view.cls:(classes[0]||{}).id};
+  const isNew=!st,tchAdd=isNew&&SUB,cls=tchAdd?myAddCls():classes; // a teacher adds only into their own groups
+  st=st||{name:"",amount:5,days:[6,0,1,2,3,4],start:iso(today()),pos:0,order:"nas",cls:view.cls&&cls.some(c=>c.id===view.cls)?view.cls:(cls[0]||{}).id};
   useOrder(st);
   sub.textContent=isNew?"New student":"Edit "+st.name;
   const la=lastAyahOf(st.pos);
@@ -711,7 +712,7 @@ function renderForm(el,sub,st){
   <form class="panel" id="fForm">
     <div class="fields">
       <label>Student name<input id="f_name" required value="${esc(st.name)}" autocomplete="off"></label>
-      <label>Class<select id="f_cls">${classes.map(c=>`<option value="${c.id}" ${c.id===st.cls?"selected":""}>${esc(c.name)}</option>`).join("")}<option value="" ${classes.some(c=>c.id===st.cls)?"":"selected"}>No class</option></select></label>
+      <label>Class<select id="f_cls">${cls.map(c=>`<option value="${c.id}" ${c.id===st.cls?"selected":""}>${esc(c.name)}</option>`).join("")}${tchAdd?"":`<option value="" ${classes.some(c=>c.id===st.cls)?"":"selected"}>No class</option>`}</select></label>
       <label>First surah of new hifz<select id="f_s0">${SURAH_NAMES.map((n,x)=>`<option value="${x}" ${x===Number(ORDER_KEY.split("|")[1])?"selected":""}>${x+1}. ${n}</option>`).join("")}</select></label>
       <label>Then goes<select id="f_order">${Object.entries(ORDER_NAMES).map(([k,v])=>`<option value="${k}" ${k===ORDER_KEY.split("|")[0]?"selected":""}>${v}</option>`).join("")}</select></label>
       <label>Daily reading from the mushaf<select id="f_read">${READS.map(r=>`<option value="${r[0]}" ${r[0]===readOf(st)?"selected":""}>${r[1]}</option>`).join("")}</select></label>
@@ -732,7 +733,7 @@ function renderForm(el,sub,st){
         <label>Surah<select id="f_surah"><option value="-1" ${la?"":"selected"}>New hifz not started</option>${surahOpts(la?la.s:-1)}</select></label>
         <label>Up to ayah<input type="number" id="f_ayah" min="1" value="${la?la.a2:""}" inputmode="numeric"></label>
       </div></div>
-    <p class="note" id="f_ordnote"></p>
+    <p class="note" id="f_ordnote"></p>${tchAdd?`<p class="note">After you add the student, only an admin can change these details, move the student to another group or delete them.</p>`:""}
     <div class="actions"><button class="primary" type="submit">${isNew?"Add student":"Save changes"}</button>${isNew?"":`<button type="button" id="archBtn">${st.archived?"Restore student":"Archive student"}</button><button type="button" id="delBtn">Delete student</button>`}<span class="small muted" id="f_msg"></span></div>
   </form>`;
   wireBack(el);
@@ -765,7 +766,7 @@ function renderForm(el,sub,st){
       if(Math.abs(newL-oldL)>LINES&&f.dataset.pc!=="1"&&f.dataset.pc!=="2"){f.dataset.pc="1";msg.textContent=`This changes memorized from ${pagesOf(oldL)} to ${pagesOf(newL)} pages. Tap Save again to confirm.`;return}
       if(Math.abs((Number(st.pos)||0)-pos)>0.01)data.posLog=[...(st.posLog||[]).slice(-19),{at:Date.now(),from:Number(st.pos)||0,to:pos,why:"edit"}]}
     msg.textContent="Saving…";
-    try{if(isNew){const r=await db.collection("students").add(data);busy=false;go({name:"student",id:r.id})}
+    try{if(isNew){const r=await db.collection("students").add(data);for(let i=0;i<30&&!allStudents.some(s=>s.id===r.id);i++)await new Promise(w=>setTimeout(w,100));busy=false;go({name:"student",id:r.id})}
       else{await db.doc("students/"+st.id).update(data);busy=false;go({name:"student",id:st.id})}}
     catch(e){msg.textContent="Not saved. Check your connection and try again."}
   };

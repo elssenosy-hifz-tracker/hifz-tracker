@@ -103,7 +103,8 @@ test('teachers cannot write in other groups or change the school setup', async (
   await assertFails(updateDoc(doc(db, 'students/s2'), { pos: 10 }));
   await assertFails(updateDoc(doc(db, 'students/s1'), { name: 'Changed' }));
   await assertFails(updateDoc(doc(db, 'students/s1'), { cls: 'c2' }));
-  await assertFails(setDoc(doc(db, 'students/s9'), { name: 'New', cls: 'c1' }));
+  await assertFails(setDoc(doc(db, 'students/s9'), { name: 'New', cls: 'c2' })); // a new student in another group
+  await assertFails(setDoc(doc(db, 'students/s1'), { name: 'Someone else', cls: 'c1', pos: 0 })); // overwriting an existing student
   await assertFails(deleteDoc(doc(db, 'students/s1')));
   await assertFails(setDoc(doc(db, 'meetings/c2_2026-11-09'), { cls: 'c2', date: '2026-11-09' }));
   await assertFails(setDoc(doc(db, 'meetings/c2_2026-11-10'), { cls: 'c1', date: '2026-11-10' })); // another group's log id
@@ -120,6 +121,24 @@ test('teachers cannot write in other groups or change the school setup', async (
   await assertFails(setDoc(doc(db, 'settings/main'), { school: { name: 'x' } }));
   await assertFails(setDoc(doc(db, 'fees/f1'), { sid: 's1' }));
   await assertFails(setDoc(doc(db, 'anything/x'), { a: 1 }));
+});
+
+test('teachers add new students only to a group they teach, with only the Add student fields', async () => {
+  const db = as('bilal@example.com');
+  const form = { name: 'Zaid', cls: 'c1', order: 'nas', startS: 113, prevS: [], prev: [], amount: 5, farDays: 30,
+    readPages: 1, readStart: 1, readFrom: null, start: '2026-11-09', phone: '', days: [6, 0, 1], pos: 0, created: '2026-11-09' };
+  await assertSucceeds(addDoc(collection(db, 'students'), form));
+  await assertFails(addDoc(collection(db, 'students'), { ...form, cls: 'c2' }));
+  await assertFails(addDoc(collection(db, 'students'), { ...form, cls: '' }));
+  await assertFails(addDoc(collection(db, 'students'), { ...form, archived: true }));
+  await assertFails(addDoc(collection(db, 'students'), { ...form, name: '' }));
+  await assertFails(setDoc(doc(db, 'students/x"><b>'), form));
+  // substitute access is for recording, not for adding students to someone else's group
+  await env.withSecurityRulesDisabled((ctx) => setDoc(doc(ctx.firestore(), 'access/c2_t1'), { cid: 'c2', tid: 't1', kind: 'always' }));
+  await assertFails(addDoc(collection(db, 'students'), { ...form, cls: 'c2' }));
+  // supervisors and inactive teachers add nobody
+  await assertFails(addDoc(collection(as('sami@example.com'), 'students'), form));
+  await assertFails(addDoc(collection(as('old@example.com'), 'students'), form));
 });
 
 test('teachers cannot change access', async () => {

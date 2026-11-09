@@ -225,6 +225,16 @@ try {
   await page.evaluate(() => { localStorage.removeItem('hifz.cls'); go({ name: 'list' }); });
   await page.waitForSelector('.slist .row');
   ok('a teacher starts on their own class in Students', await page.evaluate(() => document.querySelectorAll('.slist .row').length === 3 && document.querySelector('[data-cls].on').dataset.cls === 'c1'));
+  // a teacher adds a student, only into a group they teach
+  await page.click('#topActions button.primary:has-text("Add student")');
+  await page.waitForSelector('#fForm');
+  const tOpts = await page.evaluate(() => ({ shown: [...document.querySelectorAll('#f_cls option')].map((o) => o.value), mine: myMainCls().map((c) => c.id), all: classes.length }));
+  ok('a teacher can only add a student to their own groups', JSON.stringify(tOpts.shown) === JSON.stringify(tOpts.mine) && tOpts.mine.length > 0 && tOpts.all > tOpts.mine.length, JSON.stringify(tOpts));
+  await page.fill('#f_name', 'Zaid New');
+  await page.click('#fForm button[type="submit"]');
+  await page.waitForFunction(() => view.name === 'student' && students.some((s) => s.name === 'Zaid New'), null, { timeout: 10000 });
+  ok('a teacher adds a student to their group', await page.evaluate(() => { const s = students.find((x) => x.name === 'Zaid New'); return s && myMainCls().some((c) => c.id === s.cls) && !s.archived; }));
+  await page.evaluate(async () => { const s = students.find((x) => x.name === 'Zaid New'); await (await claude.use('db')).doc('students/' + s.id).delete(); });
   await page.evaluate(() => { go({ name: 'reports' }); });
   await page.waitForSelector('.hubs');
   ok('a teacher does not see the school overview', !(await page.$('[data-hub="sover"]')));
