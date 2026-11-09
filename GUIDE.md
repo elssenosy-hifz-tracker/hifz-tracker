@@ -7,10 +7,10 @@ Live app: https://hifz-tracker-cd6d0.web.app
 
 ## One-time setup (on your laptop)
 
-1. **GitHub invitation**: open https://github.com/elivnjak/hifz-tracker/invitations while signed in as `elssenosy-create`
+1. **GitHub invitation**: open https://github.com/orgs/elssenosy-hifz-tracker/invitation while signed in as `elssenosy-create`
    and accept.
 2. **Get the project onto the laptop.** Open Claude Code in a folder where you keep projects (for example `Documents`) and say:
-   *"Clone github.com/elivnjak/hifz-tracker, open it, and get it set up following its AGENTS.md."*
+   *"Clone github.com/elssenosy-hifz-tracker/hifz-tracker, open it, and get it set up following its AGENTS.md."*
 3. **Let Claude install what is missing.** It checks the laptop and may ask to install a few free tools (Git, Node.js,
    Python, the GitHub tool, Java). Say yes. After installing, it may ask you to **close and reopen** the terminal and Claude;
    then start Claude again in the `hifz-tracker` folder.
