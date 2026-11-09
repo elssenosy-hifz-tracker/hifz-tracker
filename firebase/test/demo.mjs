@@ -180,9 +180,15 @@ try {
   await page.waitForTimeout(500);
   ok('session mushaf asks which tajweed rule and saves it', want.n === want.rules.length && (await page.evaluate(([w, r]) => { const m = marks.find((x) => x.w === w && x.src === 'session'); return !!m && m.k === 'tajweed' && m.tr === r; }, [tw, want.first])), JSON.stringify({ tw, ...want }));
   await page.click('#qmX');
-  // first-visit tour: shows on a new device, Skip ends it, Help shows it again
+  // first-visit tour: a preview starts with it seen; ?tour shows it as a new device would, Skip ends it, Help shows it again
+  const p0 = await browser.newPage({ viewport: { width: 390, height: 844 } });
+  await p0.goto(BASE);
+  await p0.waitForSelector('#helpTop', { timeout: 15000 });
+  await p0.waitForTimeout(1500);
+  ok('preview does not start the first-visit tour', !(await p0.$('#tour')));
+  await p0.close();
   const p2 = await browser.newPage({ viewport: { width: 390, height: 844 } });
-  await p2.goto(BASE);
+  await p2.goto(BASE + '?tour');
   await p2.waitForSelector('#tour .tcard', { timeout: 15000 });
   const t1 = await p2.textContent('#tour .tt');
   await p2.click('#tSkip');
