@@ -80,6 +80,7 @@ test('teachers read everything and record in their own group', async () => {
   await assertSucceeds(setDoc(doc(db, 'marks/m1'), { sid: 's1', w: 5, k: 'hifz' }));
   await assertSucceeds(updateDoc(doc(db, 'students/s1'), { pos: 10, fixed: ['a'], focus: null, tjp: {} }));
   await assertSucceeds(setDoc(doc(db, 'meetings/c1_2026-11-09'), { cls: 'c1', date: '2026-11-09', status: 'held' }));
+  await assertSucceeds(setDoc(doc(db, 'events/a_s1_2026-11-09'), { sid: 's1', date: '2026-11-09', type: 'session', att: 'present' }));
   await assertSucceeds(updateDoc(doc(db, 'classes/c1'), { tajweed: { 0: '2026-11-09' } }));
   await assertSucceeds(setDoc(doc(db, 'groupnotes/c1'), { text: 'Page 20', by: 't1', at: 1 }));
   await assertSucceeds(setDoc(doc(db, 'access/c1_t6'), { cid: 'c1', tid: 't6', kind: 'day', from: '2026-11-09', until: '2026-11-09' }));
@@ -105,6 +106,8 @@ test('teachers cannot write in other groups or change the school setup', async (
   await assertFails(setDoc(doc(db, 'students/s9'), { name: 'New', cls: 'c1' }));
   await assertFails(deleteDoc(doc(db, 'students/s1')));
   await assertFails(setDoc(doc(db, 'meetings/c2_2026-11-09'), { cls: 'c2', date: '2026-11-09' }));
+  await assertFails(setDoc(doc(db, 'meetings/c2_2026-11-10'), { cls: 'c1', date: '2026-11-10' })); // another group's log id
+  await assertFails(setDoc(doc(db, 'events/a_s2_2026-11-10'), { sid: 's1', date: '2026-11-10', type: 'session' })); // another student's attendance id
   await assertFails(updateDoc(doc(db, 'classes/c1'), { teacher: 't9' }));
   await assertFails(updateDoc(doc(db, 'classes/c2'), { tajweed: {} }));
   await assertFails(setDoc(doc(db, 'access/c2_t1'), { cid: 'c2', tid: 't1', kind: 'always' }));

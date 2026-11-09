@@ -125,7 +125,9 @@ service cloud.firestore {
 
     // Sessions, attendance, tests, notes and points: the student must be in one of the teacher's groups.
     match /events/{id} {
-      allow create: if isTeacher() && safeId(id) && safeData(id) && canTeachStudent(request.resource.data.get('sid', ''));
+      // attendance ids are a_<sid>_<date>: nobody may take another student's id
+      allow create: if isTeacher() && safeId(id) && safeData(id) && canTeachStudent(request.resource.data.get('sid', ''))
+        && (!id.matches('^a_.*') || id == 'a_' + request.resource.data.sid + '_' + request.resource.data.get('date', ''));
       allow update: if isTeacher() && safeData(id) && canTeachStudent(resource.data.get('sid', ''))
         && canTeachStudent(request.resource.data.get('sid', ''));
       allow delete: if isTeacher() && canTeachStudent(resource.data.get('sid', ''));
@@ -144,7 +146,8 @@ service cloud.firestore {
     }
     // Class log (id <cid>_<date>).
     match /meetings/{id} {
-      allow create: if isTeacher() && safeId(id) && safeData(id) && canTeachClass(request.resource.data.get('cls', ''));
+      allow create: if isTeacher() && safeId(id) && safeData(id) && canTeachClass(request.resource.data.get('cls', ''))
+        && id == request.resource.data.cls + '_' + request.resource.data.get('date', '');
       allow update: if isTeacher() && safeData(id) && canTeachClass(resource.data.get('cls', ''))
         && request.resource.data.get('cls', '') == resource.data.get('cls', '');
     }

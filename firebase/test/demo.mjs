@@ -202,7 +202,21 @@ try {
   await page.evaluate(async () => { await (await claude.use('db')).collection('access').add({ cid: 'c1', tid: 't3', kind: 'always', from: '2026-01-01', until: '2026-01-01', at: 1 }); render(true); });
   await page.waitForFunction(() => ACCESS.length === 1 && ACCESS[0].id === 'c1_t3', null, { timeout: 8000 }).catch(() => {});
   ok('old substitute access records move to their fixed id', await page.evaluate(() => ACCESS.length === 1 && ACCESS[0].id === 'c1_t3' && ACCESS[0].kind === 'always'), await page.evaluate(() => JSON.stringify(ACCESS)));
-  await page.evaluate(async () => { await (await claude.use('db')).doc('access/c1_t3').delete(); });
+  // a second grant for the same teacher and group extends the first instead of replacing it
+  const grants = await page.evaluate(async () => {
+    const wait = (f) => new Promise((r) => { const t = setInterval(() => { if (f()) { clearInterval(t); r(); } }, 50); });
+    const d0 = iso(today()), d3 = iso(addDays(today(), 3)), d6 = iso(addDays(today(), 6)), out = [];
+    await (await claude.use('db')).doc('access/c1_t3').delete(); await wait(() => !ACCESS.length);
+    await grantAccess({ cid: 'c1', tid: 't3', kind: 'day', from: d3, until: d3 }); await wait(() => ACCESS.length === 1);
+    await grantAccess({ cid: 'c1', tid: 't3', kind: 'day', from: d0, until: d0 }); await wait(() => ACCESS[0].from === d0);
+    out.push(ACCESS[0].kind === 'until' && ACCESS[0].from === d0 && ACCESS[0].until === d3 && accessActive(ACCESS[0], d0) && accessActive(ACCESS[0], d3));
+    await grantAccess({ cid: 'c1', tid: 't3', kind: 'always', from: d0, until: d0 }); await wait(() => ACCESS[0].kind === 'always');
+    await grantAccess({ cid: 'c1', tid: 't3', kind: 'day', from: d6, until: d6 }); await new Promise((r) => setTimeout(r, 200));
+    out.push(ACCESS.length === 1 && ACCESS[0].kind === 'always');
+    await (await claude.use('db')).doc('access/c1_t3').delete();
+    return out;
+  });
+  ok('a second substitute grant extends the first; "always" stays always', grants.every(Boolean), JSON.stringify(grants));
 
   // view as teacher
   await reloadBy(() => page.selectOption('#hifzDemoRole', 'teacher'));
