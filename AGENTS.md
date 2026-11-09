@@ -23,7 +23,7 @@ terminal and Claude so the new tool is found. `npm run check-setup` (in `firebas
 - `gh auth login`: choose GitHub.com, HTTPS, *Login with a web browser*; he types the code shown into the browser. Done when
   `gh auth status` succeeds.
 - Git name and email: use his name and the email of his GitHub account.
-- Java is optional: without it, `test:rules` and `test:e2e` cannot run locally, and GitHub runs them before anything goes live.
+- Java is required: `test:rules` and `test:e2e` need it, and GitHub does not test pull requests (see *Testing*).
 - Windows: run the npm scripts (they find Python as `py`/`python` and handle paths); avoid calling `python3` directly.
   `.gitattributes` keeps LF line endings on every machine.
 
@@ -36,18 +36,18 @@ Every change, however small, goes through a pull request. Merging to `main` depl
    unmerged branch of his exists, ask whether to continue that work first. Then start a new branch.
 2. Make the change. Where to edit is under *Code map*. If the feature shows new kinds of data, add some to
    `firebase/src/sample-data.js` so the preview demonstrates it.
-3. Run `npm test` in `firebase/` (details under *Testing*). Done when it passes, or when you can name which suites could not run
-   here and why.
+3. Run `npm test` in `firebase/` (details under *Testing*). Done when all three suites pass here; set up Java first if it is
+   missing. GitHub only builds the preview for a pull request, so this run is the test before he tries it.
 4. Commit, push, open a pull request. Title and description in plain language: what changes for teachers, and what to try.
-5. Wait for the checks to finish (5 to 10 minutes). When a check fails, read its log, fix and push again. Done when *Test*,
-   *Windows* and *Preview link* are green and the pull request has the `<!-- hifz-preview -->` comment with the preview link.
+5. Wait for the *Preview link* check (1 to 2 minutes). When it fails, read its log, fix and push again. Done when it is green
+   and the pull request has the `<!-- hifz-preview -->` comment with the preview link.
 6. Send him the preview link with a short list of what to try ("open Yusuf, record a session, check the new box"), and ask
    whether it can go live for the teachers. Do this for every change; when nothing in the app changes, say so. The preview
    runs on made-up sample data in his browser; *View as* at the top switches role. Links expire after 14 days; any new push
    makes a fresh one.
 7. Merge only after he clearly says yes to that version, once he has had its preview link (after any later push, he approves
    again). Use a squash merge.
-8. Watch the *Deploy to the live site* job on `main`. Done when it is green; tell him it is live at
+8. Watch the run on `main`: *Test* runs every suite again, then *Deploy to the live site*. Done when both are green; tell him it is live at
    https://hifz-tracker-cd6d0.web.app (teachers may need to refresh). When it fails, the live site keeps the previous version:
    tell him, fix, and ship again. Then `git checkout main` and `git pull`, so the next change starts from what is live.
 
@@ -112,6 +112,6 @@ From `firebase/`:
 - For a new feature, add a check to `test/demo.mjs` (or `test/e2e.mjs` when it involves sign-in or access) that fails without it.
 - On localhost the real build uses the emulators; adding `?live` to the URL points it at the real database. Keep `?live` for
   read-only checks Edin asks for.
-- CI runs everything on Linux and the build plus `test:demo` on Windows for every push, so a suite that cannot run here still
-  gates the merge.
+- To save Actions minutes, GitHub runs no tests on pull requests, only the preview build. It runs every suite on Linux after a
+  merge, before deploying; a failure there keeps the previous version live. His Windows laptop is the only Windows check.
 - `tests/batch1.test.js` is an older standalone test (see README); it is not part of `npm test`.

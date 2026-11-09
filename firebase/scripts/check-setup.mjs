@@ -37,7 +37,7 @@ check('Git name and email set', !!(name && email), 'run `git config --global use
 const java = run('java', ['-version']);
 const javaMajor = Number((java.out.match(/version "(\d+)(?:\.(\d+))?/) || []).slice(1).find((v) => v && v !== '1') || 0);
 check('Java 11+', java.ok && javaMajor >= 11, install('EclipseAdoptium.Temurin.21.JDK', 'install Java 21 (macOS: brew install openjdk@21, then export JAVA_HOME=/opt/homebrew/opt/openjdk@21)'),
-  'the rules and app tests (optional: GitHub runs them anyway)');
+  'the rules and app tests, run before every pull request');
 
 const chromePaths = win
   ? [process.env.PROGRAMFILES, process.env['PROGRAMFILES(X86)'], process.env.LOCALAPPDATA].filter(Boolean).map((p) => join(p, 'Google', 'Chrome', 'Application', 'chrome.exe'))
