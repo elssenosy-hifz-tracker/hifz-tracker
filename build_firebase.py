@@ -13,7 +13,7 @@ Steps:
 
 Needs `npm ci` in firebase/ once. Deploys happen in GitHub Actions (see AGENTS.md), not from here.
 """
-import glob, hashlib, os, subprocess, sys
+import base64, glob, hashlib, os, subprocess, sys
 
 DEMO = '--demo' in sys.argv[1:]
 R = os.path.dirname(os.path.abspath(__file__))
@@ -52,6 +52,21 @@ head_tag = ('<link rel="icon" href="/favicon.svg" type="image/svg+xml">'
 head_end = doc.index('</head>')  # the page's own head comes first; later matches are inside print templates in the JS
 assert head_end < doc.index('<body>')
 doc = doc[:head_end] + head_tag + doc[head_end:]
+
+# Content-Security-Policy: only this page's own script (by hash), the data layer file, Google sign-in and the PDF
+# library may run, so HTML that slips into a stored record cannot run code. Framing is blocked in firebase.json.
+js_start = doc.index('<script>\n', doc.index('<body>')) + len('<script>')
+js_end = doc.rindex('</script>')
+assert doc[js_end:] == '</script>\n</body></html>', 'expected the app script at the end of the page'
+js_hash = base64.b64encode(hashlib.sha256(doc[js_start:js_end].encode('utf8')).digest()).decode()
+# Other sources are exact paths: a whole CDN would let injected HTML load an old library that runs code.
+csp = ("script-src 'self' 'sha256-%s' https://apis.google.com/js/api.js https://apis.google.com/_/scs/abc-static/ "
+       "https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js; object-src 'none'; base-uri 'none'"
+       % js_hash)
+assert 'cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js' in doc, 'update the PDF library path in the CSP'
+charset = '<meta charset="utf-8">'
+assert doc.index(charset) < head_end
+doc = doc.replace(charset, charset + '<meta http-equiv="Content-Security-Policy" content="%s">' % csp, 1)
 
 # 4. Safety: a demo build must never contain Firebase, and the real build must never contain demo mode.
 both = doc + code.decode('utf8')
