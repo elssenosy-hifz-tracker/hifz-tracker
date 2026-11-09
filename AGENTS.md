@@ -8,7 +8,8 @@ Auth, project `hifz-tracker-cd6d0`). Real teachers record real students in it ev
 Usually the school's owner (GitHub `elssenosy-create`, on a Windows laptop): he knows the school, not software. Talk in plain
 language about what he will see and do in the app; leave out git, GitHub, branch, merge, deploy, build and Firebase vocabulary
 unless he asks (say "a test copy to try" and "put it live for the teachers"). When he asks a question rather than for a change,
-answer it; a pull request is for changes. Repo owner and technical contact: Edin (GitHub `elivnjak`).
+answer it; a pull request is for changes. Both are owners of the GitHub organization `elssenosy-hifz-tracker`, which holds the
+repo; technical contact: Edin (GitHub `elivnjak`).
 
 ## Setup
 
@@ -17,6 +18,8 @@ and prints only what is missing, with the install command. When it reports somet
 explain in one sentence what the tool is for, run the install command (Windows: `winget`), then ask him to close and reopen the
 terminal and Claude so the new tool is found. `npm run check-setup` (in `firebase/`) shows every check.
 
+- A checkout made before the repo moved still points at `elivnjak/hifz-tracker` (`git remote get-url origin`): run
+  `git remote set-url origin https://github.com/elssenosy-hifz-tracker/hifz-tracker.git`.
 - `gh auth login`: choose GitHub.com, HTTPS, *Login with a web browser*; he types the code shown into the browser. Done when
   `gh auth status` succeeds.
 - Git name and email: use his name and the email of his GitHub account.
@@ -58,14 +61,14 @@ Hard rules:
 ### GitHub commands
 
 `gh pr create`, `gh pr checks` and `gh pr merge` work when `gh` is signed in. REST equivalents, for when `gh pr` fails
-(repo `elivnjak/hifz-tracker`):
+(repo `elssenosy-hifz-tracker/hifz-tracker`):
 
 ```bash
-gh api repos/elivnjak/hifz-tracker/pulls -f title="..." -f head=BRANCH -f base=main -f body="..."        # open PR
-gh api repos/elivnjak/hifz-tracker/commits/SHA/check-runs --jq '.check_runs[] | [.name, .status, .conclusion] | @tsv'
-gh api repos/elivnjak/hifz-tracker/issues/PR/comments --jq '.[] | select(.body | startswith("<!-- hifz-preview -->")) | .body'
-gh api -X PUT repos/elivnjak/hifz-tracker/pulls/PR/merge -f merge_method=squash                          # after approval
-gh api "repos/elivnjak/hifz-tracker/actions/runs?branch=main&event=push&per_page=1" --jq '.workflow_runs[0] | [.head_sha, .status, .conclusion, .html_url] | @tsv'
+gh api repos/elssenosy-hifz-tracker/hifz-tracker/pulls -f title="..." -f head=BRANCH -f base=main -f body="..."        # open PR
+gh api repos/elssenosy-hifz-tracker/hifz-tracker/commits/SHA/check-runs --jq '.check_runs[] | [.name, .status, .conclusion] | @tsv'
+gh api repos/elssenosy-hifz-tracker/hifz-tracker/issues/PR/comments --jq '.[] | select(.body | startswith("<!-- hifz-preview -->")) | .body'
+gh api -X PUT repos/elssenosy-hifz-tracker/hifz-tracker/pulls/PR/merge -f merge_method=squash                          # after approval
+gh api "repos/elssenosy-hifz-tracker/hifz-tracker/actions/runs?branch=main&event=push&per_page=1" --jq '.workflow_runs[0] | [.head_sha, .status, .conclusion, .html_url] | @tsv'
 ```
 
 ## Code map
