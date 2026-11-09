@@ -6,9 +6,9 @@ Auth, project `hifz-tracker-cd6d0`). Real teachers record real students in it ev
 ## Who you are working for
 
 Usually the school's owner (GitHub `elssenosy-create`, on a Windows laptop): he knows the school, not software. Talk in plain
-language about what he will see and do in the app; leave out git, branch, build and Firebase vocabulary unless he asks. When he
-asks a question rather than for a change, answer it; a pull request is for changes. Repo owner and technical contact: Edin
-(GitHub `elivnjak`).
+language about what he will see and do in the app; leave out git, GitHub, branch, merge, deploy, build and Firebase vocabulary
+unless he asks (say "a test copy to try" and "put it live for the teachers"). When he asks a question rather than for a change,
+answer it; a pull request is for changes. Repo owner and technical contact: Edin (GitHub `elivnjak`).
 
 ## Setup
 
@@ -29,8 +29,8 @@ terminal and Claude so the new tool is found. `npm run check-setup` (in `firebas
 Every change, however small, goes through a pull request. Merging to `main` deploys to the live site automatically
 (`.github/workflows/ci.yml`); that pipeline is the only way anything reaches the live site.
 
-1. Get up to date: `git checkout main` and `git pull` (Edin may have pushed). If an unmerged branch of his exists, ask whether to
-   continue that work first. Then start a new branch.
+1. Before any new work, get up to date: `git checkout main` and `git pull` (Edin may have merged his own changes). If an
+   unmerged branch of his exists, ask whether to continue that work first. Then start a new branch.
 2. Make the change. Where to edit is under *Code map*. If the feature shows new kinds of data, add some to
    `firebase/src/sample-data.js` so the preview demonstrates it.
 3. Run `npm test` in `firebase/` (details under *Testing*). Done when it passes, or when you can name which suites could not run
@@ -38,13 +38,15 @@ Every change, however small, goes through a pull request. Merging to `main` depl
 4. Commit, push, open a pull request. Title and description in plain language: what changes for teachers, and what to try.
 5. Wait for the checks to finish (5 to 10 minutes). When a check fails, read its log, fix and push again. Done when *Test*,
    *Windows* and *Preview link* are green and the pull request has the `<!-- hifz-preview -->` comment with the preview link.
-6. Send him the preview link with a short list of what to try ("open Yusuf, record a session, check the new box"). The preview
+6. Send him the preview link with a short list of what to try ("open Yusuf, record a session, check the new box"), and ask
+   whether it can go live for the teachers. Do this for every change; when nothing in the app changes, say so. The preview
    runs on made-up sample data in his browser; *View as* at the top switches role. Links expire after 14 days; any new push
    makes a fresh one.
-7. Merge only after he clearly says yes to that version (after any later push, he approves again). Use a squash merge.
+7. Merge only after he clearly says yes to that version, once he has had its preview link (after any later push, he approves
+   again). Use a squash merge.
 8. Watch the *Deploy to the live site* job on `main`. Done when it is green; tell him it is live at
    https://hifz-tracker-cd6d0.web.app (teachers may need to refresh). When it fails, the live site keeps the previous version:
-   tell him, fix, and ship again.
+   tell him, fix, and ship again. Then `git checkout main` and `git pull`, so the next change starts from what is live.
 
 Hard rules:
 - Commit only to branches; `main` changes only by merging an approved pull request. (Branch protection is not available on this
