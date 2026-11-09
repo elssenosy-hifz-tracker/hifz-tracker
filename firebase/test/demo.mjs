@@ -228,8 +228,49 @@ try {
   await page.evaluate(() => { go({ name: 'reports' }); });
   await page.waitForSelector('.hubs');
   ok('a teacher does not see the school overview', !(await page.$('[data-hub="sover"]')));
+  // suggestions: a teacher sends one from the header; only admins read them, in Settings
+  await page.click('#fbTop');
+  await page.click('[data-fbk="problem"]');
+  await page.fill('#fbText', 'Test problem from Bilal');
+  await page.click('#fbSend');
+  await page.waitForSelector('#fbAgain');
+  ok('a teacher sends a problem with 💬 Suggest', await page.evaluate(async () => {
+    const s = await (await claude.use('db')).collection('feedback').get();
+    return s.docs.some((d) => { const f = d.data(); return f.text === 'Test problem from Bilal' && f.kind === 'problem' && f.by === 'Bilal' && f.email === 'bilal@demo.school' && f.status === 'new' && !f.to; });
+  }));
+  await page.click('#fbAgain');
+  await page.check('#fbAnon');
+  await page.fill('#fbText', 'Anonymous idea');
+  await page.click('#fbSend');
+  await page.waitForSelector('#fbAgain');
+  ok('a teacher can send without their name', await page.evaluate(async () => {
+    const s = await (await claude.use('db')).collection('feedback').get();
+    return s.docs.some((d) => { const f = d.data(); return f.text === 'Anonymous idea' && f.anon === true && f.by === '' && f.email === ''; });
+  }));
+  ok('a teacher does not load the suggestions', await page.evaluate(() => FEEDBACK.length === 0 && !document.querySelector('#nav .fbdot')));
   await reloadBy(() => page.selectOption('#hifzDemoRole', 'owner'));
   await ready();
+  await page.evaluate(() => go({ name: 'settings' }));
+  await page.waitForSelector('[data-hub="inbox"]');
+  ok('settings shows the number of new suggestions', /4 new/.test(await page.textContent('[data-hub="inbox"]')) && (await page.textContent('#nav .fbdot')) === '4');
+  await page.click('[data-hub="inbox"]');
+  await page.waitForSelector('.fbrow');
+  ok('the admin reads the message from the teacher', (await page.textContent('#view')).includes('Test problem from Bilal'));
+  ok('a message without a name shows as Anonymous', await page.evaluate(() => [...document.querySelectorAll('.fbrow')].some((r) => r.textContent.includes('Anonymous idea') && r.textContent.includes('Anonymous') && !r.textContent.includes('bilal@'))));
+  await page.click('.fbrow [data-v="done"]');
+  await page.waitForFunction(() => document.querySelectorAll('.fbrow').length === 3);
+  ok('marking a message done takes it off the new list', await page.evaluate(() => fbNew() === 3));
+  await page.fill('#fbMailIn', 'head@demo.school');
+  await page.click('#fbMailSave');
+  await page.waitForFunction(() => (settings.main || {}).feedbackEmail === 'head@demo.school');
+  await page.evaluate(() => go({ name: 'feedback' }));
+  await page.fill('#fbText', 'Emailed idea');
+  await page.click('#fbSend');
+  await page.waitForSelector('#fbAgain');
+  ok('with an email address set, a new message carries the email for the extension', await page.evaluate(() => {
+    const f = FEEDBACK.find((x) => x.text === 'Emailed idea');
+    return !!f && f.to === 'head@demo.school' && /suggestion from Demo Owner/.test(f.message.subject) && f.message.text.includes('Emailed idea');
+  }));
 
   // HTML written into a record (by a teacher, outside the app) is shown as text and never runs
   const XSS = '"><img src=x onerror="window.__xss=1">';

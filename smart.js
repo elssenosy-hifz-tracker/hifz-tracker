@@ -20,7 +20,7 @@ function oddChecks(st,d,usual){const w=[];
 
 // ---------- 3. bottom bar + search ----------
 const NAV=[["today","◷","Today"],["list","☰","Students"],["tajweed","۞","Tajweed"],["reports","▤","Reports"],["settings","⚙","Settings"]];
-const navOf=v=>({tajweed:"tajweed",today:"today",list:"list",reports:"reports",crep:"reports",wsum:"reports",star:"reports",grading:"reports",screen:"reports",settings:"settings",classes:"settings",fees:"settings",place:"settings",schools:"settings",schoolv:"settings",teacher:"settings",gmove:"settings",handover:"settings",class:"today",buddy:"today",school:"settings",waitlist:"settings",sover:"reports"})[v]||"list";
+const navOf=v=>({tajweed:"tajweed",today:"today",list:"list",reports:"reports",crep:"reports",wsum:"reports",star:"reports",grading:"reports",screen:"reports",settings:"settings",classes:"settings",fees:"settings",place:"settings",schools:"settings",schoolv:"settings",teacher:"settings",gmove:"settings",handover:"settings",class:"today",buddy:"today",school:"settings",waitlist:"settings",sover:"reports",inbox:"settings"})[v]||"list";
 function afterRender(){
   let n=document.getElementById("nav");
   if(!n){n=document.createElement("nav");n.id="nav";n.className="bnav";n.innerHTML=NAV.map(([k,i,l])=>`<button type="button" data-nav="${k}"><i>${i}</i><span>${l}</span></button>`).join("");document.body.append(n);
@@ -29,6 +29,7 @@ function afterRender(){
   const hide=view.name==="session"||view.name==="screen";n.hidden=hide;document.body.classList.toggle("hasnav",!hide);
   n.querySelector('[data-nav="settings"]').hidden=!!SUB;
   try{schoolAfter()}catch(e){console.error(e)}
+  try{feedbackAfter()}catch(e){console.error(e)}
   if(typeof tourMaybe==="function")tourMaybe();
   arApply();
 }
@@ -187,7 +188,7 @@ function renderReports(el,sub){sub.textContent="Reports";
   el.querySelectorAll("[data-hub]").forEach(b=>b.onclick=()=>{const c=(classes.find(x=>x.id===getListCls())||classes[0]||{}).id;const h=b.dataset.hub;go(h==="crep"||h==="screen"?{name:h,id:c}:{name:h,cls:c})})}
 function renderSettings(el,sub){if(SUB){go({name:"list"});return}sub.textContent="Settings";
   const card=(id,i,t,d)=>`<button type="button" class="hub" data-hub="${id}"><i>${i}</i><b>${t}</b><span>${d}</span></button>`;
-  el.innerHTML=`<div class="hubs">${card("classes","⚙","Grading, points, holidays, backup","Same rules in every school · daily reading per group · breaks · backup and restore")}${card("backup","💾","Backup","Download a copy of all records to keep somewhere safe")}${card("schools","🏫","Schools","Schools, teachers, groups, waiting list")}</div>
+  el.innerHTML=`<div class="hubs">${card("classes","⚙","Grading, points, holidays, backup","Same rules in every school · daily reading per group · breaks · backup and restore")}${card("backup","💾","Backup","Download a copy of all records to keep somewhere safe")}${card("schools","🏫","Schools","Schools, teachers, groups, waiting list")}${card("inbox","💬","Suggestions and problems",fbNew()?(AR?`${fbNew()} رسالة جديدة`:`${fbNew()} new`):"Messages from teachers to the administration")}</div>
    <p class="small muted" id="bkSetMsg" aria-live="polite"></p>
    <div class="panel" style="background:var(--accent-soft)"><b class="small">Moved into each school</b><p class="small" style="margin:4px 0 0">Teachers · Groups · Add student · Waiting list · Placement test · Fees: open Schools, then a school.</p></div>
    <div class="panel"><h3>Attendance</h3><label class="inl">Late after <input type="number" id="graceIn" min="0" max="60" value="${graceMins()}" style="width:70px" inputmode="numeric"> minutes from the class start</label> <span class="small muted" id="graceMsg"></span></div>

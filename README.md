@@ -65,7 +65,7 @@ the build matched it byte for byte at that point, and it is not updated any more
    - `mushaf.js`: `/*MUSDATA*/` gets `mushaf/mus.json` (Quran text, page layout), `/*HAFSFONT*/` gets `mushaf/hafs.b64` (the Hafs font as base64).
    - `heart.js`: `/*HEARTVEC*/` gets `heart/heartvec.json` (vector heart of the 114 surahs).
 3. Strips the final `init();` from `app_en.js`, appends the modules in this order, then calls `init();` again:
-   `mushaf.js, heart.js, guide.js, classrep.js, extras.js, more.js, quick.js, smart.js, goals.js, tarteel.js, tajweed.js, tour.js, school.js, schools.js`
+   `mushaf.js, heart.js, guide.js, classrep.js, extras.js, more.js, quick.js, smart.js, goals.js, tarteel.js, tajweed.js, tour.js, school.js, schools.js, feedback.js`
 4. Replaces `/*QDATA*/` with `qdata.json` (surah names, ayah counts, juz/page data).
 5. Wraps it all into one HTML document (style from `head_en.html` into `<head>`, the rest into `<body>`, all JS in one `<script>`).
 
@@ -92,6 +92,7 @@ Use `build_portable.py` from now on.
 | `tour.js` | First-visit tour; Help in the header shows it again |
 | `tajweed.js` | Tajweed page (rules, examples, search, coloured mushaf); rules worked out from the Uthmani text signs |
 | `school.js`, `schools.js` | School mode: roles, teachers, groups, substitutes, multiple schools |
+| `feedback.js` | 💬 Suggest in the header (anyone sends a suggestion or problem) and Settings → Suggestions and problems (admins read them; optional email copy through the Firebase "Trigger Email" extension, see docs/FEEDBACK-EMAIL.md) |
 | `qdata.json` | Quran metadata (surahs, ayahs, juz, pages) |
 | `mushaf/mus.json`, `mushaf/hafs.b64` | Quran text/layout and Hafs font (see `mushaf/LICENSE-quran-ws-text.txt`) |
 | `heart/` | Heart artwork, `heartvec.json` (used by the build), and the Python scripts that made it (`mk.py`, `vec.py`, `fit.py`, `lay.py`; they need numpy, scipy, Pillow, opencv, potrace and have old hard-coded paths) |

@@ -3,7 +3,7 @@ import { test, before, after, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { initializeTestEnvironment, assertSucceeds, assertFails } from '@firebase/rules-unit-testing';
-import { doc, getDoc, setDoc, updateDoc, deleteDoc, collection, getDocs } from 'firebase/firestore';
+import { doc, getDoc, setDoc, updateDoc, deleteDoc, collection, getDocs, addDoc } from 'firebase/firestore';
 
 const RULES = readFileSync(new URL('../../firestore.rules', import.meta.url), 'utf8');
 const OWNERS = JSON.parse(readFileSync(new URL('../owners.json', import.meta.url), 'utf8')).owners;
@@ -177,4 +177,39 @@ test('switched-off teachers are refused', async () => {
   const db = as('old@example.com');
   await assertFails(getDoc(doc(db, 'students/s1')));
   await assertFails(setDoc(doc(db, 'events/e4'), { sid: 's1' }));
+});
+
+test('everyone may send a suggestion in their own name; only admins read them', async () => {
+  const msg = (email, extra = {}) => ({ kind: 'idea', text: 'More colours', by: 'X', email, page: 'today', at: '2026-01-01T00:00:00Z', date: '2026-01-01', status: 'new', ...extra });
+  await assertSucceeds(addDoc(collection(as('bilal@example.com'), 'feedback'), msg('bilal@example.com')));
+  await assertSucceeds(addDoc(collection(as('sami@example.com'), 'feedback'), msg('sami@example.com', { kind: 'problem' })));
+  await assertFails(addDoc(collection(as('bilal@example.com'), 'feedback'), msg('someone@example.com')));      // not in someone else's name
+  await assertFails(addDoc(collection(as('bilal@example.com'), 'feedback'), msg('bilal@example.com', { status: 'done' })));
+  await assertFails(addDoc(collection(as('bilal@example.com'), 'feedback'), msg('bilal@example.com', { extra: 1 })));
+  await assertSucceeds(addDoc(collection(as('bilal@example.com'), 'feedback'), msg('', { by: '', anon: true })));  // without a name
+  await assertFails(addDoc(collection(as('bilal@example.com'), 'feedback'), msg('bilal@example.com', { anon: true })));
+  await assertFails(addDoc(collection(as('bilal@example.com'), 'feedback'), msg('', { by: 'Bilal', anon: true })));
+  await assertFails(addDoc(collection(as('bilal@example.com'), 'feedback'), msg('', { by: '' })));
+  await assertFails(addDoc(collection(as('old@example.com'), 'feedback'), msg('old@example.com')));
+  await assertFails(addDoc(collection(anon(), 'feedback'), msg('x@example.com')));
+  await assertFails(getDocs(collection(as('bilal@example.com'), 'feedback')));
+  await assertFails(getDocs(collection(as('sami@example.com'), 'feedback')));
+  await assertSucceeds(getDocs(collection(as('aisha@example.com'), 'feedback')));
+  await assertSucceeds(getDocs(collection(as(OWNERS[0]), 'feedback')));
+});
+
+test('a suggestion email copy may only go to the address the admins chose', async () => {
+  const msg = (to) => ({ kind: 'problem', text: 'Broken', by: 'Bilal', email: 'bilal@example.com', page: '', at: '2026-01-01T00:00:00Z', date: '2026-01-01', status: 'new', to, message: { subject: 's', text: 't' } });
+  const db = as('bilal@example.com');
+  await assertFails(addDoc(collection(db, 'feedback'), msg('head@example.com')));                    // no address chosen yet
+  await env.withSecurityRulesDisabled((ctx) => setDoc(doc(ctx.firestore(), 'settings/main'), { feedbackEmail: 'head@example.com' }));
+  await assertSucceeds(addDoc(collection(db, 'feedback'), msg('head@example.com')));
+  await assertFails(addDoc(collection(db, 'feedback'), msg('anyone@example.com')));
+  const { to, ...noTo } = msg('x'); // a message without "to" is not emailed and is refused
+  await assertFails(addDoc(collection(db, 'feedback'), noTo));
+  const admin = as('aisha@example.com');
+  const r = await addDoc(collection(db, 'feedback'), msg('head@example.com'));
+  await assertSucceeds(updateDoc(doc(admin, `feedback/${r.id}`), { status: 'done' }));
+  await assertFails(updateDoc(doc(db, `feedback/${r.id}`), { status: 'done' }));
+  await assertSucceeds(deleteDoc(doc(admin, `feedback/${r.id}`)));
 });

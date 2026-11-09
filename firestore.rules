@@ -10,6 +10,7 @@ rules_version = '2';
 //                 substitute access to (access/<cid>_<tid>): sessions, attendance, mushaf marks, class log,
 //                 a student's position and practice fields. Nothing that changes the school's setup.
 //     supervisor  read only.
+//   feedback    anyone above may send a suggestion or problem; only admins read them.
 //   anyone else nothing.
 //
 // Only verified emails count: Google and email-link sign-in are verified, so nobody can claim a teacher's
@@ -182,6 +183,27 @@ service cloud.firestore {
     match /links/{uid} {
       allow create, update: if isTeacher() && uid == request.auth.uid && safeData(uid) && myTid() != ''
         && request.resource.data.get('tid', '') == myTid();
+    }
+
+    // Suggestions and problems (feedback.js). Everyone signed in (supervisors too) may send one in their own name,
+    // or without a name (anon: true, name and email left empty, so nobody can tell who sent it); only
+    // admins read, mark and delete them. An email copy ({to, message}, sent by the Trigger Email extension) may only go to
+    // the address the admins chose in settings/main.feedbackEmail, so nobody can use it to email anyone else.
+    function feedbackEmail() {
+      let s = /databases/$(database)/documents/settings/main;
+      return exists(s) ? get(s).data.get('feedbackEmail', '') : '';
+    }
+    match /feedback/{id} {
+      allow read, update, delete: if isAdmin();
+      allow create: if canRead() && safeId(id)
+        && request.resource.data.keys().hasOnly(['kind', 'text', 'by', 'email', 'anon', 'page', 'at', 'date', 'status', 'to', 'message'])
+        && ((request.resource.data.get('anon', false) == false && request.resource.data.email == myEmail())
+          || (request.resource.data.get('anon', false) == true && request.resource.data.email == '' && request.resource.data.by == ''))
+        && request.resource.data.status == 'new'
+        && request.resource.data.kind in ['idea', 'problem']
+        && request.resource.data.text is string && request.resource.data.text.size() <= 3000
+        && (!('to' in request.resource.data) || (request.resource.data.to != '' && request.resource.data.to == feedbackEmail()))
+        && (!('message' in request.resource.data) || 'to' in request.resource.data);
     }
   }
 }
