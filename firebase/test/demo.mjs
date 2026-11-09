@@ -267,10 +267,12 @@ try {
   await page.fill('#fbText', 'Emailed idea');
   await page.click('#fbSend');
   await page.waitForSelector('#fbAgain');
-  ok('with an email address set, a new message carries the email for the extension', await page.evaluate(() => {
-    const f = FEEDBACK.find((x) => x.text === 'Emailed idea');
-    return !!f && f.to === 'head@demo.school' && /suggestion from Demo Owner/.test(f.message.subject) && f.message.text.includes('Emailed idea');
-  }));
+  // the inbox list updates a moment after saving, so wait for the new message to arrive in it
+  const emailed = await page.waitForFunction(() => FEEDBACK.find((x) => x.text === 'Emailed idea'), null, { timeout: 5000 })
+    .then((h) => h.jsonValue()).catch(() => null);
+  ok('with an email address set, a new message carries the email for the extension',
+    !!emailed && emailed.to === 'head@demo.school' && /suggestion from Demo Owner/.test(emailed.message.subject) && emailed.message.text.includes('Emailed idea'),
+    JSON.stringify(emailed));
 
   // HTML written into a record (by a teacher, outside the app) is shown as text and never runs
   const XSS = '"><img src=x onerror="window.__xss=1">';
