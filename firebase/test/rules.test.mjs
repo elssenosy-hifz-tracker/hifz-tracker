@@ -92,6 +92,41 @@ test('teachers read everything and record in their own group', async () => {
   await assertSucceeds(getDoc(doc(db, 'members/bilal@example.com')));
 });
 
+test('teachers record in any group of the schools they work in (covering a class)', async () => {
+  await env.withSecurityRulesDisabled(async (ctx) => {
+    const db = ctx.firestore();
+    await updateDoc(doc(db, 'classes/c1'), { school: 'sA' });
+    await updateDoc(doc(db, 'classes/c2'), { school: 'sA' });
+    await setDoc(doc(db, 'classes/c3'), { name: 'Group 3', teacher: 't5', school: 'sB' });
+    await setDoc(doc(db, 'students/s3'), { name: 'Hana', cls: 'c3' });
+    await updateDoc(doc(db, 'teachers/t1'), { schools: ['sA'] });
+  });
+  const db = as('bilal@example.com');
+  // another teacher's group in the same school: record like a substitute
+  await assertSucceeds(setDoc(doc(db, 'events/c1'), { sid: 's2', type: 'session' }));
+  await assertSucceeds(updateDoc(doc(db, 'events/other'), { att: 'late' }));
+  await assertSucceeds(setDoc(doc(db, 'events/a_s2_2026-11-09'), { sid: 's2', date: '2026-11-09', type: 'session', att: 'absent' }));
+  await assertSucceeds(setDoc(doc(db, 'marks/m3'), { sid: 's2', w: 5, k: 'hifz' }));
+  await assertSucceeds(updateDoc(doc(db, 'students/s2'), { pos: 12 }));
+  await assertSucceeds(setDoc(doc(db, 'meetings/c2_2026-11-09'), { cls: 'c2', date: '2026-11-09', status: 'held' }));
+  await assertSucceeds(updateDoc(doc(db, 'classes/c2'), { tajweed: { 0: '2026-11-09' } }));
+  await assertSucceeds(setDoc(doc(db, 'requests/r2'), { sid: 's2', from: 'c2', to: 'c1', status: 'open' }));
+  // ... but not the main teacher's or the admin's part of that group
+  await assertFails(updateDoc(doc(db, 'students/s2'), { name: 'Changed' }));
+  await assertFails(setDoc(doc(db, 'students/s8'), { name: 'New', cls: 'c2' }));
+  await assertFails(setDoc(doc(db, 'groupnotes/c2'), { text: 'x', by: 't1', at: 1 }));
+  await assertFails(setDoc(doc(db, 'access/c2_t1'), { cid: 'c2', tid: 't1', kind: 'always', from: '2026-11-09' }));
+  await assertFails(setDoc(doc(db, 'absences/a2'), { cid: 'c2', tid: 't1', date: '2026-11-10' }));
+  await assertFails(updateDoc(doc(db, 'classes/c2'), { name: 'Renamed' }));
+  // a school the teacher does not work in: nothing
+  await assertFails(setDoc(doc(db, 'events/e7'), { sid: 's3', type: 'session' }));
+  await assertFails(updateDoc(doc(db, 'students/s3'), { pos: 3 }));
+  await assertFails(setDoc(doc(db, 'meetings/c3_2026-11-09'), { cls: 'c3', date: '2026-11-09' }));
+  // a paused teacher records nowhere outside their own groups
+  await env.withSecurityRulesDisabled(async (ctx) => { await updateDoc(doc(ctx.firestore(), 'teachers/t1'), { active: false }); });
+  await assertFails(setDoc(doc(db, 'events/e8'), { sid: 's2', type: 'session' }));
+});
+
 test('teachers cannot write in other groups or change the school setup', async () => {
   const db = as('bilal@example.com');
   await assertFails(setDoc(doc(db, 'events/e5'), { sid: 's2', type: 'session' }));

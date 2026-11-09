@@ -20,8 +20,17 @@ function accMerge(o,d){if(!o||(o.kind!=="always"&&(o.until||o.from)<iso(today())
   const from=o.from<d.from?o.from:d.from,until=[o.until||o.from,d.until||d.from].sort().pop();return {...d,from,until,kind:from===until?"day":"until"}}
 const grantAccess=d=>db.doc("access/"+d.cid+"_"+d.tid).set(accMerge(ACCESS.find(a=>a.id===d.cid+"_"+d.tid),d));
 function subsFor(cid,d){return ACCESS.filter(a=>a.cid===cid&&accessActive(a,d))}
+// A teacher's own groups: main teacher, or substitute access now. They fill the teacher's Students tabs, show parents' details
+// and get the automatic absent marks. A teacher records in any group of the schools they work in (teachers.schools, as the
+// security rules check it), so they can cover a class at short notice.
+function isMyCls(cid){const t=meTeacher();if(!t)return false;const c=classes.find(x=>x.id===cid);return !!(c&&c.teacher===t.id)||subsFor(cid).some(a=>a.tid===t.id)}
+const myCls=()=>classes.filter(c=>isMyCls(c.id));
+function inMySchool(cid){const t=meTeacher(),c=classes.find(x=>x.id===cid);return !!(t&&c&&c.school&&Array.isArray(t.schools)&&t.schools.includes(c.school))}
+const tchMode=()=>schoolOn()&&!isAdminV()&&!isSupervisor()&&!!meTeacher();
 function canEditCls(cid){if(!schoolOn())return true;if(isSupervisor())return false;if(isAdminV())return true;const t=meTeacher();if(!t)return false;
-  const c=classes.find(x=>x.id===cid);if(c&&c.teacher===t.id)return true;return subsFor(cid).some(a=>a.tid===t.id)}
+  return isMyCls(cid)||inMySchool(cid)}
+// Parents' phone number and messages: admins, supervisors, and the student's own teachers.
+function seesPersonal(sid){if(!schoolOn()||isAdminV()||isSupervisor())return true;const st=allStudents.find(s=>s.id===sid);return !!(st&&isMyCls(st.cls))}
 function canEditSid(sid){const st=allStudents.find(s=>s.id===sid);return st?canEditCls(st.cls):true}
 const myMainCls=()=>{const t=meTeacher();return t?classes.filter(c=>c.teacher===t.id):[]};
 // A teacher may add students to the groups they teach and start a new group of their own (rules: students and classes create).
@@ -31,7 +40,7 @@ const tchNewSchool=()=>{const c=myMainCls().find(x=>schOfCls(x.id));if(c)return 
 function myPick(td){if(!schoolOn()||isAdminV())return null;const t=meTeacher();if(!t)return null;return td.find(c=>c.teacher===t.id)||td.find(c=>subsFor(c.id).some(a=>a.tid===t.id))||null}
 function schoolBanner(){if(!schoolOn())return null;const t=meTeacher();
   if(isSupervisor())return `<div class="banner info">Supervisor view: you can see every group and report. Nothing can be changed from this account.</div>`;
-  if(t)return `<div class="banner info">Signed in as <b>${esc(t.name)}</b>. You record and edit in your own groups; other groups are view only 🔒 unless you are given substitute access.</div>`;
+  if(t)return `<div class="banner info">Signed in as <b>${esc(t.name)}</b>. You can record in any group of your school, for example when you cover a class. Parents' details show only in your own groups.</div>`;
   return null}
 const lastByTeacher=()=>{const t=meTeacher();return t?t.name:null};
 
@@ -48,12 +57,13 @@ function schoolInit(){
 function schoolGuard(){if(!schoolOn())return;
   if(isSupervisor()&&["session","test","buddy","edit","add","classes","fees","place","settings","school","waitlist","saved"].includes(view.name)){view=view.id?{name:"student",id:view.id}:{name:"today"};return}
   if(["session","test","saved"].includes(view.name)&&view.id&&!canEditSid(view.id))view={name:"student",id:view.id,locked:1};
+  if(view.name==="wa"&&view.id&&!seesPersonal(view.id))view={name:"student",id:view.id};
   if(["school","waitlist"].includes(view.name)&&!isAdminV())view={name:"today"}}
 
 // ----- after every render: locks, group panel on Today, student panel, examiner -----
 function schoolAfter(){const v=document.getElementById("view");if(!v)return;
   try{schMigrate()}catch(_){}
-  if((view.name==="today"||view.name==="list")&&SCHOOLS.length>1&&!v.querySelector("#schSw")){v.insertAdjacentHTML("afterbegin",schSwitch());wireSchSwitch(v)}
+  if((view.name==="today"||(view.name==="list"&&!tchMode()))&&SCHOOLS.length>1&&!v.querySelector("#schSw")){v.insertAdjacentHTML("afterbegin",schSwitch());wireSchSwitch(v)}
   document.body.classList.toggle("roall",schoolOn()&&isSupervisor());
   if(!schoolOn()&&view.name!=="school")return;
   if(view.name==="today"){const p=v.querySelector(".tnow");if(!p)return;const cid=p.dataset.cid;
@@ -161,7 +171,7 @@ function renderSchool(el,sub){
     <div><p class="small muted lbl">Role</p><div class="seg" id="t_role">${Object.entries(SC_ROLES).map(([k,v])=>`<button type="button" class="fbtn ${(t&&t.role||"teacher")===k?"on":""}" data-r="${k}">${v}</button>`).join("")}</div></div>
     ${SCHOOLS.length>1?`<div><p class="small muted lbl">Works in</p>${SCHOOLS.map(s=>`<label class="chk"><input type="checkbox" data-tsch="${s.id}" ${tSchools.includes(s.id)?"checked":""}> ${esc(s.name)}</label>`).join("")}</div>`:""}
     <div><p class="small muted lbl">Main teacher of</p>${classes.map(c=>`<label class="chk"><input type="checkbox" data-tc="${c.id}" ${t&&c.teacher===t.id?"checked":""}> ${cName(c)} ${c.teacher&&(!t||c.teacher!==t.id)&&tName(c.teacher)?`<span class="small muted">(now ${esc(tName(c.teacher))})</span>`:""}</label>`).join("")}</div>
-    <p class="small muted">A teacher sees every group but records and edits only in their own groups, or where they are given substitute access.</p>
+    <p class="small muted">A teacher sees every group and can record in any group of the schools they work in. Parents' details show only in their own groups and where they have substitute access.</p>
     <div class="actions"><button class="primary" type="submit">Save teacher</button><button type="button" id="t_cancel">Cancel</button>${t?`<button type="button" id="t_pause">${t.active===false?"Activate teacher":"Pause teacher (keeps their records)"}</button>${linked(t)?'<button type="button" class="link small" id="t_unlink">Unlink account</button>':""}<button type="button" class="link small neg" id="t_del">Delete teacher</button>`:""}<span class="small muted" id="t_msg"></span></div></form>`;
   wireBack(el);const q=x=>el.querySelector(x);const f=q("#tForm");
   f.querySelectorAll("input").forEach(i=>i.addEventListener("focus",()=>busy=true));let role=(ed&&ed.role)||"teacher";

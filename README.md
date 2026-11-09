@@ -40,9 +40,10 @@ How it fits together:
   values, so data looks exactly as it did in the Claude store.
 - **Who gets in:** the owners in `firebase/owners.json` (also listed in `firestore.rules`; a test checks they match), plus every
   teacher in the app's Teachers list (School → Teachers) who has a sign-in email. Owners and admins keep `members/<email>`
-  in sync with that list automatically; the rules read it. Roles: admin (everything), teacher (records only in their own
-  groups and groups they have substitute access to, stored as `access/<group>_<teacher>`; cannot change the school setup or
-  access), supervisor (read only). The rules also refuse unknown collections and record ids with HTML characters. Only
+  in sync with that list automatically; the rules read it. Roles: admin (everything), teacher (records in any group of the
+  schools they work in, `teachers/<id>.schools`, which the admins' app keeps to include the schools of their own groups;
+  substitute notes, substitute access, stored as `access/<group>_<teacher>`, and absences only for their own groups; cannot
+  change the school setup; parents' details show only in their own and substitute groups), supervisor (read only). The rules also refuse unknown collections and record ids with HTML characters. Only
   verified emails count.
 - Data from the Claude version moves over with the app's own backup: in the old version, Settings → Grading, points,
   holidays, backup → *Download full backup*; on the new site, same place → *Restore from a backup file*.

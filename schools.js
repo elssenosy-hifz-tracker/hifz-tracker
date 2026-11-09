@@ -26,6 +26,9 @@ async function schMigrate(){if(schMigr||!isAdminV()||!loaded||!SCH_LOADED||!TCH_
   const oldAcc=ACCESS.filter(a=>a.cid&&a.tid&&a.id!==a.cid+"_"+a.tid).sort((x,y)=>(x.at||0)-(y.at||0));
   if(oldAcc.length){schMigr=true;try{for(const{id,...d}of oldAcc){const k=d.cid+"_"+d.tid,m=accMerge(ACCESS.find(a=>a.id===k),d);await db.doc("access/"+k).set(m);
     ACCESS=ACCESS.filter(a=>a.id!==id&&a.id!==k).concat({...m,id:k});await db.doc("access/"+id).delete()}}catch(e){console.error(e)}setTimeout(()=>schMigr=false,3000);return}
+  // a teacher works in the schools of the groups they teach: the security rules let them record across those schools
+  const tAdd=TEACHERS.filter(t=>Array.isArray(t.schools)).map(t=>[t,[...new Set(classes.filter(c=>c.teacher===t.id&&c.school&&schById(c.school)&&!t.schools.includes(c.school)).map(c=>c.school))]]).filter(x=>x[1].length);
+  if(tAdd.length){schMigr=true;try{for(const[t,add]of tAdd){const s=[...t.schools,...add];await db.doc("teachers/"+t.id).update({schools:s});t.schools=s}}catch(e){console.error(e)}setTimeout(()=>schMigr=false,3000);return}
   const one=SCHOOLS.length===1?SCHOOLS[0].id:null;
   const need=!SCHOOLS.length||(one&&(classes.some(c=>!c.school)||TEACHERS.some(t=>!Array.isArray(t.schools))||WAITING.some(w=>!w.school)));if(!need)return;
   schMigr=true;

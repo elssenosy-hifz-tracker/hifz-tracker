@@ -18,15 +18,16 @@ export function sampleData() {
   const everyDay = [0, 1, 2, 3, 4, 5, 6];
   const data = {
     settings: { main: { school: { name: 'Demo Quran School' } } },
+    schools: { s1: { name: 'Demo Quran School', n: 1 } },
     teachers: {
-      t1: { name: 'Amina', role: 'admin', active: true, n: 1, email: DEMO_USERS.admin.email },
-      t2: { name: 'Bilal', role: 'teacher', active: true, n: 2, email: DEMO_USERS.teacher.email, phone: '+61400111222' },
-      t3: { name: 'Khalid', role: 'teacher', active: true, n: 3, email: 'khalid@demo.school', phone: '+61400333444' },
-      t4: { name: 'Sami', role: 'supervisor', active: true, n: 4, email: DEMO_USERS.supervisor.email },
+      t1: { name: 'Amina', role: 'admin', active: true, n: 1, email: DEMO_USERS.admin.email, schools: ['s1'] },
+      t2: { name: 'Bilal', role: 'teacher', active: true, n: 2, email: DEMO_USERS.teacher.email, phone: '+61400111222', schools: ['s1'] },
+      t3: { name: 'Khalid', role: 'teacher', active: true, n: 3, email: 'khalid@demo.school', phone: '+61400333444', schools: ['s1'] },
+      t4: { name: 'Sami', role: 'supervisor', active: true, n: 4, email: DEMO_USERS.supervisor.email, schools: ['s1'] },
     },
     classes: {
-      c1: { name: 'Kids class', n: 1, days: everyDay, time: '15:30', end: '17:00', teacher: 't2' },
-      c2: { name: 'Teens class', n: 2, days: [1, 3, 5], time: '17:30', end: '19:00', teacher: 't3' },
+      c1: { name: 'Kids class', n: 1, days: everyDay, time: '15:30', end: '17:00', teacher: 't2', school: 's1' },
+      c2: { name: 'Teens class', n: 2, days: [1, 3, 5], time: '17:30', end: '19:00', teacher: 't3', school: 's1' },
     },
     students: {},
     events: {},
@@ -50,11 +51,14 @@ export function sampleData() {
   ];
   let e = 1;
   const tjp = { s1: { iqlab: [1, 4], ikhfa: [3, 5], madd5: [4, 4] } }; // tajweed practice results (right, asked) per rule
+  // parents' WhatsApp numbers: a teacher sees them only in their own group (Bilal: Kids class)
+  const phone = { s1: '+61400555001', s2: '+61400555002', s4: '+61400555004', s5: '+61400555005' };
   for (const [id, name, cls, amount, pos] of kids) {
     const days = data.classes[cls].days;
     data.students[id] = {
       name, cls, order: 'nas', startS: 113, prevS: [], amount, readPages: 20, readStart: 1, farDays: 7, days, start: daysAgo(60), pos,
       ...(tjp[id] ? { tjp: tjp[id] } : {}),
+      ...(phone[id] ? { phone: phone[id] } : {}),
     };
     for (let k = 14; k >= 1; k--) {
       const d = new Date(); d.setDate(d.getDate() - k);
@@ -70,5 +74,14 @@ export function sampleData() {
         };
     }
   }
+  // Bilal covered Khalid's Teens class a week ago: his session for Fatima shows "recorded by Bilal (covering)"
+  data.events.cover1 = {
+    sid: 's4', type: 'session', date: daysAgo(7), att: 'present', hw: true, hifzLines: 15, hifzMist: 1, hifzGrade: 'Very good',
+    revType: 'near', revMist: 0, revGrade: 'Excellent', by: 'Bilal', tid: 't2', uid: DEMO_USERS.teacher.id, at: 1, pv: 2,
+  };
+  data.events.own1 = {
+    sid: 's1', type: 'session', date: daysAgo(6), att: 'present', hw: true, hifzLines: 5, hifzMist: 0, hifzGrade: 'Excellent',
+    revType: 'far', revMist: 0, revGrade: 'Excellent', by: 'Bilal', tid: 't2', uid: DEMO_USERS.teacher.id, at: 1, pv: 2,
+  };
   return data;
 }
