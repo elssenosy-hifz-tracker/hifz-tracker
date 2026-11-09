@@ -211,6 +211,23 @@ try {
   await reloadBy(() => page.selectOption('#hifzDemoRole', 'owner'));
   await ready();
 
+  // HTML written into a record (by a teacher, outside the app) is shown as text and never runs
+  const XSS = '"><img src=x onerror="window.__xss=1">';
+  await page.evaluate(async (x) => {
+    const db = await claude.use('db');
+    await db.doc('students/s1').update({ id: x });
+    await db.collection('events').add({ sid: 's1', type: 'test', date: '2026-01-05', juz: x, result: 'pass', mistakes: x });
+    await db.collection('events').add({ sid: 's1', type: 'monthly', date: '2026-01-06', score: x, places: [] });
+  }, XSS);
+  await page.waitForTimeout(300);
+  await page.evaluate(() => { go({ name: 'list' }); });
+  await page.waitForSelector('.slist .row');
+  const rowId = await page.evaluate(() => students.find((s) => s.name === 'Yusuf Changed').id);
+  await page.evaluate(() => { go({ name: 'student', id: 's1' }); });
+  await page.waitForTimeout(500);
+  ok('HTML in stored records is not run or inserted', rowId === 's1' && await page.evaluate(() => !window.__xss && !document.querySelector('img[src="x"]')));
+  ok('the page has a script Content-Security-Policy', /script-src 'self' 'sha256-/.test(await page.getAttribute('meta[http-equiv="Content-Security-Policy"]', 'content')));
+
   // reset
   page.once('dialog', (d) => d.accept());
   await reloadBy(() => page.click('#hifzDemoReset'));

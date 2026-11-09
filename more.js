@@ -3,8 +3,8 @@ let schedule=[],fees=[];
 const pref=(k,d)=>{try{return localStorage.getItem(k)||d}catch(e){return d}},setPref=(k,v)=>{try{localStorage.setItem(k,v)}catch(e){}};
 const FLAME=`<svg class="flame" width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2c1 4-3 6-3 10a3 3 0 0 0 6 0c0-2-1-3-1-5 3 2 5 5 5 8a7 7 0 0 1-14 0c0-6 7-8 7-13z" fill="#E0662B"/></svg>`;
 function moreInit(){if(!db)return;
-  db.collection("schedule").onSnapshot(s=>{schedule=s.docs.map(d=>({id:d.id,...d.data()}));render()},()=>{});
-  db.collection("fees").onSnapshot(s=>{fees=s.docs.map(d=>({id:d.id,...d.data()}));render()},()=>{});}
+  db.collection("schedule").onSnapshot(s=>{schedule=s.docs.map(d=>({...d.data(),id:d.id}));render()},()=>{});
+  db.collection("fees").onSnapshot(s=>{fees=s.docs.map(d=>({...d.data(),id:d.id}));render()},()=>{});}
 
 // ----- 1. ready streak -----
 const STREAK_BADGES=[10,25,50,100];

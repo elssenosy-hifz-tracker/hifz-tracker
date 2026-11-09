@@ -15,7 +15,7 @@ const schVisible=c=>SCHOOLS.length<2||CUR_SCH==="all"||!schById(CUR_SCH)||schOfC
 function schoolNameFor(cid){const sid=cid?schOfCls(cid):"";if(sid)return schById(sid).name||"";if(SCHOOLS.length===1)return SCHOOLS[0].name||"";return ((settings.main||{}).school||{}).name||""}
 
 function schoolsInit(){
-  const sub=(c,f,k=0)=>{try{db.collection(c).onSnapshot(s=>{f(s.docs.map(d=>({id:d.id,...d.data()})));render()},()=>{if(k<5)setTimeout(()=>sub(c,f,k+1),3000)})}catch(_){}};
+  const sub=(c,f,k=0)=>{try{db.collection(c).onSnapshot(s=>{f(s.docs.map(d=>({...d.data(),id:d.id})));render()},()=>{if(k<5)setTimeout(()=>sub(c,f,k+1),3000)})}catch(_){}};
   sub("schools",a=>{SCHOOLS=a.sort((x,y)=>(x.n||0)-(y.n||0)||String(x.name).localeCompare(String(y.name)));SCH_LOADED=true});
   sub("hours",a=>{HOURS=a;HRS_LOADED=true});
 }

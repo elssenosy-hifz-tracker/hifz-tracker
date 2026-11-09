@@ -27,7 +27,7 @@ function schoolBanner(){if(!schoolOn())return null;const t=meTeacher();
 const lastByTeacher=()=>{const t=meTeacher();return t?t.name:null};
 
 function schoolInit(){
-  const sub=(c,f,k=0)=>{try{db.collection(c).onSnapshot(s=>{f(s.docs.map(d=>({id:d.id,...d.data()})));render()},()=>{if(k<5)setTimeout(()=>sub(c,f,k+1),3000)})}catch(_){}};
+  const sub=(c,f,k=0)=>{try{db.collection(c).onSnapshot(s=>{f(s.docs.map(d=>({...d.data(),id:d.id})));render()},()=>{if(k<5)setTimeout(()=>sub(c,f,k+1),3000)})}catch(_){}};
   sub("teachers",a=>{TCH_LOADED=true;TEACHERS=a.sort((x,y)=>(x.n||0)-(y.n||0)||String(x.name).localeCompare(String(y.name)))});
   sub("access",a=>ACCESS=a);sub("absences",a=>ABSENCES=a);sub("requests",a=>REQS=a);sub("waiting",a=>WAITING=a);
   sub("links",a=>{LINKS={};a.forEach(x=>LINKS[x.id]=x)});sub("groupnotes",a=>{GNOTES={};a.forEach(x=>GNOTES[x.id]=x)});

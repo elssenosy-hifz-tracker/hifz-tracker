@@ -22,7 +22,7 @@ import {
 import {
   initializeFirestore, connectFirestoreEmulator, persistentLocalCache, persistentMultipleTabManager,
   memoryLocalCache, collection, doc, onSnapshot, addDoc, setDoc, updateDoc, deleteDoc, getDoc, getDocs,
-  FieldPath,
+  FieldPath, terminate, clearIndexedDbPersistence,
 } from 'firebase/firestore';
 import { FIREBASE_CONFIG, OWNERS, USE_EMULATORS, EMULATOR_PROJECT } from './config.js';
 
@@ -31,6 +31,7 @@ const config = USE_EMULATORS
   : FIREBASE_CONFIG;
 const app = initializeApp(config);
 const auth = getAuth(app);
+let leaving = false; // set while signing out (see signOutAndClear)
 let fs;
 try {
   fs = initializeFirestore(app, {
@@ -92,7 +93,7 @@ const dbApi = {
   collection: (c) => ({
     onSnapshot: (next, error) =>
       onSnapshot(collection(fs, c), (s) => next(wrapSnap(s)), (e) => {
-        if (!auth.currentUser) return; // signing out: listeners lose access just before the page reloads
+        if (!auth.currentUser || leaving) return; // signing out: listeners lose access just before the page reloads
         console.error(`Listening to "${c}" failed:`, e);
         if (error) error(e);
       }),
@@ -121,10 +122,10 @@ function startMemberSync() {
   let members = null;
   let timer = null;
   const schedule = () => { clearTimeout(timer); timer = setTimeout(reconcile, 400); };
-  onSnapshot(collection(fs, 'teachers'), (s) => { teachers = s.docs.map((d) => ({ id: d.id, ...dec(d.data()) })); schedule(); },
-    (e) => auth.currentUser && console.error('members sync: teachers', e));
+  onSnapshot(collection(fs, 'teachers'), (s) => { teachers = s.docs.map((d) => ({ ...dec(d.data()), id: d.id })); schedule(); },
+    (e) => auth.currentUser && !leaving && console.error('members sync: teachers', e));
   onSnapshot(collection(fs, 'members'), (s) => { members = Object.fromEntries(s.docs.map((d) => [d.id, d.data()])); schedule(); },
-    (e) => auth.currentUser && console.error('members sync: members', e));
+    (e) => auth.currentUser && !leaving && console.error('members sync: members', e));
   function reconcile() {
     if (!teachers || !members) return;
     const want = {};
@@ -192,6 +193,13 @@ function showGate(html) {
   return gate;
 }
 function hideGate() { if (gate) gate.remove(); gate = null; }
+// Signing out also removes this browser's offline copy of the school's records (shared phones). It cannot be removed
+// while another tab still has the app open; then it goes at the next sign-out.
+async function signOutAndClear() {
+  leaving = true;
+  try { await terminate(fs); await clearIndexedDbPersistence(fs); } catch (e) { console.warn('Offline copy not removed', e); }
+  await signOut(auth);
+}
 const setMsg = (el, text, kind = '') => { const m = el.querySelector('.msg'); if (m) { m.textContent = text; m.className = `msg ${kind}`; } };
 
 const AUTH_ERRORS = {
@@ -284,14 +292,14 @@ function showNoAccess(user, reason) {
     <button id="gRetry" class="primary">Try again</button>
     <button id="gOut">Use a different account</button>`);
   el.querySelector('#gRetry').onclick = () => location.reload();
-  el.querySelector('#gOut').onclick = () => signOut(auth);
+  el.querySelector('#gOut').onclick = signOutAndClear;
 }
 
 function showAccount(user, roleLabel) {
   const bar = document.createElement('div');
   bar.id = 'hifzAcct';
   bar.innerHTML = `<span>Signed in as <b>${esc(user.email)}</b> (${esc(roleLabel)})</span><button type="button">Sign out</button>`;
-  bar.querySelector('button').onclick = () => signOut(auth);
+  bar.querySelector('button').onclick = signOutAndClear;
   (document.getElementById('app') || document.body).after(bar);
 }
 

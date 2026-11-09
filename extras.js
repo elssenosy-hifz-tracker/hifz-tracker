@@ -118,7 +118,7 @@ function certPanel(st){
   const fresh=list.filter(e=>daysBetween(parse(e.date),today())<=14);
   return `<div class="panel" id="certPanel"><div class="head"><h3>Certificates</h3><span class="small muted">${list.length} juz passed</span></div>
     ${fresh.length?`<div class="banner ok">Juz ${fresh.map(e=>e.juz).join(", ")} passed recently. Download the certificate to print or send to the parents.</div>`:""}
-    <div class="chips">${list.map(e=>`<button class="chip plain certbtn" data-cert="${e.id}">Juz ${e.juz} · ${fmtShort(e.date)}</button>`).join("")}</div>
+    <div class="chips">${list.map(e=>`<button class="chip plain certbtn" data-cert="${esc(e.id)}">Juz ${esc(e.juz)} · ${fmtShort(e.date)}</button>`).join("")}</div>
     <p class="small muted cmsg"></p></div>`}
 function juzCertificate(st,e){const g=GRD(),c=clsName(st.cls);
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Certificate - ${esc(st.name)}</title><style>@page{size:A4 landscape;margin:0}body{margin:0;font-family:Georgia,'Times New Roman',serif;color:#14302b}
@@ -128,8 +128,8 @@ function juzCertificate(st,e){const g=GRD(),c=clsName(st.cls);
   .n{font-size:36px;margin:4px 0;border-bottom:1px solid #b08a3e;padding:0 30px 6px}.l{font-size:18px;max-width:200mm;line-height:1.5;margin:0}.s{font-size:14px;color:#555;margin:0}
   .f{display:flex;gap:50mm;margin-top:14mm;font-size:13px}.f div{border-top:1px solid #14302b;padding-top:4px;min-width:55mm}</style></head>
   <body><div class="c"><div class="b"><span class="orn tl"></span><span class="orn tr"></span><span class="orn bl"></span><span class="orn br"></span>
-  <p class="ar" dir="rtl"><span>بارك</span><span>الله</span><span>فيك</span></p><div class="k">Certificate of achievement</div><h1>Juz ${e.juz}</h1><p class="l">This certifies that</p><div class="n">${esc(st.name)}</div>
-  <p class="l">has recited Juz ${e.juz} of the Noble Quran from memory and passed its test${e.mistakes!=null?` with ${e.mistakes} ${e.mistakes===1?"mistake":"mistakes"}`:""}.</p>
+  <p class="ar" dir="rtl"><span>بارك</span><span>الله</span><span>فيك</span></p><div class="k">Certificate of achievement</div><h1>Juz ${esc(e.juz)}</h1><p class="l">This certifies that</p><div class="n">${esc(st.name)}</div>
+  <p class="l">has recited Juz ${esc(e.juz)} of the Noble Quran from memory and passed its test${e.mistakes!=null?` with ${esc(e.mistakes)} ${e.mistakes===1?"mistake":"mistakes"}`:""}.</p>
   <p class="s">${fmt(parse(e.date))} ${parse(e.date).getFullYear()}${c?` · ${esc(c)}`:""} · ${pagesOf(st.pos+PREV_LINES)} pages memorized so far</p>
   <div class="f"><div>${esc(g.teacher||"Teacher")}</div><div>Parent</div></div></div></div></body></html>`}
 

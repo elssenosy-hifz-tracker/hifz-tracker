@@ -262,13 +262,13 @@ async function init(){
   try{if(window.claude&&claude.use){db=await claude.use("db");downloads=await claude.use("downloads")}}catch(e){}
   if(!db){storeMissing=true;loaded=true;render();return}
   detectRole();moreInit();schoolInit();
-  db.collection("students").onSnapshot(s=>{allStudents=s.docs.map(d=>({id:d.id,...d.data()}));students=allStudents.filter(x=>!x.archived);loaded=true;render()},()=>{loaded=true;storeMissing=true;render()});
-  db.collection("events").onSnapshot(s=>{events=s.docs.map(d=>({id:d.id,...d.data()}));READY.add("events");render()});
+  db.collection("students").onSnapshot(s=>{allStudents=s.docs.map(d=>({...d.data(),id:d.id}));students=allStudents.filter(x=>!x.archived);loaded=true;render()},()=>{loaded=true;storeMissing=true;render()});
+  db.collection("events").onSnapshot(s=>{events=s.docs.map(d=>({...d.data(),id:d.id}));READY.add("events");render()});
   db.collection("settings").onSnapshot(s=>{settings={};s.docs.forEach(d=>settings[d.id]=d.data());READY.add("settings");render()});
-  db.collection("marks").onSnapshot(s=>{marks=s.docs.map(d=>({id:d.id,...d.data()}));READY.add("marks");render()});
-  db.collection("breaks").onSnapshot(s=>{breaks=s.docs.map(d=>({id:d.id,...d.data()}));READY.add("breaks");render()});
-  db.collection("meetings").onSnapshot(s=>{meetings=s.docs.map(d=>({id:d.id,...d.data()}));READY.add("meetings");render()});
-  db.collection("classes").onSnapshot(s=>{classes=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(a.n||0)-(b.n||0)||String(a.name).localeCompare(String(b.name)));READY.add("classes");render()});
+  db.collection("marks").onSnapshot(s=>{marks=s.docs.map(d=>({...d.data(),id:d.id}));READY.add("marks");render()});
+  db.collection("breaks").onSnapshot(s=>{breaks=s.docs.map(d=>({...d.data(),id:d.id}));READY.add("breaks");render()});
+  db.collection("meetings").onSnapshot(s=>{meetings=s.docs.map(d=>({...d.data(),id:d.id}));READY.add("meetings");render()});
+  db.collection("classes").onSnapshot(s=>{classes=s.docs.map(d=>({...d.data(),id:d.id})).sort((a,b)=>(a.n||0)-(b.n||0)||String(a.name).localeCompare(String(b.name)));READY.add("classes");render()});
 }
 const go=v=>{view=v;render();scrollTo(0,0)};
 let busy=false; // don't re-render while a form is being filled
@@ -437,8 +437,8 @@ function evBody(e){
     if(e.note)t+=`<br><span class="muted">Note: ${esc(e.note)}</span>`;
     return t;
   }
-  if(e.type==="test")return `<b>Juz ${e.juz} test${examinerText(e)}:</b> ${e.result==="pass"?'<span class="chip ok">Passed</span>':'<span class="chip bad">Not passed, stays in near review for a week</span>'}${e.mistakes!=null?` · ${e.mistakes} ${e.mistakes===1?"mistake":"mistakes"}`:""}${e.note?`<br><span class="muted">${esc(e.note)}</span>`:""}`;
-  if(e.type==="monthly")return `<b>Monthly random test:</b> ${e.score}/${(e.places||[]).length} correct${(e.places||[]).length?` · ${(e.places||[]).map(x=>`${x.ok?"✓":"✗"} ${errPlace(x)}`).join(", ")}`:""}${e.note?`<br><span class="muted">${esc(e.note)}</span>`:""}`;
+  if(e.type==="test")return `<b>Juz ${esc(e.juz)} test${examinerText(e)}:</b> ${e.result==="pass"?'<span class="chip ok">Passed</span>':'<span class="chip bad">Not passed, stays in near review for a week</span>'}${e.mistakes!=null?` · ${esc(e.mistakes)} ${e.mistakes===1?"mistake":"mistakes"}`:""}${e.note?`<br><span class="muted">${esc(e.note)}</span>`:""}`;
+  if(e.type==="monthly")return `<b>Monthly random test:</b> ${esc(e.score)}/${(e.places||[]).length} correct${(e.places||[]).length?` · ${(e.places||[]).map(x=>`${x.ok?"✓":"✗"} ${errPlace(x)}`).join(", ")}`:""}${e.note?`<br><span class="muted">${esc(e.note)}</span>`:""}`;
   if(e.type==="consol")return `<b>Consolidation week</b> after ${e.block} juz`;
   if(e.type==="emergency")return `<span class="chip warn">Emergency day</span> near review only${e.note?" · "+esc(e.note):""}`;
   if(e.type==="makeup")return `<span class="chip info">Makeup day</span>${e.note?" "+esc(e.note):""}`;
@@ -1014,7 +1014,7 @@ function reportBody(st,from,to){
     <tr><td>${pres.length}</td><td>${lates.length}${(()=>{const m=lates.map(e=>lateMin(st,e)).filter(x=>x!=null);return m.length?` (avg ${Math.round(m.reduce((a,b)=>a+b,0)/m.length)} min)`:""})()}</td><td>${abs.length}</td><td>${exc.length}</td><td>${mine.reduce((t,e)=>t+ptsOf(e),0)}</td><td>${pagesOf(hl)}</td><td>${hm}${hl?` (${Math.round(hm/Math.max(1,pagesOf(hl))*10)/10} per page)`:""}</td><td>${rm}</td><td>${juzDoneList(st.pos).length}</td></tr></table>
     <p>Last memorized: ${la?pieceText({...la,a1:la.a2}):"not started"}${PREV_R.length?` · memorized before: ${prevSummary()}`:""}</p>
     <h2>Sessions</h2>${ses.length?`<table><tr><th>Date</th><th>Attendance</th><th>Hifz</th><th>Review</th><th>Homework and behaviour</th><th>Points</th></tr>${ses.map(e=>`<tr><td>${fmtShort(e.date)}${e.by&&e.by!==teacherName()?`<br><small>by ${esc(e.by)}</small>`:""}</td><td>${(ATT[e.att]||ATT.present)[1]}${e.att==="late"&&e.arr?` (arrived ${esc(e.arr)}${lateMin(st,e)!=null?`, ${lateMin(st,e)} min late`:""})`:""}</td><td>${e.hifzNR?"<b>Not ready</b>":e.hifzLines>0?`${esc(hifzShown(e))} · ${e.hifzMist||0} mistakes${e.hifzGrade?" · "+esc(gradeEn(e.hifzGrade)):""}`:"—"}</td><td>${e.revNR?"<b>Not ready</b>":e.revType&&e.revType!=="none"?`${esc(REV[e.revType]||e.revType)}: ${esc(revShown(e))} · ${e.revMist||0} mistakes${e.revGrade?" · "+esc(gradeEn(e.revGrade)):""}`:"—"}${(e.revSkip||[]).length?`<br><small>Not recited: ${esc(skipText(e))}</small>`:""}</td><td>${[e.hw==null?"":e.hw?"Homework done":"Homework not done",...(e.beh||[]).map(b=>(BEH.find(x=>x[0]===b)||[0,b])[1])].filter(Boolean).join(", ")||"—"}</td><td>${ptsOf(e)}</td></tr>`).join("")}</table>`:'<p class="muted">No sessions in this period.</p>'}
-    ${tests.length||mon.length?`<h2>Tests</h2><table><tr><th>Date</th><th>Test</th><th>Result</th></tr>${tests.map(e=>`<tr><td>${fmtShort(e.date)}</td><td>Juz ${e.juz}</td><td>${e.result==="pass"?"Passed":"Not passed"}${e.mistakes!=null?` · ${e.mistakes} mistakes`:""}</td></tr>`).join("")}${mon.map(e=>`<tr><td>${fmtShort(e.date)}</td><td>Monthly random test</td><td>${e.score}/${(e.places||[]).length}</td></tr>`).join("")}</table>`:""}
+    ${tests.length||mon.length?`<h2>Tests</h2><table><tr><th>Date</th><th>Test</th><th>Result</th></tr>${tests.map(e=>`<tr><td>${fmtShort(e.date)}</td><td>Juz ${esc(e.juz)}</td><td>${e.result==="pass"?"Passed":"Not passed"}${e.mistakes!=null?` · ${esc(e.mistakes)} mistakes`:""}</td></tr>`).join("")}${mon.map(e=>`<tr><td>${fmtShort(e.date)}</td><td>Monthly random test</td><td>${e.score}/${(e.places||[]).length}</td></tr>`).join("")}</table>`:""}
     ${(()=>{const c=new Map();ses.forEach(e=>(e.beh||[]).forEach(b=>c.set(b,(c.get(b)||0)+1)));return c.size?`<h2>Behaviour</h2><p>${[...c.entries()].map(([b,n])=>`${(BEH.find(x=>x[0]===b)||[0,b])[1]}: ${n}`).join(" · ")}</p>`:""})()}
     ${errs.length?`<h2>Mistake places</h2><p>${errs.map(x=>`${errPlace(x)} (${ERR_KINDS[x.k]||x.k})`).join(", ")}</p>`:""}
     ${notes.length?`<h2>Teacher's notes</h2>${notes.map(e=>`<p>${fmtShort(e.date)}: ${esc(e.text||e.note)}</p>`).join("")}`:""}`}}
