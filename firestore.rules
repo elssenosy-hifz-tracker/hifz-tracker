@@ -6,13 +6,14 @@ rules_version = '2';
 //   members     one doc per teacher email in members/<email>, kept in sync with the app's Teachers list by
 //               owners/admins (firebase/src/boot.js, startMemberSync). Role: admin | teacher | supervisor.
 //     admin       read and write everything, manage teachers and members.
-//     teacher     read everything, write class data; cannot change anyone's role, email or active flag.
+//     teacher     read everything; record only in their own groups (classes.teacher) and in groups they have
+//                 substitute access to (access/<cid>_<tid>): sessions, attendance, mushaf marks, class log,
+//                 a student's position and practice fields. Nothing that changes the school's setup.
 //     supervisor  read only.
 //   anyone else nothing.
 //
 // Only verified emails count: Google and email-link sign-in are verified, so nobody can claim a teacher's
 // address by creating a password account with it.
-// Which groups a teacher may record in is still decided in the app, as it was in the Claude version.
 
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -46,11 +47,61 @@ service cloud.firestore {
     function isAdmin() {
       return isOwner() || (isMember() && memberRole() == 'admin');
     }
+    function isTeacher() {
+      return !isOwner() && isMember() && memberRole() == 'teacher';
+    }
     function canRead() {
       return isOwner() || isMember();
     }
-    function canWrite() {
-      return isOwner() || (isMember() && memberRole() != 'supervisor');
+    function myTid() {
+      return member().get('tid', '');
+    }
+
+    // Record data must not carry an `id` field that differs from the document id, and document ids may not
+    // contain characters that matter in HTML: the app shows ids inside its pages.
+    function safeId(id) {
+      return id.matches('^[^"\'<>&`\\s]{1,200}$');
+    }
+    function safeData(id) {
+      return request.resource.data.get('id', id) == id;
+    }
+
+    // ---- teacher scope ----
+    function pad2(n) {
+      return n < 10 ? '0' + string(n) : string(n);
+    }
+    function dayOf(t) {
+      return string(t.year()) + '-' + pad2(t.month()) + '-' + pad2(t.day());
+    }
+    // Substitute access dates are the school's local dates; UTC can be a day off, so allow one day either side.
+    function accessActive(a) {
+      return a.get('kind', '') == 'always'
+        || (a.get('from', '') <= dayOf(request.time + duration.value(1, 'd'))
+            && (a.get('until', '') != '' ? a.until : a.get('from', '')) >= dayOf(request.time - duration.value(1, 'd')));
+    }
+    function classDoc(cid) {
+      return get(/databases/$(database)/documents/classes/$(cid));
+    }
+    function isMainTeacher(cid) {
+      return cid is string && cid != '' && myTid() != ''
+        && exists(/databases/$(database)/documents/classes/$(cid))
+        && classDoc(cid).data.get('teacher', '') == myTid();
+    }
+    function hasSubAccess(cid) {
+      let path = /databases/$(database)/documents/access/$(cid + '_' + myTid());
+      return exists(path) && get(path).data.get('cid', '') == cid && get(path).data.get('tid', '') == myTid()
+        && accessActive(get(path).data);
+    }
+    function canTeachClass(cid) {
+      return cid is string && cid != '' && (isMainTeacher(cid) || hasSubAccess(cid));
+    }
+    function canTeachStudent(sid) {
+      return sid is string && sid != ''
+        && exists(/databases/$(database)/documents/students/$(sid))
+        && canTeachClass(get(/databases/$(database)/documents/students/$(sid)).data.get('cls', ''));
+    }
+    function changedOnly(keys) {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(keys);
     }
 
     // Access list. People may read their own entry (the app checks it at sign-in); admins manage all of it.
@@ -59,18 +110,78 @@ service cloud.firestore {
       allow read, write: if isAdmin();
     }
 
-    // Teachers list. Only admins add or remove teachers or change role, email or active (those decide access).
-    match /teachers/{id} {
-      allow read: if canRead();
-      allow create, delete: if isAdmin();
-      allow update: if isAdmin()
-        || (canWrite() && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'email', 'active']));
+    // Collections the app uses. Admins write everything; teachers write within their groups, as below.
+    match /{coll}/{id} {
+      allow read: if coll in ['students', 'events', 'classes', 'meetings', 'breaks', 'marks', 'settings', 'schedule',
+                              'fees', 'teachers', 'access', 'absences', 'groupnotes', 'requests', 'waiting', 'links',
+                              'schools', 'hours']
+        && canRead();
+      allow delete: if coll != 'members' && isAdmin();
+      allow create, update: if coll in ['students', 'events', 'classes', 'meetings', 'breaks', 'marks', 'settings',
+                                        'schedule', 'fees', 'teachers', 'access', 'absences', 'groupnotes', 'requests',
+                                        'waiting', 'links', 'schools', 'hours']
+        && safeId(id) && safeData(id) && isAdmin();
     }
 
-    // All other app data: students, events, classes, marks, settings, ...
-    match /{coll}/{id} {
-      allow read: if coll != 'members' && coll != 'teachers' && canRead();
-      allow write: if coll != 'members' && coll != 'teachers' && canWrite();
+    // Sessions, attendance, tests, notes and points: the student must be in one of the teacher's groups.
+    match /events/{id} {
+      // attendance ids are a_<sid>_<date>: nobody may take another student's id
+      allow create: if isTeacher() && safeId(id) && safeData(id) && canTeachStudent(request.resource.data.get('sid', ''))
+        && (!id.matches('^a_.*') || id == 'a_' + request.resource.data.sid + '_' + request.resource.data.get('date', ''));
+      allow update: if isTeacher() && safeData(id) && canTeachStudent(resource.data.get('sid', ''))
+        && canTeachStudent(request.resource.data.get('sid', ''));
+      allow delete: if isTeacher() && canTeachStudent(resource.data.get('sid', ''));
+    }
+    // Mushaf mistake marks: same as events.
+    match /marks/{id} {
+      allow create: if isTeacher() && safeId(id) && safeData(id) && canTeachStudent(request.resource.data.get('sid', ''));
+      allow update: if isTeacher() && safeData(id) && canTeachStudent(resource.data.get('sid', ''))
+        && canTeachStudent(request.resource.data.get('sid', ''));
+      allow delete: if isTeacher() && canTeachStudent(resource.data.get('sid', ''));
+    }
+    // A student's position, fixed mistakes, review focus and tajweed practice; never name, group or other details.
+    match /students/{id} {
+      allow update: if isTeacher() && canTeachClass(resource.data.get('cls', ''))
+        && changedOnly(['pos', 'fixed', 'focus', 'tjp']);
+    }
+    // Class log (id <cid>_<date>).
+    match /meetings/{id} {
+      allow create: if isTeacher() && safeId(id) && safeData(id) && canTeachClass(request.resource.data.get('cls', ''))
+        && id == request.resource.data.cls + '_' + request.resource.data.get('date', '');
+      allow update: if isTeacher() && safeData(id) && canTeachClass(resource.data.get('cls', ''))
+        && request.resource.data.get('cls', '') == resource.data.get('cls', '');
+    }
+    // Tajweed topics covered, saved with the class log.
+    match /classes/{id} {
+      allow update: if isTeacher() && canTeachClass(id) && changedOnly(['tajweed']);
+    }
+    // The main teacher of a group: notes for substitutes, substitute access, absences.
+    match /groupnotes/{cid} {
+      allow create, update: if isTeacher() && safeId(cid) && safeData(cid) && isMainTeacher(cid);
+    }
+    match /access/{id} {
+      allow create, update: if isTeacher() && safeId(id) && safeData(id) && isMainTeacher(request.resource.data.get('cid', ''))
+        && id == request.resource.data.cid + '_' + request.resource.data.get('tid', '');
+      allow delete: if isTeacher() && isMainTeacher(resource.data.get('cid', ''));
+    }
+    match /absences/{id} {
+      allow create: if isTeacher() && safeId(id) && safeData(id) && isMainTeacher(request.resource.data.get('cid', ''))
+        && request.resource.data.get('tid', '') == myTid();
+      allow delete: if isTeacher() && (isMainTeacher(resource.data.get('cid', '')) || resource.data.get('tid', '') == myTid());
+    }
+    // Asking an admin to move a student to another group.
+    match /requests/{id} {
+      allow create: if isTeacher() && safeId(id) && safeData(id) && canTeachStudent(request.resource.data.get('sid', ''))
+        && request.resource.data.get('status', '') == 'open';
+    }
+    // A teacher's own hours (id <tid>_<date>) and own sign-in link.
+    match /hours/{id} {
+      allow create, update: if isTeacher() && safeId(id) && safeData(id) && myTid() != ''
+        && request.resource.data.get('tid', '') == myTid() && id == myTid() + '_' + request.resource.data.get('date', '');
+    }
+    match /links/{uid} {
+      allow create, update: if isTeacher() && uid == request.auth.uid && safeData(uid) && myTid() != ''
+        && request.resource.data.get('tid', '') == myTid();
     }
   }
 }

@@ -81,23 +81,24 @@ const backup = {
     ok('account bar shows owner', /owner/.test(await o.textContent('#hifzAcct')));
 
     // data round trip through the db adapter, including arrays inside arrays and undefined values
-    // (a scratch collection the app does not render, read back through onSnapshot like the app does)
+    // (links: the rules allow only the app's collections; the app looks links up by user id, so these scratch
+    // records are never shown; read back through onSnapshot like the app does)
     const rt = await o.evaluate(async () => {
       const db = await claude.use('db');
-      await db.doc('e2e/rt').set({ name: 'Round trip', grid: [[1, 2], [3, [4, 5]]], gone: undefined, n: [1, null] });
-      await db.doc('e2e/rt').update({ 'a.b': 1, nested: { x: [[7]] } });
+      await db.doc('links/rt').set({ name: 'Round trip', grid: [[1, 2], [3, [4, 5]]], gone: undefined, n: [1, null] });
+      await db.doc('links/rt').update({ 'a.b': 1, nested: { x: [[7]] } });
       const viaListener = await new Promise((res) => {
-        const off = db.collection('e2e').onSnapshot((s) => { const d = s.docs.find((x) => x.id === 'rt'); if (d && d.data().nested) { off(); res(d.data()); } });
+        const off = db.collection('links').onSnapshot((s) => { const d = s.docs.find((x) => x.id === 'rt'); if (d && d.data().nested) { off(); res(d.data()); } });
       });
-      const viaGet = (await db.doc('e2e/rt').get()).data();
+      const viaGet = (await db.doc('links/rt').get()).data();
       return { viaListener, same: JSON.stringify(viaListener) === JSON.stringify(viaGet) };
     });
     const d = rt.viaListener;
     ok('nested arrays round-trip', JSON.stringify(d.grid) === '[[1,2],[3,[4,5]]]' && JSON.stringify(d.nested.x) === '[[7]]' && rt.same, JSON.stringify(rt));
     ok('undefined dropped like JSON, dotted key kept as one field', !('gone' in d) && d['a.b'] === 1 && !d.a);
-    const added = await o.evaluate(async () => (await (await claude.use('db')).collection('e2e').add({ type: 'note' })).id);
+    const added = await o.evaluate(async () => (await (await claude.use('db')).collection('links').add({ type: 'note' })).id);
     ok('add() returns an id', typeof added === 'string' && added.length > 5);
-    await o.evaluate(async (id) => { const db = await claude.use('db'); await db.doc('e2e/' + id).delete(); await db.doc('e2e/rt').delete(); }, added);
+    await o.evaluate(async (id) => { const db = await claude.use('db'); await db.doc('links/' + id).delete(); await db.doc('links/rt').delete(); }, added);
 
     // restore a backup through the real Settings screen
     await o.evaluate(() => go({ name: 'classes' })); // Settings → Grading, points, holidays, backup

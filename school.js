@@ -14,6 +14,11 @@ const isSupervisor=()=>{const t=meTeacher();return !!(t&&t.role==="supervisor")}
 const tName=id=>{const t=TEACHERS.find(x=>x.id===id);return t?t.name:""};
 const mainTeacher=cid=>{const c=classes.find(x=>x.id===cid);return c&&c.teacher?TEACHERS.find(t=>t.id===c.teacher&&t.active!==false)||null:null};
 function accessActive(a,d){d=d||iso(today());if(a.kind==="always")return true;if(a.kind==="day")return a.from===d;return a.from<=d&&d<=(a.until||a.from)}
+// One access record per group and teacher (access/<cid>_<tid>, which the security rules read): a new grant extends a
+// current or future one (dates become one span; "always" wins) instead of replacing it.
+function accMerge(o,d){if(!o||(o.kind!=="always"&&(o.until||o.from)<iso(today())))return d;if(o.kind==="always"||d.kind==="always")return {...d,kind:"always"};
+  const from=o.from<d.from?o.from:d.from,until=[o.until||o.from,d.until||d.from].sort().pop();return {...d,from,until,kind:from===until?"day":"until"}}
+const grantAccess=d=>db.doc("access/"+d.cid+"_"+d.tid).set(accMerge(ACCESS.find(a=>a.id===d.cid+"_"+d.tid),d));
 function subsFor(cid,d){return ACCESS.filter(a=>a.cid===cid&&accessActive(a,d))}
 function canEditCls(cid){if(!schoolOn())return true;if(isSupervisor())return false;if(isAdminV())return true;const t=meTeacher();if(!t)return false;
   const c=classes.find(x=>x.id===cid);if(c&&c.teacher===t.id)return true;return subsFor(cid).some(a=>a.tid===t.id)}
@@ -89,7 +94,7 @@ function nextClassDate(c){for(let k=0;k<=7;k++){const d=addDays(today(),k);if((c
 function wireGroupPanel(el,cid){const q=s=>el.querySelector(s);const t=meTeacher(),by=t?t.id:"admin";
   const n=q("#gNote");if(n){n.addEventListener("focus",()=>busy=true);q("#gNoteSave").onclick=async()=>{try{await db.doc("groupnotes/"+cid).set({text:n.value.trim(),by,at:Date.now()});q("#gNoteMsg").textContent="Saved.";busy=false}catch(_){q("#gNoteMsg").textContent="Not saved."}}}
   let kind="day";el.querySelectorAll("#gKind [data-k]").forEach(b=>b.onclick=()=>{kind=b.dataset.k;el.querySelectorAll("#gKind [data-k]").forEach(x=>x.classList.toggle("on",x===b));q("#gUntil").hidden=kind!=="until";busy=true});
-  const g=q("#gSubGo");if(g)g.onclick=async()=>{const tid=q("#gSubT").value,d=iso(today());try{await db.collection("access").add({cid,tid,kind,from:d,until:kind==="until"?q("#gUntil").value:d,by,at:Date.now()});busy=false;render(true)}catch(_){q("#gSubMsg").textContent="Not saved."}};
+  const g=q("#gSubGo");if(g)g.onclick=async()=>{const tid=q("#gSubT").value,d=iso(today());try{await grantAccess({cid,tid,kind,from:d,until:kind==="until"?q("#gUntil").value:d,by,at:Date.now()});busy=false;render(true)}catch(_){q("#gSubMsg").textContent="Not saved."}};
   el.querySelectorAll("[data-unsub]").forEach(b=>b.onclick=async()=>{try{await db.doc("access/"+b.dataset.unsub).delete()}catch(_){}});
   el.querySelectorAll("[data-unabs]").forEach(b=>b.onclick=async()=>{try{await db.doc("absences/"+b.dataset.unabs).delete()}catch(_){}});
   const ab=q("#gAbsGo");if(ab){[q("#gAbsD"),q("#gAbsN")].forEach(i=>i.addEventListener("focus",()=>busy=true));ab.onclick=async()=>{const mt=mainTeacher(cid);const tid=t&&classes.some(c=>c.id===cid&&c.teacher===t.id)?t.id:mt&&mt.id;if(!tid)return;
@@ -105,7 +110,7 @@ function adminAlerts(){const abs=ABSENCES.filter(a=>!a.sub&&a.date>=iso(today())
      <span class="actions"><button class="primary sm" data-rqok="${r.id}">Move</button><button class="sm" data-rqno="${r.id}">Decline</button></span></div>`}).join("")}</div>`}
 function wireAdminAlerts(el){
   el.querySelectorAll("[data-absgo]").forEach(b=>b.onclick=async()=>{const a=ABSENCES.find(x=>x.id===b.dataset.absgo);const tid=el.querySelector(`[data-absub="${a.id}"]`).value;
-    try{await db.collection("access").add({cid:a.cid,tid,kind:"day",from:a.date,until:a.date,by:"admin",at:Date.now()});await db.doc("absences/"+a.id).update({sub:tid});
+    try{await grantAccess({cid:a.cid,tid,kind:"day",from:a.date,until:a.date,by:"admin",at:Date.now()});await db.doc("absences/"+a.id).update({sub:tid});
       const t=TEACHERS.find(x=>x.id===tid),c=classes.find(x=>x.id===a.cid),ph=phoneDigits(t&&t.phone);
       const msg=`السلام عليكم ${t?t.name:""}،\nأرجو أن تكون بديلًا لحلقة «${c?c.name:""}» يوم ${fmtShort(a.date)}${c&&c.time?" الساعة "+c.time:""}. افتح برنامج متابعة الحفظ، وستجد الحلقة مفتوحة لك للتسجيل.${GNOTES[a.cid]&&GNOTES[a.cid].text?"\nملاحظات المعلم: "+GNOTES[a.cid].text:""}\nجزاك الله خيرًا.`;
       if(ph)window.open(`https://wa.me/${ph}?text=${encodeURIComponent(msg)}`,"_blank")}catch(_){}});

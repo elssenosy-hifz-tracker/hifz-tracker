@@ -21,6 +21,11 @@ beforeEach(async () => {
   await env.withSecurityRulesDisabled(async (ctx) => {
     const db = ctx.firestore();
     await setDoc(doc(db, 'students/s1'), { name: 'Yusuf', cls: 'c1' });
+    await setDoc(doc(db, 'students/s2'), { name: 'Omar', cls: 'c2' });
+    await setDoc(doc(db, 'classes/c1'), { name: 'Group 1', teacher: 't1' });
+    await setDoc(doc(db, 'classes/c2'), { name: 'Group 2', teacher: 't5' });
+    await setDoc(doc(db, 'events/own'), { sid: 's1', type: 'session' });
+    await setDoc(doc(db, 'events/other'), { sid: 's2', type: 'session' });
     await setDoc(doc(db, 'teachers/t1'), { name: 'Bilal', role: 'teacher', email: 'bilal@example.com', active: true });
     await setDoc(doc(db, 'members/bilal@example.com'), { tid: 't1', role: 'teacher', active: true });
     await setDoc(doc(db, 'members/sami@example.com'), { tid: 't2', role: 'supervisor', active: true });
@@ -66,18 +71,60 @@ test('strangers are refused but may look up their own (missing) access entry', a
   await assertFails(setDoc(doc(db, 'members/stranger@example.com'), { role: 'admin', active: true, tid: 'x' }));
 });
 
-test('teachers read everything and write class data', async () => {
+test('teachers read everything and record in their own group', async () => {
   const db = as('Bilal@Example.com');
   await assertSucceeds(getDocs(collection(db, 'students')));
   await assertSucceeds(setDoc(doc(db, 'events/e2'), { sid: 's1', type: 'session' }));
-  await assertSucceeds(updateDoc(doc(db, 'students/s1'), { pos: 10 }));
+  await assertSucceeds(updateDoc(doc(db, 'events/e2'), { att: 'late' }));
   await assertSucceeds(deleteDoc(doc(db, 'events/e2')));
+  await assertSucceeds(setDoc(doc(db, 'marks/m1'), { sid: 's1', w: 5, k: 'hifz' }));
+  await assertSucceeds(updateDoc(doc(db, 'students/s1'), { pos: 10, fixed: ['a'], focus: null, tjp: {} }));
+  await assertSucceeds(setDoc(doc(db, 'meetings/c1_2026-11-09'), { cls: 'c1', date: '2026-11-09', status: 'held' }));
+  await assertSucceeds(setDoc(doc(db, 'events/a_s1_2026-11-09'), { sid: 's1', date: '2026-11-09', type: 'session', att: 'present' }));
+  await assertSucceeds(updateDoc(doc(db, 'classes/c1'), { tajweed: { 0: '2026-11-09' } }));
+  await assertSucceeds(setDoc(doc(db, 'groupnotes/c1'), { text: 'Page 20', by: 't1', at: 1 }));
+  await assertSucceeds(setDoc(doc(db, 'access/c1_t6'), { cid: 'c1', tid: 't6', kind: 'day', from: '2026-11-09', until: '2026-11-09' }));
+  await assertSucceeds(deleteDoc(doc(db, 'access/c1_t6')));
+  await assertSucceeds(setDoc(doc(db, 'absences/a1'), { cid: 'c1', tid: 't1', date: '2026-11-10' }));
+  await assertSucceeds(setDoc(doc(db, 'requests/r1'), { sid: 's1', from: 'c1', to: 'c2', status: 'open' }));
+  await assertSucceeds(setDoc(doc(db, 'hours/t1_2026-11-09'), { tid: 't1', date: '2026-11-09', start: '09:00' }));
+  await assertSucceeds(setDoc(doc(db, 'links/Bilal_Example_com'), { tid: 't1' }));
   await assertSucceeds(getDoc(doc(db, 'members/bilal@example.com')));
+});
+
+test('teachers cannot write in other groups or change the school setup', async () => {
+  const db = as('bilal@example.com');
+  await assertFails(setDoc(doc(db, 'events/e5'), { sid: 's2', type: 'session' }));
+  await assertFails(updateDoc(doc(db, 'events/other'), { att: 'absent' }));
+  await assertFails(deleteDoc(doc(db, 'events/other')));
+  await assertFails(updateDoc(doc(db, 'events/own'), { sid: 's2' }));
+  await assertFails(setDoc(doc(db, 'events/e6'), { type: 'session' }));
+  await assertFails(setDoc(doc(db, 'marks/m2'), { sid: 's2', w: 5 }));
+  await assertFails(updateDoc(doc(db, 'students/s2'), { pos: 10 }));
+  await assertFails(updateDoc(doc(db, 'students/s1'), { name: 'Changed' }));
+  await assertFails(updateDoc(doc(db, 'students/s1'), { cls: 'c2' }));
+  await assertFails(setDoc(doc(db, 'students/s9'), { name: 'New', cls: 'c1' }));
+  await assertFails(deleteDoc(doc(db, 'students/s1')));
+  await assertFails(setDoc(doc(db, 'meetings/c2_2026-11-09'), { cls: 'c2', date: '2026-11-09' }));
+  await assertFails(setDoc(doc(db, 'meetings/c2_2026-11-10'), { cls: 'c1', date: '2026-11-10' })); // another group's log id
+  await assertFails(setDoc(doc(db, 'events/a_s2_2026-11-10'), { sid: 's1', date: '2026-11-10', type: 'session' })); // another student's attendance id
+  await assertFails(updateDoc(doc(db, 'classes/c1'), { teacher: 't9' }));
+  await assertFails(updateDoc(doc(db, 'classes/c2'), { tajweed: {} }));
+  await assertFails(setDoc(doc(db, 'access/c2_t1'), { cid: 'c2', tid: 't1', kind: 'always' }));
+  await assertFails(setDoc(doc(db, 'access/x1'), { cid: 'c1', tid: 't6', kind: 'always' }));
+  await assertFails(setDoc(doc(db, 'absences/a2'), { cid: 'c2', tid: 't1' }));
+  await assertFails(setDoc(doc(db, 'groupnotes/c2'), { text: 'x' }));
+  await assertFails(setDoc(doc(db, 'hours/t5_2026-11-09'), { tid: 't5', date: '2026-11-09' }));
+  await assertFails(setDoc(doc(db, 'links/Bilal_Example_com'), { tid: 't5' }));
+  await assertFails(setDoc(doc(db, 'links/someone_else'), { tid: 't1' }));
+  await assertFails(setDoc(doc(db, 'settings/main'), { school: { name: 'x' } }));
+  await assertFails(setDoc(doc(db, 'fees/f1'), { sid: 's1' }));
+  await assertFails(setDoc(doc(db, 'anything/x'), { a: 1 }));
 });
 
 test('teachers cannot change access', async () => {
   const db = as('bilal@example.com');
-  await assertSucceeds(updateDoc(doc(db, 'teachers/t1'), { phone: '+61400111222' }));
+  await assertFails(updateDoc(doc(db, 'teachers/t1'), { phone: '+61400111222' }));
   await assertFails(updateDoc(doc(db, 'teachers/t1'), { role: 'admin' }));
   await assertFails(updateDoc(doc(db, 'teachers/t1'), { email: 'other@example.com' }));
   await assertFails(updateDoc(doc(db, 'teachers/t1'), { active: false }));
@@ -87,11 +134,34 @@ test('teachers cannot change access', async () => {
   await assertFails(getDocs(collection(db, 'members')));
 });
 
+test('substitute access lets a teacher record in another group while it is active', async () => {
+  const today = new Date().toISOString().slice(0, 10);
+  const grant = (d) => env.withSecurityRulesDisabled((ctx) => setDoc(doc(ctx.firestore(), 'access/c2_t1'), { cid: 'c2', tid: 't1', ...d }));
+  const db = as('bilal@example.com');
+  await grant({ kind: 'day', from: today, until: today });
+  await assertSucceeds(setDoc(doc(db, 'events/sub1'), { sid: 's2', type: 'session' }));
+  await assertFails(setDoc(doc(db, 'access/c2_t6'), { cid: 'c2', tid: 't6', kind: 'day' })); // only the main teacher passes access on
+  await grant({ kind: 'until', from: '2020-01-01', until: '2020-01-31' });
+  await assertFails(setDoc(doc(db, 'events/sub2'), { sid: 's2', type: 'session' }));
+  await grant({ kind: 'always', from: '2020-01-01', until: '2020-01-01' });
+  await assertSucceeds(setDoc(doc(db, 'events/sub3'), { sid: 's2', type: 'session' }));
+});
+
+test('ids that could carry HTML are refused, even for owners', async () => {
+  const db = as(OWNERS[0]);
+  await assertFails(setDoc(doc(db, 'students/x"><img src=x>'), { name: 'x' }));
+  await assertFails(setDoc(doc(db, 'students/s5'), { id: '"><img src=x>', name: 'x' }));
+  await assertSucceeds(setDoc(doc(db, 'students/s5'), { id: 's5', name: 'x' }));
+  await assertSucceeds(setDoc(doc(db, 'events/a_s1_2026-11-09'), { sid: 's1' }));
+  await assertFails(updateDoc(doc(as('bilal@example.com'), 'events/own'), { id: 'other' }));
+});
+
 test('supervisors read but cannot write', async () => {
   const db = as('sami@example.com');
   await assertSucceeds(getDoc(doc(db, 'students/s1')));
   await assertFails(setDoc(doc(db, 'events/e3'), { sid: 's1' }));
   await assertFails(updateDoc(doc(db, 'teachers/t1'), { phone: '1' }));
+  await assertFails(updateDoc(doc(db, 'students/s1'), { pos: 3 }));
 });
 
 test('admins manage teachers and access', async () => {
