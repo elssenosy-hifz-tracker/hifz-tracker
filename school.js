@@ -63,7 +63,7 @@ function schoolAfter(){const v=document.getElementById("view");if(!v)return;
     const t=meTeacher(),subNow=t&&subsFor(cid).some(a=>a.tid===t.id)&&!classes.some(c=>c.id===cid&&c.teacher===t.id);
     if(subNow){p.insertAdjacentHTML("afterbegin",`<div class="banner ok">You are the substitute for <b>${esc(clsName(cid))}</b> today. You can record and edit here.</div>${GNOTES[cid]&&GNOTES[cid].text?`<div class="banner warn"><b>Notes for the substitute:</b> ${esc(GNOTES[cid].text)}</div>`:""}`)}
     p.insertAdjacentHTML("afterend",groupPanel(cid));wireGroupPanel(v,cid);
-    {const hp=hoursPanel();if(hp){p.insertAdjacentHTML("beforebegin",hp);wireHours(v)}}
+    {const hp=hoursPanel();if(hp){p.insertAdjacentHTML("afterend",hp);wireHours(v)}}
     if(isAdminV())v.insertAdjacentHTML("afterbegin",adminAlerts());wireAdminAlerts(v);
     if(!isAdminV()&&!meTeacher()&&ME_UID)v.insertAdjacentHTML("afterbegin",claimBox());wireClaim(v)}
   if(view.name==="list")v.querySelectorAll(".row[data-id]").forEach(r=>r.classList.toggle("ro",!canEditSid(r.dataset.id)));

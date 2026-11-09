@@ -150,6 +150,17 @@ try {
   const lay = await page.evaluate(() => ({ nav: [...document.querySelectorAll('#nav button')].filter((b) => !b.hidden).map((b) => b.dataset.nav), help: !!document.getElementById('helpTop'), oldTop: !!document.getElementById('bkTop'), rows: document.querySelectorAll('.slist .row').length, att: document.querySelectorAll('#view .att, #view [data-att]').length }));
   ok('bottom bar has 5 buttons and the header has Help', lay.nav.join() === 'today,list,tajweed,reports,settings' && lay.help && !lay.oldTop, JSON.stringify(lay));
   ok('Students page is search, class tabs and the list', lay.rows === 6 && lay.att === 0 && !!(await page.$('#srch')), JSON.stringify(lay));
+  // Today page: a card for each class meeting today; tapping one opens its students, with a way back
+  await page.evaluate(() => { classes.forEach((c) => { c.days = [0, 1, 2, 3, 4, 5, 6]; }); go({ name: 'today' }); });
+  await page.waitForSelector('.tpick');
+  const tp = await page.evaluate(() => ({ cards: [...document.querySelectorAll('.tpick')].map((b) => b.dataset.tcls), list: !!document.querySelector('.tnow') }));
+  ok('Today lists the classes meeting today as cards, before any student list', tp.cards.length === 2 && !tp.list, JSON.stringify(tp));
+  await page.click(`.tpick[data-tcls="${tp.cards[0]}"]`);
+  await page.waitForSelector('.tnow .trow');
+  const tc = await page.evaluate(() => { const n = document.querySelector('.tnow'), h = document.querySelector('.hpanel'); return { cls: n.dataset.cid, rows: n.querySelectorAll('.trow').length, want: classOrder(n.dataset.cid).length, back: !!document.getElementById('back'), hoursBelow: !h || !!(n.compareDocumentPosition(h) & Node.DOCUMENT_POSITION_FOLLOWING) }; });
+  ok('tapping a class card opens its students, with Back, and the hours panel below them', tc.cls === tp.cards[0] && tc.rows === tc.want && tc.want > 0 && tc.back && tc.hoursBelow, JSON.stringify(tc));
+  await page.click('#back');
+  await page.waitForSelector('.tpick');
   await page.evaluate(() => { go({ name: 'settings' }); });
   await page.waitForSelector('[data-hub="backup"]');
   ok('Backup and Schools are in Settings', !!(await page.$('[data-hub="schools"]')));
