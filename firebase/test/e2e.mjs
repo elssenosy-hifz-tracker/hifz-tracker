@@ -67,6 +67,10 @@ const backup = {
     const s = await newPage(browser);
     await signInByEmailLink(s, 'stranger@example.com');
     ok('stranger sees "no access"', /do not have access yet/i.test(await s.textContent('#hifzGate')));
+    // "Use a different account" clears the offline copy, which closes the database connection: the page must start again
+    const reloaded = await Promise.all([s.waitForEvent('load', { timeout: 15000 }), s.click('#gOut')]).then(() => true, () => false);
+    await s.waitForSelector('#gGoogle', { timeout: 15000 }).catch(() => {});
+    ok('"Use a different account" signs out and starts again', reloaded && !!(await s.$('#gGoogle')));
 
     // ---- owner ----
     const o = await newPage(browser);

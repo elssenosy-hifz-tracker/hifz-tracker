@@ -226,7 +226,9 @@ try {
   await page.evaluate(() => { go({ name: 'student', id: 's1' }); });
   await page.waitForTimeout(500);
   ok('HTML in stored records is not run or inserted', rowId === 's1' && await page.evaluate(() => !window.__xss && !document.querySelector('img[src="x"]')));
-  ok('the page has a script Content-Security-Policy', /script-src 'self' 'sha256-/.test(await page.getAttribute('meta[http-equiv="Content-Security-Policy"]', 'content')));
+  const csp = await page.getAttribute('meta[http-equiv="Content-Security-Policy"]', 'content');
+  // other script sources must be exact paths: a whole host (e.g. a CDN) would let injected HTML load a library that runs code
+  ok('the page has a script Content-Security-Policy without whole-host sources', /script-src 'self' 'sha256-/.test(csp) && !/https:\/\/[^/\s;]+\/?(\s|;|$)/.test(csp), csp);
 
   // reset
   page.once('dialog', (d) => d.accept());

@@ -199,6 +199,7 @@ async function signOutAndClear() {
   leaving = true;
   try { await terminate(fs); await clearIndexedDbPersistence(fs); } catch (e) { console.warn('Offline copy not removed', e); }
   await signOut(auth);
+  location.reload(); // start again with a fresh database connection
 }
 const setMsg = (el, text, kind = '') => { const m = el.querySelector('.msg'); if (m) { m.textContent = text; m.className = `msg ${kind}`; } };
 

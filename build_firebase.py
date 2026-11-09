@@ -59,8 +59,11 @@ js_start = doc.index('<script>\n', doc.index('<body>')) + len('<script>')
 js_end = doc.rindex('</script>')
 assert doc[js_end:] == '</script>\n</body></html>', 'expected the app script at the end of the page'
 js_hash = base64.b64encode(hashlib.sha256(doc[js_start:js_end].encode('utf8')).digest()).decode()
-csp = ("script-src 'self' 'sha256-%s' https://apis.google.com https://cdnjs.cloudflare.com; "
-       "object-src 'none'; base-uri 'none'" % js_hash)
+# Other sources are exact paths: a whole CDN would let injected HTML load an old library that runs code.
+csp = ("script-src 'self' 'sha256-%s' https://apis.google.com/js/api.js https://apis.google.com/_/scs/abc-static/ "
+       "https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js; object-src 'none'; base-uri 'none'"
+       % js_hash)
+assert 'cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js' in doc, 'update the PDF library path in the CSP'
 charset = '<meta charset="utf-8">'
 assert doc.index(charset) < head_end
 doc = doc.replace(charset, charset + '<meta http-equiv="Content-Security-Policy" content="%s">' % csp, 1)
