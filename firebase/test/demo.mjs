@@ -263,6 +263,8 @@ try {
   await page.fill('#fbMailIn', 'head@demo.school');
   await page.click('#fbMailSave');
   await page.waitForFunction(() => (settings.main || {}).feedbackEmail === 'head@demo.school');
+  await page.waitForTimeout(300);
+  ok('after saving the email address, the page says it is saved and shows the address', await page.evaluate(() => /Saved/.test(document.querySelector('#fbMailMsg').textContent) && document.querySelector('#fbMailBox').open && document.querySelector('#fbMailBox').textContent.includes('Emails go to: head@demo.school')));
   await page.evaluate(() => go({ name: 'feedback' }));
   await page.fill('#fbText', 'Emailed idea');
   await page.click('#fbSend');
