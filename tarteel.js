@@ -333,7 +333,7 @@ function wireAtt(el,date){
   el.querySelectorAll("[data-attx]").forEach(b=>b.onclick=e=>{e.stopPropagation();const ev=events.find(x=>x.id===b.dataset.attx);if(!ev)return;db.doc("events/"+ev.id).delete().then(()=>undoToast("Attendance removed",()=>db.doc("events/"+ev.id).set(plain(ev)))).catch(()=>{})})}
 let autoAbsBusy=false;
 async function autoAbsent(force){if(autoAbsBusy||!loaded||!allReady())return;autoAbsBusy=true;
-  try{const d=iso(today());for(const c of classesToday()){if(typeof canEditCls==="function"&&!canEditCls(c.id))continue;const m=meetingOf(c.id,d);if(m&&(m.status==="cancelled"||m.autoAbs))continue;if(breaks.some(b=>(b.cls==="all"||b.cls===c.id)&&d>=b.from&&d<=b.to))continue;
+  try{const d=iso(today());for(const c of classesToday()){if(typeof canEditCls==="function"&&(!canEditCls(c.id)||(tchMode()&&!isMyCls(c.id))))continue;const m=meetingOf(c.id,d);if(m&&(m.status==="cancelled"||m.autoAbs))continue;if(breaks.some(b=>(b.cls==="all"||b.cls===c.id)&&d>=b.from&&d<=b.to))continue;
     const held=(m&&(m.started||m.ended))||events.some(e=>e.date===d&&e.type==="session"&&!e.auto&&students.some(s=>s.id===e.sid&&s.cls===c.id));if(!held&&force!==c.id)continue;
     const endM=(minsOf(c.end)||((minsOf(c.time)||0)+90))+30;if(!(force===c.id||(m&&m.ended)||nowMins()>=endM))continue;
     const kids=students.filter(s=>s.cls===c.id&&!events.some(e=>(e.type==="session"||e.type==="emergency")&&e.sid===s.id&&e.date===d));

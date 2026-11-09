@@ -280,7 +280,7 @@ function renderCore(force){
   ta.innerHTML="";
   if(!loaded){sub.textContent="Loading students…";el.innerHTML=`<div class="empty">Loading the student list…</div>`;return}
   if(storeMissing){sub.textContent="";el.innerHTML=`<div class="banner bad">The student records can't be reached from this window. Open the page while signed in to your account.</div>`;return}
-  if(SUB&&["classes","edit","add","fees","place","settings","school","waitlist"].includes(view.name)&&!(view.name==="add"&&tchCanAdd())&&!(view.name==="edit"&&tchSurahsOnly(allStudents.find(s=>s.id===view.id))))view={name:"list"};
+  if(SUB&&["classes","edit","add","fees","place","settings","school","waitlist","schools","schoolv","teacher","gmove","handover","sover"].includes(view.name)&&!(view.name==="add"&&tchCanAdd())&&!(view.name==="edit"&&tchSurahsOnly(allStudents.find(s=>s.id===view.id))))view={name:"list"};
   try{schoolGuard()}catch(e){console.error(e)}
   if(view.name==="schools")return renderSchools(el,sub);if(view.name==="schoolv")return renderSchoolV(el,sub);if(view.name==="teacher")return renderTeacher(el,sub);if(view.name==="gmove")return renderGMove(el,sub);if(view.name==="handover")return renderHandover(el,sub);if(view.name==="school")return renderSchool(el,sub);if(view.name==="sover")return renderSover(el,sub);if(view.name==="waitlist")return renderWaitlist(el,sub);
   if(view.name==="today")return renderToday(el,sub,ta);if(view.name==="reports")return renderReports(el,sub);if(view.name==="settings")return renderSettings(el,sub);if(view.name==="wsum")return renderWsum(el,sub);if(view.name==="star")return renderStar(el,sub);if(view.name==="buddy")return renderBuddy(el,sub);
@@ -318,22 +318,28 @@ function classBar(cur){
 }
 
 const clsName=id=>{const c=classes.find(c=>c.id===id);return c?c.name:""};
-function getListCls(){try{return localStorage.getItem("hifz.cls")||myClsDefault()}catch(e){return "all"}}
+// A teacher's Students tabs: their own groups, then "Whole school". It opens on their first group every visit (not remembered).
+let TCH_TAB=null;const tchList=()=>{try{return tchMode()}catch(_){return false}};
+function getListCls(){if(tchList()){const m=myCls();return TCH_TAB&&(TCH_TAB==="school"||m.some(c=>c.id===TCH_TAB))?TCH_TAB:m.length?m[0].id:"school"}try{return localStorage.getItem("hifz.cls")||myClsDefault()}catch(e){return "all"}}
 function myClsDefault(){try{const t=typeof meTeacher==="function"&&meTeacher();if(t&&SUB){const c=classes.find(x=>x.teacher===t.id&&schVisible(x));if(c)return c.id}}catch(_){}return "all"}
-function setListCls(v){try{localStorage.setItem("hifz.cls",v)}catch(e){}}
+function setListCls(v){if(tchList()){TCH_TAB=v;return}try{localStorage.setItem("hifz.cls",v)}catch(e){}}
 function renderList(el,sub,ta){
-  let cur=getListCls();
+  let cur=getListCls();const tm=tchList();
   const valid=new Set(classes.map(c=>c.id)),orphans=students.filter(s=>!valid.has(s.cls));
   const arch=allStudents.filter(s=>s.archived);if(cur==="arch"&&!arch.length)cur="all";
-  if(cur!=="all"&&cur!=="none"&&cur!=="arch"&&!valid.has(cur))cur="all";if(cur==="none"&&!orphans.length)cur="all";
+  if(!tm){if(cur!=="all"&&cur!=="none"&&cur!=="arch"&&!valid.has(cur))cur="all";if(cur==="none"&&!orphans.length)cur="all"}
   const memL=s=>{useOrder(s);return (Number(s.pos)||0)+PREV_LINES};
-  const shown=(cur==="all"?students.filter(s=>{const c=classes.find(x=>x.id===s.cls);return !c||schVisible(c)}):cur==="none"?orphans:students.filter(s=>s.cls===cur)).map(s=>[memL(s),s]).sort((a,b)=>a[0]-b[0]||String(a[1].name).localeCompare(String(b[1].name))).map(x=>x[1]);
-  sub.textContent=`${shown.length} ${shown.length===1?"student":"students"}${cur!=="all"&&cur!=="none"?" in "+clsName(cur):""} · ${fmt(today())}`;
-  const b=document.createElement("button");b.className=tchCanAdd()?"primary":"primary adminonly";b.textContent="Add student";b.onclick=()=>go({name:"add",cls:cur});ta.append(b);
+  const mine=tm?myCls():[],schIds=new Set(tm?classes.filter(c=>isMyCls(c.id)||inMySchool(c.id)).map(c=>c.id):[]),many=cur==="all"||cur==="school";
+  const shown=(cur==="all"?students.filter(s=>{const c=classes.find(x=>x.id===s.cls);return !c||schVisible(c)}):cur==="school"?students.filter(s=>schIds.has(s.cls)):cur==="none"?orphans:students.filter(s=>s.cls===cur)).map(s=>[memL(s),s]).sort((a,b)=>a[0]-b[0]||String(a[1].name).localeCompare(String(b[1].name))).map(x=>x[1]);
+  sub.textContent=`${shown.length} ${shown.length===1?"student":"students"}${cur==="school"?" in the whole school":cur!=="all"&&cur!=="none"?" in "+clsName(cur):""} · ${fmt(today())}`;
+  const b=document.createElement("button");b.className=tchCanAdd()?"primary":"primary adminonly";b.textContent="Add student";b.onclick=()=>go({name:"add",cls:many?undefined:cur});ta.append(b);
 
-  const tabs=`<div class="filters" role="tablist">${[["all","All students",students.length],...classes.filter(schVisible).map(c=>[c.id,c.name,students.filter(s=>s.cls===c.id).length]),...(orphans.length?[["none","No class",orphans.length]]:[]),...(arch.length?[["arch","Archived",arch.length]]:[])].map(([k,n,c])=>`<button class="fbtn ${k===cur?"on":""}" data-cls="${k}" role="tab" aria-selected="${k===cur}">${esc(n)} <span class="cnt">${c}</span></button>`).join("")}</div>`;
-  const wireTabs=()=>{el.querySelectorAll("[data-openc]").forEach(b=>b.onclick=()=>go({name:"class",id:b.dataset.openc,date:iso(today())}));el.querySelectorAll("[data-crep]").forEach(b=>b.onclick=()=>go({name:"crep",id:b.dataset.crep}));el.querySelectorAll("[data-cls]").forEach(b=>b.onclick=()=>{setListCls(b.dataset.cls);render(true)});wireAlerts(el);wireSearch(el);{const g=el.querySelector("[data-gows]");if(g)g.onclick=()=>go({name:"wsum",cls:cur!=="all"?cur:undefined});const h=el.querySelector("[data-gostar]");if(h)h.onclick=()=>go({name:"star",cls:cur!=="all"?cur:undefined})}wireClassSign(el);wireTests(el)};
+  const tabList=tm?[...mine.map(c=>[c.id,c.name,students.filter(s=>s.cls===c.id).length]),["school","Whole school",students.filter(s=>schIds.has(s.cls)).length]]
+    :[["all","All students",students.length],...classes.filter(schVisible).map(c=>[c.id,c.name,students.filter(s=>s.cls===c.id).length]),...(orphans.length?[["none","No class",orphans.length]]:[]),...(arch.length?[["arch","Archived",arch.length]]:[])];
+  const tabs=(tm&&!mine.length?`<div class="banner info" id="noClsMsg">You haven't been given a class yet. Ask the head teacher to add you to one. Until then you can see the whole school here.</div>`:"")+`<div class="filters" role="tablist">${tabList.map(([k,n,c])=>`<button class="fbtn ${k===cur?"on":""}" data-cls="${k}" role="tab" aria-selected="${k===cur}">${esc(n)} <span class="cnt">${c}</span></button>`).join("")}</div>`;
+  const wireTabs=()=>{el.querySelectorAll("[data-openc]").forEach(b=>b.onclick=()=>go({name:"class",id:b.dataset.openc,date:iso(today())}));el.querySelectorAll("[data-crep]").forEach(b=>b.onclick=()=>go({name:"crep",id:b.dataset.crep}));el.querySelectorAll("[data-cls]").forEach(b=>b.onclick=()=>{setListCls(b.dataset.cls);render(true)});wireAlerts(el);wireSearch(el);{const g=el.querySelector("[data-gows]");if(g)g.onclick=()=>go({name:"wsum",cls:many?undefined:cur});const h=el.querySelector("[data-gostar]");if(h)h.onclick=()=>go({name:"star",cls:many?undefined:cur})}wireClassSign(el);wireTests(el)};
   if(cur==="arch"){sub.textContent=`${arch.length} archived`;el.innerHTML=subBanner()+tabs+archivedList();wireTabs();wireArchived(el);return}
+  if(!shown.length&&tm){el.innerHTML=subBanner()+tabs+`<div class="panel empty"><p>No students here yet.</p></div>`;wireTabs();return}
   if(!shown.length){el.innerHTML=subBanner()+tabs+`<div class="panel empty"><h3>No students yet</h3><p>Add your first student: name, daily amount, and hifz days per week. Then choose where they start: from An-Nas or from Al-Fatihah.</p></div>`;wireTabs();return}
   const rank=s=>s.chips.some(c=>c[0]==="bad")?0:s.chips.some(c=>c[0]==="warn")?1:s.chips.some(c=>c[0]==="info")?2:3;
   const rows=shown.map(st=>({st,s:status(st,events)}));
@@ -345,7 +351,7 @@ function renderList(el,sub,ta){
     <div class="row" data-id="${st.id}" role="button" tabindex="0">
       <span class="name">${esc(st.name)}${st.example?' <span class="chip plain">example</span>':""}</span>
       <span class="chips">${chipsHTML(s.chips.slice(0,2))}</span>
-      <span class="meta">${cur==="all"&&clsName(st.cls)?"<bdi>"+esc(clsName(st.cls))+"</bdi>"+(pl?" · ":""):""}${esc(pl)}</span>
+      <span class="meta">${many&&clsName(st.cls)?"<bdi>"+esc(clsName(st.cls))+"</bdi>"+(pl?" · ":""):""}${esc(pl)}</span>
     </div>`}).join("")}</div>`;
   wireTabs();
   el.querySelectorAll(".row").forEach(r=>{const open=()=>go({name:"student",id:r.dataset.id});r.onclick=e=>{if(!e.target.closest(".att"))open()};r.onkeydown=e=>{if(e.key==="Enter"&&e.target===r)open()}});
@@ -371,7 +377,7 @@ function renderStudent(el,sub,st){
     <details class="sfold sjuz"><summary>Juz map and attendance</summary><div class="juzgrid">${JUZ_ORDER.map(j=>`<span class="${s.passed.has(j)?"tested":s.done.includes(j)?"done":j===cj?"cur":""}" title="Juz ${j}">${j}</span>`).join("")}</div>
     <p class="small muted">Green: juz passed its test. Teal: memorized, not tested yet. Last 30 days: present ${pres.filter(attended).length} (late ${pres.filter(e=>e.att==="late").length}), absent ${pres.filter(e=>e.att==="absent").length}, excused ${pres.filter(e=>e.att==="excused").length}.</p></details>
     <div class="bigacts"><button class="primary" id="sesBtn">✎ Record session</button><button class="primary" id="musBtn">📖 Mushaf</button></div>
-    <details class="smore" id="sMore"><summary>More</summary><div class="smenu"><b class="small muted">Tests</b><div class="actions"><button id="tmBtn">Test mode</button><button id="jtBtn">Juz test</button><button id="mtBtn">Monthly test</button><button id="otBtn">Other record</button></div><b class="small muted">Reports and parents</b><div class="actions"><button id="repBtn">Report</button><button id="yrBtn">Year report</button><button id="weekBtn">Plan sheet</button><button id="mprBtn">Print mistakes</button><button id="waBtn">Message parents</button></div><b class="small muted">Student</b><div class="actions"><button id="histBtn">Student history</button><button id="editBtn" class="${tchSurahsOnly(st)?"tok":""}">Edit details</button></div></div></details>
+    <details class="smore" id="sMore"><summary>More</summary><div class="smenu"><b class="small muted">Tests</b><div class="actions"><button id="tmBtn">Test mode</button><button id="jtBtn">Juz test</button><button id="mtBtn">Monthly test</button><button id="otBtn">Other record</button></div><b class="small muted">Reports and parents</b><div class="actions"><button id="repBtn">Report</button><button id="yrBtn">Year report</button><button id="weekBtn">Plan sheet</button><button id="mprBtn">Print mistakes</button>${seesPersonal(st.id)?'<button id="waBtn">Message parents</button>':""}</div><b class="small muted">Student</b><div class="actions"><button id="histBtn">Student history</button><button id="editBtn" class="${tchSurahsOnly(st)?"tok":""}">Edit details</button></div></div></details>
   </div>
   ${st.archived?`<div class="banner warn">${esc(st.name)} is archived since ${fmtShort(st.archived)}: hidden from the lists and reports. <button class="primary adminonly" id="unarchBtn">Restore student</button></div>`:""}
   ${s.done.length>=30?`<div class="banner ok">${esc(st.name)} has completed the whole Quran. <button class="primary" id="khatmCert" ${downloads?"":"hidden"}>Download khatm certificate</button> <span class="small muted" id="k_msg"></span></div>`:""}
@@ -409,7 +415,7 @@ function renderStudent(el,sub,st){
   el.querySelector("#repBtn").onclick=()=>go({name:"report",id:st.id});
   el.querySelector("#musBtn").onclick=()=>go({name:"mushaf",id:st.id});
   el.querySelector("#mprBtn").onclick=()=>go({name:"mprint",id:st.id});
-  el.querySelector("#waBtn").onclick=()=>go({name:"wa",id:st.id});
+  {const w=el.querySelector("#waBtn");if(w)w.onclick=()=>go({name:"wa",id:st.id})}
   el.querySelector("#yrBtn").onclick=()=>go({name:"year",id:st.id});wireListen(el);
   const ub=el.querySelector("#unarchBtn");if(ub)ub.onclick=()=>setArchived(st,false);
   wireFix(el,st);wirePoints(el,st);
