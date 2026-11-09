@@ -285,6 +285,7 @@ function renderCore(force){
   if(view.name==="schools")return renderSchools(el,sub);if(view.name==="schoolv")return renderSchoolV(el,sub);if(view.name==="teacher")return renderTeacher(el,sub);if(view.name==="gmove")return renderGMove(el,sub);if(view.name==="handover")return renderHandover(el,sub);if(view.name==="school")return renderSchool(el,sub);if(view.name==="sover")return renderSover(el,sub);if(view.name==="waitlist")return renderWaitlist(el,sub);
   if(view.name==="today")return renderToday(el,sub,ta);if(view.name==="reports")return renderReports(el,sub);if(view.name==="settings")return renderSettings(el,sub);if(view.name==="wsum")return renderWsum(el,sub);if(view.name==="star")return renderStar(el,sub);if(view.name==="buddy")return renderBuddy(el,sub);
   if(view.name==="tajweed")return renderTajweed(el,sub);
+  if(view.name==="feedback")return renderFeedback(el,sub);if(view.name==="inbox")return renderInbox(el,sub);
   if(view.name==="list")return renderList(el,sub,ta);
   if(view.name==="add")return renderForm(el,sub,null);
   if(view.name==="classes")return renderClasses(el,sub);

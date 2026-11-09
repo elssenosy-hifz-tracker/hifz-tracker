@@ -37,6 +37,12 @@ export function sampleData() {
       k3: { sid: 's1', w: 117, k: 'tajweed', tr: 'iqlab', date: daysAgo(1), t: 2 },
       k4: { sid: 's1', w: 59, k: 'tajweed', tr: 'idgN', date: daysAgo(3), t: 3 },
     },
+    // suggestions and problems sent with 💬 Suggest (only admins see them, in Settings)
+    feedback: {
+      f1: { kind: 'idea', text: 'Could the parent message also show the surahs reviewed this week?', by: 'Bilal', email: DEMO_USERS.teacher.email, page: 'wa', at: `${daysAgo(1)}T16:20:00.000Z`, date: daysAgo(1), status: 'new' },
+      f2: { kind: 'problem', text: 'On my phone the mushaf page is too small to tap the right word.', by: 'Khalid', email: 'khalid@demo.school', page: 'mushaf', at: `${daysAgo(3)}T18:05:00.000Z`, date: daysAgo(3), status: 'new' },
+      f3: { kind: 'idea', text: 'A list of students who were absent twice this month would help.', by: 'Sami', email: DEMO_USERS.supervisor.email, page: 'reports', at: `${daysAgo(9)}T09:40:00.000Z`, date: daysAgo(9), status: 'done' },
+    },
   };
   const kids = [
     ['s1', 'Yusuf', 'c1', 5, 40], ['s2', 'Maryam', 'c1', 7, 120], ['s3', 'Ibrahim', 'c1', 5, 15],

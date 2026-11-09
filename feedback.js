@@ -1,0 +1,55 @@
+// ---------- suggestions and problems: anyone signed in sends a message; admins read them in Settings → Suggestions ----------
+// Collection feedback {kind idea|problem, text, by, email, page, at, date, status new|done, to?, message?{subject,text}}.
+// Only admins and owners can read it (firestore.rules), and only they listen to it. When Settings → Suggestions has an email
+// address (settings/main.feedbackEmail), each new message also carries {to, message}: the "Trigger Email from Firestore"
+// extension, when installed on the project with collection "feedback", sends that as an email and writes back {delivery}.
+let FEEDBACK=[],FB_ON=false,fbFilter="new";
+const fbNew=()=>FEEDBACK.filter(f=>f.status!=="done").length;
+const fbMail=()=>String((settings.main||{}).feedbackEmail||"").trim().toLowerCase();
+function feedbackAfter(){
+  if(!SUB&&!FB_ON){FB_ON=true;const sub=(k=0)=>{try{db.collection("feedback").onSnapshot(s=>{FEEDBACK=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>String(b.at).localeCompare(String(a.at)));render()},()=>{if(k<5)setTimeout(()=>sub(k+1),3000)})}catch(_){}};sub()}
+  const h=document.querySelector(".topfix");if(h&&!document.getElementById("fbTop")){h.insertAdjacentHTML("afterbegin",`<button type="button" id="fbTop" class="link">💬 Suggest</button>`);document.getElementById("fbTop").onclick=()=>{busy=false;go({name:"feedback",back:view})}}
+  const n=document.querySelector('#nav [data-nav="settings"]');if(n){const c=SUB?0:fbNew();let d=n.querySelector(".fbdot");if(c&&!d){d=document.createElement("b");d.className="fbdot";n.append(d)}if(d){if(c)d.textContent=c;else d.remove()}}}
+
+function renderFeedback(el,sub){sub.textContent="Suggestion or problem";
+  const kind=view.kind||"idea";
+  if(view.sent){el.innerHTML=`<div class="panel"><div class="banner ok">✓ Sent. Thank you, the school administration will read it.</div><div class="actions" style="margin-top:12px"><button class="primary" id="fbAgain">Send another</button><button id="fbBack">Back</button></div></div>`;
+    el.querySelector("#fbAgain").onclick=()=>go({name:"feedback",back:view.back});el.querySelector("#fbBack").onclick=()=>go(view.back||{name:"today"});return}
+  el.innerHTML=`<div class="panel"><h3>Send a message to the school administration</h3>
+   <p class="small muted">An idea to make the app better, or something that does not work. Only the administration reads it.</p>
+   <div class="seg" role="radiogroup" style="margin:10px 0"><button type="button" class="fbtn ${kind==="idea"?"on":""}" data-fbk="idea">💡 Suggestion</button><button type="button" class="fbtn ${kind==="problem"?"on":""}" data-fbk="problem">⚠ Problem</button></div>
+   <label>${kind==="problem"?"What happened? Where in the app, and what did you expect?":"Your suggestion"}<textarea id="fbText" dir="auto" rows="6" maxlength="3000" style="margin-top:6px">${esc(view.draft||"")}</textarea></label>
+   <div class="actions" style="margin-top:10px"><button class="primary" id="fbSend">Send</button><button id="fbCancel">Cancel</button><span class="small muted" id="fbMsg" aria-live="polite"></span></div></div>`;
+  const t=el.querySelector("#fbText");t.addEventListener("focus",()=>busy=true);t.oninput=()=>view.draft=t.value;
+  el.querySelectorAll("[data-fbk]").forEach(b=>b.onclick=()=>{busy=false;view.kind=b.dataset.fbk;view.draft=t.value;render(true)});
+  el.querySelector("#fbCancel").onclick=()=>{busy=false;go(view.back||{name:"today"})};
+  el.querySelector("#fbSend").onclick=async()=>{const text=t.value.trim(),m=el.querySelector("#fbMsg");if(!text){m.textContent="Write your message first.";t.focus();return}
+    const b=el.querySelector("#fbSend");b.disabled=true;m.textContent="Sending…";
+    try{let me={};try{me=await (await claude.use("user")).me()||{}}catch(_){}
+      const email=String(me.email||ME_EMAIL||"").toLowerCase(),tc=meTeacher(),by=(tc&&tc.name)||me.name||email||"",d=new Date();
+      const rec={kind,text,by,email,page:(view.back&&view.back.name)||"",at:d.toISOString(),date:iso(d),status:"new"};
+      const to=fbMail();if(to)Object.assign(rec,{to,message:{subject:`Hifz Tracker: ${kind==="problem"?"problem":"suggestion"} from ${by||"a user"}`,text:`${kind==="problem"?"Problem":"Suggestion"} from ${by}${email?" <"+email+">":""}\n${d.toLocaleString()}\n\n${text}\n\nRead and manage all messages in the app: Settings → Suggestions and problems.`}});
+      await db.collection("feedback").add(rec);busy=false;go({name:"feedback",sent:1,back:view.back})}
+    catch(e){b.disabled=false;m.textContent="Not sent. Check your connection and try again."}}}
+
+function renderInbox(el,sub){if(SUB){go({name:"today"});return}sub.textContent="Suggestions and problems";
+  const list=FEEDBACK.filter(f=>fbFilter==="all"||f.status!=="done"),nNew=fbNew();
+  const when=f=>{const d=new Date(f.at);return isNaN(d)?esc(f.date||""):esc(d.toLocaleString(AR?"ar":undefined,{dateStyle:"medium",timeStyle:"short"}))};
+  const mail=f=>!f.to?"":f.delivery&&f.delivery.state==="SUCCESS"?`<span class="small muted">✉ ${AR?"أُرسل بالبريد":"Emailed"}</span>`:f.delivery&&f.delivery.state==="ERROR"?`<span class="small" style="color:var(--bad)">✉ ${AR?"تعذّر إرسال البريد":"Email not sent"}</span>`:`<span class="small muted">✉ ${AR?"في انتظار البريد":"Email waiting"}</span>`;
+  const row=f=>`<div class="panel fbrow${f.status==="done"?" done":""}"><div class="head" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><span class="chip ${f.kind==="problem"?"":"badge"}"${f.kind==="problem"?' style="background:var(--warn-soft);color:var(--warn)"':""}>${f.kind==="problem"?"⚠ Problem":"💡 Suggestion"}</span><b data-noar>${esc(f.by||f.email||"")}</b><span class="small muted">${when(f)}</span>${mail(f)}</div>
+    <p data-noar dir="auto" style="white-space:pre-wrap;margin:8px 0">${esc(f.text)}</p>${f.email&&f.email!==f.by?`<p class="small muted" data-noar style="margin:0 0 6px">${esc(f.email)}</p>`:""}
+    <div class="actions">${f.status==="done"?`<button class="sm" data-fbs="${f.id}" data-v="new">↺ Mark as new</button>`:`<button class="sm primary" data-fbs="${f.id}" data-v="done">✓ Done</button>`}${f.email?`<a class="btn sm" href="mailto:${esc(f.email)}?subject=${encodeURIComponent("Hifz Tracker")}">✉ Reply by email</a>`:""}<button class="sm" data-fbdel="${f.id}">Delete</button></div></div>`;
+  el.innerHTML=`<div class="seg" style="margin-bottom:10px"><button type="button" class="fbtn ${fbFilter==="new"?"on":""}" data-fbf="new">${AR?"الجديدة":"New"} <span class="cnt">${nNew}</span></button><button type="button" class="fbtn ${fbFilter==="all"?"on":""}" data-fbf="all">${AR?"الكل":"All"} <span class="cnt">${FEEDBACK.length}</span></button></div>
+   ${list.length?list.map(row).join(""):`<div class="panel empty"><p>${fbFilter==="new"&&FEEDBACK.length?"No new messages. Everything is read.":"No messages yet. Teachers send them with 💬 Suggest at the top of the app."}</p></div>`}
+   <details class="panel"${fbMail()?"":" open"}><summary><h3>Also send each message by email</h3></summary>
+    <label>Email address<input type="email" id="fbMailIn" value="${esc(fbMail())}" placeholder="name@example.com" autocomplete="email" data-noar></label>
+    <div class="actions" style="margin-top:8px"><button class="primary sm" id="fbMailSave">Save</button><span class="small muted" id="fbMailMsg" aria-live="polite"></span></div>
+    <p class="small muted">Leave it empty to read messages here only. Emails need a one-time setup on the school's Firebase project (the "Trigger Email" extension); until then, messages still arrive here.</p></details>`;
+  el.querySelectorAll("[data-fbf]").forEach(b=>b.onclick=()=>{fbFilter=b.dataset.fbf;render(true)});
+  el.querySelectorAll("[data-fbs]").forEach(b=>b.onclick=async()=>{try{await db.doc("feedback/"+b.dataset.fbs).update({status:b.dataset.v})}catch(_){alert(AR?"لم يُحفظ. تحقّق من الاتصال.":"Not saved. Check your connection.")}});
+  el.querySelectorAll("[data-fbdel]").forEach(b=>b.onclick=async()=>{if(!confirm(AR?"حذف هذه الرسالة نهائيًا؟":"Delete this message for good?"))return;try{await db.doc("feedback/"+b.dataset.fbdel).delete()}catch(_){}});
+  const mi=el.querySelector("#fbMailIn");mi.addEventListener("focus",()=>busy=true);
+  el.querySelector("#fbMailSave").onclick=async()=>{const v=mi.value.trim().toLowerCase(),m=el.querySelector("#fbMailMsg");if(v&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)){m.textContent="That does not look like an email address.";return}
+    try{await db.doc("settings/main").set({...(settings.main||{}),feedbackEmail:v});m.textContent=v?"Saved. New messages will also go to this email.":"Saved. Messages arrive here only."}catch(_){m.textContent="Not saved."}busy=false}}
+
+Object.assign(AR_DICT,{"💬 Suggest":"💬 اقتراح","Suggestion or problem":"اقتراح أو مشكلة","Send a message to the school administration":"أرسل رسالة إلى إدارة المدرسة","An idea to make the app better, or something that does not work. Only the administration reads it.":"فكرة لتحسين البرنامج، أو شيء لا يعمل كما ينبغي. لا يطّلع على الرسالة إلا الإدارة.","💡 Suggestion":"💡 اقتراح","⚠ Problem":"⚠ مشكلة","Your suggestion":"اقتراحك","What happened? Where in the app, and what did you expect?":"ماذا حدث؟ وفي أي موضع من البرنامج؟ وما الذي كنت تتوقعه؟","Send":"أرسل","Sending…":"جارٍ الإرسال…","Write your message first.":"اكتب رسالتك أولًا.","Not sent. Check your connection and try again.":"لم تُرسل الرسالة. تحقّق من الاتصال وحاول مرة أخرى.","✓ Sent. Thank you, the school administration will read it.":"✓ أُرسلت الرسالة. شكرًا لك، وستطّلع عليها إدارة المدرسة.","Send another":"أرسل رسالة أخرى","Suggestions and problems":"الاقتراحات والمشكلات","Messages from teachers to the administration":"رسائل المعلمين إلى الإدارة","↺ Mark as new":"↺ أعدها جديدة","✓ Done":"✓ تمت معالجتها","✉ Reply by email":"✉ الرد بالبريد","No new messages. Everything is read.":"لا توجد رسائل جديدة. قُرئت الرسائل كلها.","No messages yet. Teachers send them with 💬 Suggest at the top of the app.":"لا توجد رسائل بعد. يرسلها المعلمون من زر «💬 اقتراح» أعلى البرنامج.","Also send each message by email":"أرسل كل رسالة إلى البريد الإلكتروني أيضًا","Email address":"عنوان البريد الإلكتروني","Leave it empty to read messages here only. Emails need a one-time setup on the school's Firebase project (the \"Trigger Email\" extension); until then, messages still arrive here.":"اترك الخانة فارغة لقراءة الرسائل هنا فقط. يحتاج إرسال البريد إلى إعداد واحد في مشروع Firebase الخاص بالمدرسة (إضافة «Trigger Email»)، وإلى أن يتم ذلك تصل الرسائل إلى هنا كالمعتاد.","That does not look like an email address.":"هذا لا يبدو عنوان بريد إلكتروني صحيحًا.","Saved. New messages will also go to this email.":"حُفظ. ستُرسل الرسائل الجديدة إلى هذا البريد أيضًا.","Saved. Messages arrive here only.":"حُفظ. ستصل الرسائل إلى هنا فقط.","Not saved.":"لم يُحفظ.","Not saved. Check your connection.":"لم يُحفظ. تحقّق من الاتصال.","Problem":"مشكلة","Suggestion":"اقتراح"});
