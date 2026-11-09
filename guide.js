@@ -30,7 +30,10 @@ function guideBox(){const g=GRD();return `<details class="guide" id="g_box"><sum
 const lastBy=()=>{const tb=typeof lastByTeacher==="function"&&lastByTeacher();if(tb)return tb;try{return localStorage.getItem("hifz_by")||teacherName()}catch(_){return teacherName()}};
 const saveBy=v=>{try{localStorage.setItem("hifz_by",v)}catch(_){}};
 const byNames=()=>[...new Set([teacherName(),...events.map(e=>e.by).filter(Boolean)])];
-const byText=e=>e.by&&e.by!==teacherName()?` <span class="chip plain">by ${esc(e.by)}</span>`:"";
+// School mode: every session shows who recorded it, "(covering)" when that was not the student's main teacher.
+const byText=e=>{try{if(schoolOn()){const nm=e.by||(e.tid&&tName(e.tid))||"";if(!nm||e.auto)return "";const st=allStudents.find(s=>s.id===e.sid),mt=st&&mainTeacher(st.cls),rt=e.tid&&TEACHERS.find(t=>t.id===e.tid);
+  const cov=rt&&rt.role==="teacher"&&mt&&rt.id!==mt.id;return ` <span class="chip plain">recorded by ${esc(nm)}${cov?" (covering)":""}</span>`}}catch(_){}
+  return e.by&&e.by!==teacherName()?` <span class="chip plain">by ${esc(e.by)}</span>`:""};
 
 // wire auto grades, the guide and help into the session form
 function wireGuide(f,st,hRows,rRows){

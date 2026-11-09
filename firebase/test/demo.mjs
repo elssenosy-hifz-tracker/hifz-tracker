@@ -236,6 +236,39 @@ try {
   await page.evaluate(() => { localStorage.removeItem('hifz.cls'); go({ name: 'list' }); });
   await page.waitForSelector('.slist .row');
   ok('a teacher starts on their own class in Students', await page.evaluate(() => document.querySelectorAll('.slist .row').length === 3 && document.querySelector('[data-cls].on').dataset.cls === 'c1'));
+  ok('a teacher sees only their own groups and Whole school as tabs', await page.evaluate(() => JSON.stringify([...document.querySelectorAll('[data-cls]')].map((b) => b.dataset.cls)) === '["c1","school"]' && !document.querySelector('#schSw')));
+  await page.click('[data-cls="school"]');
+  await page.waitForFunction(() => document.querySelectorAll('.slist .row').length === 6);
+  ok('Whole school lists every student, none greyed out', await page.evaluate(() => document.querySelectorAll('.slist .row.ro').length === 0 && /whole school/.test(document.querySelector('#sub').textContent)));
+  await page.fill('#srch', 'Fat');
+  await page.waitForTimeout(200);
+  ok('search on Whole school finds a student of another group', await page.evaluate(() => [...document.querySelectorAll('.slist .row')].filter((r) => r.offsetParent).map((r) => r.querySelector('.name').textContent.trim()).join() === 'Fatima'));
+  await reloadBy(() => page.reload());
+  await ready();
+  await page.evaluate(() => go({ name: 'list' }));
+  await page.waitForSelector('.slist .row');
+  ok('the Students page opens on their own group again after a reload', await page.evaluate(() => document.querySelector('[data-cls].on').dataset.cls === 'c1'));
+  // covering: Bilal opens Khalid's student Fatima (Teens class)
+  await page.evaluate(() => go({ name: 'student', id: 's4' }));
+  await page.waitForSelector('#sesBtn');
+  ok('a teacher can record for a student of another group in their school', await page.evaluate(() => canEditSid('s4') && !document.querySelector('#view').classList.contains('ro') && !!document.querySelector('#sesBtn').offsetParent));
+  ok('parents\' details are hidden outside their own groups', await page.evaluate(() => !document.querySelector('#waBtn') && (go({ name: 'wa', id: 's4' }), view.name === 'student')));
+  ok('the session shows it was recorded by Bilal covering', await page.evaluate(() => { go({ name: 'history', id: 's4' }); return document.querySelector('#view').textContent.includes('recorded by Bilal (covering)'); }));
+  ok('their own student shows the parent message and no "covering"', await page.evaluate(() => {
+    go({ name: 'student', id: 's1' }); const wa = !!document.querySelector('#waBtn');
+    go({ name: 'history', id: 's1' }); const t = document.querySelector('#view').textContent;
+    return wa && t.includes('recorded by Bilal') && !t.includes('(covering)');
+  }));
+  ok('automatic absences run only for their own groups', await page.evaluate(() => tchMode() && isMyCls('c1') && !isMyCls('c2') && canEditCls('c2')));
+  ok('a teacher cannot open the teachers\' contact pages', await page.evaluate(() => { go({ name: 'teacher', id: 't3' }); return view.name === 'list'; }));
+  // a teacher without a group of their own
+  await page.evaluate(async () => { await (await claude.use('db')).doc('classes/c1').update({ teacher: '' }); });
+  await page.waitForFunction(() => !classes.find((c) => c.id === 'c1').teacher);
+  await page.evaluate(() => go({ name: 'list' }));
+  ok('a teacher with no group is told to ask the head teacher', await page.evaluate(() => !!document.querySelector('#noClsMsg') && JSON.stringify([...document.querySelectorAll('[data-cls]')].map((b) => b.dataset.cls)) === '["school"]' && document.querySelectorAll('.slist .row').length === 6));
+  await page.evaluate(async () => { await (await claude.use('db')).doc('classes/c1').update({ teacher: 't2' }); });
+  await page.waitForFunction(() => classes.find((c) => c.id === 'c1').teacher === 't2');
+  await page.evaluate(() => go({ name: 'list' }));
   // a teacher adds a student, only into a group they teach
   await page.click('#topActions button.primary:has-text("Add student")');
   await page.waitForSelector('#fForm');

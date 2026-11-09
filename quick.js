@@ -196,7 +196,7 @@ function renderSaved(el,sub,st){
   el.innerHTML=`<div class="qdone"><div class="ck">✓</div><div class="t">${esc(st.name)} saved</div><div class="d">${lines.map(esc).join("<br>")}</div></div>
    <div class="actions qcol">${nx?`<button class="primary qnext" id="qNext">Next student › ${esc(nx.name)}<small>${list.indexOf(nx)+1} of ${list.length}${cl?" in "+esc(cl.name):""}</small></button>`:`<div class="banner ok">Everyone in ${cl?esc(cl.name):"the class"} is recorded for today.</div>`}
    <button id="qBackSt">Back to ${esc(st.name)}'s page</button><button id="qBackList">Main list</button></div>
-   ${msgPanel(st,d)}
+   ${seesPersonal(st.id)?msgPanel(st,d):""}
    ${list.length?`<div class="panel"><div class="qh">${cl?esc(cl.name):"Class"} today <span class="n">${done} of ${list.length} done</span></div>
    <div class="qlst">${list.map(s=>`<button type="button" class="qrow" data-go="${s.id}"><span>${esc(s.name)}${flameChip(s)}</span>${doneToday(s.id)?'<span class="ok">✓ done</span>':s===nx?'<span class="muted">next</span>':'<span class="muted">—</span>'}</button>`).join("")}</div></div>`:""}`;
   const n=el.querySelector("#qNext");if(n)n.onclick=()=>go({name:"session",id:nx.id});
