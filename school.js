@@ -24,7 +24,10 @@ function canEditCls(cid){if(!schoolOn())return true;if(isSupervisor())return fal
   const c=classes.find(x=>x.id===cid);if(c&&c.teacher===t.id)return true;return subsFor(cid).some(a=>a.tid===t.id)}
 function canEditSid(sid){const st=allStudents.find(s=>s.id===sid);return st?canEditCls(st.cls):true}
 const myMainCls=()=>{const t=meTeacher();return t?classes.filter(c=>c.teacher===t.id):[]};
-function myAddCls(){return SUB&&schoolOn()&&!isSupervisor()?myMainCls():[]} // a teacher may add students to the groups they teach (rules: students create)
+// A teacher may add students to the groups they teach and start a new group of their own (rules: students and classes create).
+function tchCanAdd(){return SUB&&schoolOn()&&!isSupervisor()&&!!meTeacher()}
+function myAddCls(){return tchCanAdd()?myMainCls():[]}
+const tchNewSchool=()=>{const c=myMainCls().find(x=>schOfCls(x.id));if(c)return schOfCls(c.id);if(CUR_SCH!=="all"&&schById(CUR_SCH))return CUR_SCH;return (SCHOOLS[0]||{}).id||""};
 function myPick(td){if(!schoolOn()||isAdminV())return null;const t=meTeacher();if(!t)return null;return td.find(c=>c.teacher===t.id)||td.find(c=>subsFor(c.id).some(a=>a.tid===t.id))||null}
 function schoolBanner(){if(!schoolOn())return null;const t=meTeacher();
   if(isSupervisor())return `<div class="banner info">Supervisor view: you can see every group and report. Nothing can be changed from this account.</div>`;

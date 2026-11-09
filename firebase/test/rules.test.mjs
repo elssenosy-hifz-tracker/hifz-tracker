@@ -141,6 +141,23 @@ test('teachers add new students only to a group they teach, with only the Add st
   await assertFails(addDoc(collection(as('old@example.com'), 'students'), form));
 });
 
+test('teachers start new groups only as their own teacher, with only the new group fields', async () => {
+  const db = as('bilal@example.com');
+  const g = { name: 'Evening group', teacher: 't1', time: '17:00', end: '18:00', days: [6, 1], school: 'sch1', n: 1 };
+  const ref = await assertSucceeds(addDoc(collection(db, 'classes'), g));
+  // and then add a student into it
+  await assertSucceeds(addDoc(collection(db, 'students'), { name: 'Zaid', cls: ref.id, pos: 0, days: [6] }));
+  await assertFails(addDoc(collection(db, 'classes'), { ...g, teacher: 't5' }));
+  await assertFails(addDoc(collection(db, 'classes'), { ...g, teacher: '' }));
+  await assertFails(addDoc(collection(db, 'classes'), { ...g, name: '' }));
+  await assertFails(addDoc(collection(db, 'classes'), { ...g, readDef: 5 }));
+  await assertFails(setDoc(doc(db, 'classes/c2'), g)); // taking over an existing group
+  await assertFails(updateDoc(doc(db, 'classes/c1'), { name: 'Renamed' }));
+  await assertFails(deleteDoc(doc(db, 'classes/c1')));
+  await assertFails(addDoc(collection(as('sami@example.com'), 'classes'), { ...g, teacher: 't2' }));
+  await assertFails(addDoc(collection(as('old@example.com'), 'classes'), { ...g, teacher: 't4' }));
+});
+
 test('teachers cannot change access', async () => {
   const db = as('bilal@example.com');
   await assertFails(updateDoc(doc(db, 'teachers/t1'), { phone: '+61400111222' }));

@@ -229,12 +229,28 @@ try {
   await page.click('#topActions button.primary:has-text("Add student")');
   await page.waitForSelector('#fForm');
   const tOpts = await page.evaluate(() => ({ shown: [...document.querySelectorAll('#f_cls option')].map((o) => o.value), mine: myMainCls().map((c) => c.id), all: classes.length }));
-  ok('a teacher can only add a student to their own groups', JSON.stringify(tOpts.shown) === JSON.stringify(tOpts.mine) && tOpts.mine.length > 0 && tOpts.all > tOpts.mine.length, JSON.stringify(tOpts));
+  ok('a teacher can only add a student to their own groups', JSON.stringify(tOpts.shown) === JSON.stringify([...tOpts.mine, '__new']) && tOpts.mine.length > 0 && tOpts.all > tOpts.mine.length, JSON.stringify(tOpts));
   await page.fill('#f_name', 'Zaid New');
   await page.click('#fForm button[type="submit"]');
   await page.waitForFunction(() => view.name === 'student' && students.some((s) => s.name === 'Zaid New'), null, { timeout: 10000 });
   ok('a teacher adds a student to their group', await page.evaluate(() => { const s = students.find((x) => x.name === 'Zaid New'); return s && myMainCls().some((c) => c.id === s.cls) && !s.archived; }));
   await page.evaluate(async () => { const s = students.find((x) => x.name === 'Zaid New'); await (await claude.use('db')).doc('students/' + s.id).delete(); });
+  // ... or starts a new group of their own while adding the student
+  await page.evaluate(() => go({ name: 'add' }));
+  await page.waitForSelector('#fForm');
+  await page.selectOption('#f_cls', '__new');
+  await page.fill('#f_name', 'Hamza New');
+  await page.click('#fForm button[type="submit"]');
+  ok('a new group needs a name', await page.evaluate(() => document.querySelector('#f_msg').textContent === 'Write the group name.' && !classes.some((c) => c.name === 'Evening group')));
+  await page.fill('#ng_name', 'Evening group');
+  await page.check('#f_newg [data-ngd][value="1"]');
+  await page.click('#fForm button[type="submit"]');
+  await page.waitForFunction(() => view.name === 'student' && students.some((s) => s.name === 'Hamza New'), null, { timeout: 10000 });
+  ok('a teacher starts a new group and adds the student to it', await page.evaluate(() => {
+    const g = classes.find((c) => c.name === 'Evening group'), s = students.find((x) => x.name === 'Hamza New');
+    return g && g.teacher === meTeacher().id && JSON.stringify(g.days) === '[1]' && s.cls === g.id && JSON.stringify(s.days) === '[6,0,1,2,3,4]';
+  }));
+  await page.evaluate(async () => { const d = await claude.use('db'), s = students.find((x) => x.name === 'Hamza New'); await d.doc('students/' + s.id).delete(); await d.doc('classes/' + s.cls).delete(); });
   await page.evaluate(() => { go({ name: 'reports' }); });
   await page.waitForSelector('.hubs');
   ok('a teacher does not see the school overview', !(await page.$('[data-hub="sover"]')));
