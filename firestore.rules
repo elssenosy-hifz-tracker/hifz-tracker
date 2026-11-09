@@ -185,7 +185,8 @@ service cloud.firestore {
         && request.resource.data.get('tid', '') == myTid();
     }
 
-    // Suggestions and problems (feedback.js). Everyone signed in (supervisors too) may send one in their own name; only
+    // Suggestions and problems (feedback.js). Everyone signed in (supervisors too) may send one in their own name,
+    // or without a name (anon: true, name and email left empty, so nobody can tell who sent it); only
     // admins read, mark and delete them. An email copy ({to, message}, sent by the Trigger Email extension) may only go to
     // the address the admins chose in settings/main.feedbackEmail, so nobody can use it to email anyone else.
     function feedbackEmail() {
@@ -195,8 +196,9 @@ service cloud.firestore {
     match /feedback/{id} {
       allow read, update, delete: if isAdmin();
       allow create: if canRead() && safeId(id)
-        && request.resource.data.keys().hasOnly(['kind', 'text', 'by', 'email', 'page', 'at', 'date', 'status', 'to', 'message'])
-        && request.resource.data.email == myEmail()
+        && request.resource.data.keys().hasOnly(['kind', 'text', 'by', 'email', 'anon', 'page', 'at', 'date', 'status', 'to', 'message'])
+        && ((request.resource.data.get('anon', false) == false && request.resource.data.email == myEmail())
+          || (request.resource.data.get('anon', false) == true && request.resource.data.email == '' && request.resource.data.by == ''))
         && request.resource.data.status == 'new'
         && request.resource.data.kind in ['idea', 'problem']
         && request.resource.data.text is string && request.resource.data.text.size() <= 3000

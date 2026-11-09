@@ -186,6 +186,10 @@ test('everyone may send a suggestion in their own name; only admins read them', 
   await assertFails(addDoc(collection(as('bilal@example.com'), 'feedback'), msg('someone@example.com')));      // not in someone else's name
   await assertFails(addDoc(collection(as('bilal@example.com'), 'feedback'), msg('bilal@example.com', { status: 'done' })));
   await assertFails(addDoc(collection(as('bilal@example.com'), 'feedback'), msg('bilal@example.com', { extra: 1 })));
+  await assertSucceeds(addDoc(collection(as('bilal@example.com'), 'feedback'), msg('', { by: '', anon: true })));  // without a name
+  await assertFails(addDoc(collection(as('bilal@example.com'), 'feedback'), msg('bilal@example.com', { anon: true })));
+  await assertFails(addDoc(collection(as('bilal@example.com'), 'feedback'), msg('', { by: 'Bilal', anon: true })));
+  await assertFails(addDoc(collection(as('bilal@example.com'), 'feedback'), msg('', { by: '' })));
   await assertFails(addDoc(collection(as('old@example.com'), 'feedback'), msg('old@example.com')));
   await assertFails(addDoc(collection(anon(), 'feedback'), msg('x@example.com')));
   await assertFails(getDocs(collection(as('bilal@example.com'), 'feedback')));
