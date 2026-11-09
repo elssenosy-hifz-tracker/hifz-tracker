@@ -198,6 +198,12 @@ try {
   ok('first-visit tour shows once, Skip ends it, Help shows it again', t1 === 'Today' && gone, t1);
   await p2.close();
 
+  // substitute access saved the old way (random id) is moved to access/<cid>_<tid>, where the security rules look
+  await page.evaluate(async () => { await (await claude.use('db')).collection('access').add({ cid: 'c1', tid: 't3', kind: 'always', from: '2026-01-01', until: '2026-01-01', at: 1 }); render(true); });
+  await page.waitForFunction(() => ACCESS.length === 1 && ACCESS[0].id === 'c1_t3', null, { timeout: 8000 }).catch(() => {});
+  ok('old substitute access records move to their fixed id', await page.evaluate(() => ACCESS.length === 1 && ACCESS[0].id === 'c1_t3' && ACCESS[0].kind === 'always'), await page.evaluate(() => JSON.stringify(ACCESS)));
+  await page.evaluate(async () => { await (await claude.use('db')).doc('access/c1_t3').delete(); });
+
   // view as teacher
   await reloadBy(() => page.selectOption('#hifzDemoRole', 'teacher'));
   await ready();
