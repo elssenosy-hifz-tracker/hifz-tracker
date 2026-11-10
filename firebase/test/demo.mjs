@@ -172,6 +172,7 @@ try {
   const tmAfter = await page.evaluate(() => document.querySelector('#tmBtn').getBoundingClientRect().height > 0);
   ok('student page shows two main buttons; the rest are under More', sv.ses && sv.mus && !sv.test && tmAfter, JSON.stringify(sv));
   ok('long sections on the student page start folded', sv.folds >= 8 && sv.open <= 1, JSON.stringify(sv));
+  ok('"Move to another group" is in the More menu, with Move student showing', await page.evaluate(() => { const b = document.querySelector('#sMore .smenu #mvBox'); return !!b && /Move to another group/.test(b.textContent) && document.querySelector('#mvGo').getBoundingClientRect().height > 0; }));
   // session: mistake counters stay hidden until "Mistakes and details"
   await page.evaluate(() => { go({ name: 'session', id: 's2' }); });
   await page.waitForSelector('[data-qx="qHC"]');
@@ -254,6 +255,7 @@ try {
   await page.waitForFunction(() => view.name === 'student', null, { timeout: 10000 }).catch(() => {});
   if (await page.evaluate(() => view.name === 'edit')) { await page.click('#fForm button[type="submit"]'); await page.waitForFunction(() => view.name === 'student', null, { timeout: 10000 }); }
   ok("the teacher's surah change is saved", await page.evaluate(({ id, s }) => (allStudents.find((x) => x.id === id).prevS || []).includes(s), { id: sids.mine, s: pick.s }));
+  ok('a teacher finds "Suggest moving to another group" in the More menu, not Move student', await page.evaluate(() => { const b = document.querySelector('#sMore .smenu #mvBox'); return !!b && /Suggest moving/.test(b.textContent) && !!document.querySelector('#rqGo') && !document.querySelector('#mvGo'); }));
   await page.evaluate(() => go({ name: 'list' }));
   await page.waitForSelector('.slist .row');
   ok('a teacher sees only their own groups and Whole school as tabs', await page.evaluate(() => JSON.stringify([...document.querySelectorAll('[data-cls]')].map((b) => b.dataset.cls)) === '["c1","school"]' && !document.querySelector('#schSw')));

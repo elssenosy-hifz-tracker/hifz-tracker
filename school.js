@@ -81,7 +81,7 @@ function schoolAfter(){const v=document.getElementById("view");if(!v)return;
   if(view.name==="list")v.querySelectorAll(".row[data-id]").forEach(r=>r.classList.toggle("ro",!canEditSid(r.dataset.id)));
   if(view.name==="student"){const st=allStudents.find(s=>s.id===view.id);if(!st)return;const lk=!canEditSid(st.id);v.classList.toggle("ro",lk);
     if(lk)v.insertAdjacentHTML("afterbegin",`<div class="banner info">🔒 ${esc(st.name)} is in ${esc(clsName(st.cls)||"another group")}${mainTeacher(st.cls)?" ("+esc(mainTeacher(st.cls).name)+")":""}. View only.</div>`);
-    v.insertAdjacentHTML("beforeend",studentGroupPanel(st));wireStudentGroup(v,st)}
+    {const h=studentGroupPanel(st);if(h){(v.querySelector("#sMore .smenu")||v).insertAdjacentHTML("beforeend",h);wireStudentGroup(v,st)}}}
   else v.classList.remove("ro");
   if(view.name==="class"&&view.id)v.classList.toggle("ro",!canEditCls(view.id));
   if(view.name==="add"&&view.wname){const n=v.querySelector("#f_name");if(n&&!n.value)n.value=view.wname;const ph=v.querySelector("#f_phone");if(ph&&view.wphone&&!ph.value)ph.value=view.wphone}
@@ -139,16 +139,16 @@ function claimBox(){const free=TEACHERS.filter(t=>t.active!==false&&t.role!=="ad
   return `<div class="panel"><h3>Who are you?</h3><p class="small muted">Pick your name once. The app then shows your groups.</p><div class="actions">${free.map(t=>`<button class="primary" data-claim="${t.id}">${esc(t.name)}</button>`).join("")}</div></div>`}
 function wireClaim(el){el.querySelectorAll("[data-claim]").forEach(b=>b.onclick=async()=>{try{await db.doc("links/"+ME_UID).set({tid:b.dataset.claim,at:Date.now()})}catch(_){b.textContent="Could not save"}})}
 
-// ----- student page: move (admin) or suggest a move (teacher) -----
+// ----- student page, in the More menu: move (admin) or suggest a move (teacher) -----
 function studentGroupPanel(st){if(isSupervisor())return "";const others=classes.filter(c=>c.id!==st.cls);if(!others.length)return "";
   const opts=others.map(c=>`<option value="${c.id}">${esc(c.name)}${mainTeacher(c.id)?" — "+esc(mainTeacher(c.id).name):""}${SCHOOLS.length>1&&schById(schOfCls(c.id))?" · "+esc(schById(schOfCls(c.id)).name):""}</option>`).join("");
   const open=REQS.find(r=>r.sid===st.id&&r.status==="open");
-  if(isAdminV())return `<details class="panel"><summary><h3>Move to another group</h3></summary><label>New group<select id="mvTo">${opts}</select></label><p class="small muted">The whole history moves with the student. Old sessions keep "Recorded by" the teacher who recorded them.</p><div class="actions"><button class="primary" id="mvGo">Move student</button><span class="small muted" id="mvMsg"></span></div></details>`;
+  if(isAdminV())return `<div id="mvBox"><b class="small muted">Move to another group</b><label>New group<select id="mvTo">${opts}</select></label><p class="small muted">The whole history moves with the student. Old sessions keep "Recorded by" the teacher who recorded them.</p><div class="actions"><button class="primary" id="mvGo">Move student</button><span class="small muted" id="mvMsg"></span></div></div>`;
   if(!canEditSid(st.id))return "";
-  return `<details class="panel"><summary><h3>Suggest moving to another group</h3></summary>${open?`<p class="small">Waiting for the admin: move to ${esc(clsName(open.to))}.</p>`:`<label>Group<select id="mvTo">${opts}</select></label><input id="mvWhy" placeholder="Why? e.g. ahead of the group"><div class="actions"><button class="primary" id="rqGo">Send to the admin</button><span class="small muted" id="mvMsg"></span></div>`}</details>`}
+  return `<div id="mvBox"><b class="small muted">Suggest moving to another group</b>${open?`<p class="small">Waiting for the admin to move the student to: <b>${esc(clsName(open.to))}</b></p>`:`<label>Group<select id="mvTo">${opts}</select></label><input id="mvWhy" placeholder="Why? e.g. ahead of the group"><div class="actions"><button class="primary" id="rqGo">Send to the admin</button><span class="small muted" id="mvMsg"></span></div>`}</div>`}
 function wireStudentGroup(el,st){const q=s=>el.querySelector(s);[q("#mvTo"),q("#mvWhy")].forEach(i=>i&&i.addEventListener("focus",()=>busy=true));
-  const g=q("#mvGo");if(g)g.onclick=async()=>{if(g.dataset.c!=="1"){g.dataset.c="1";g.textContent="Tap again to move";return}try{await db.doc("students/"+st.id).update({cls:q("#mvTo").value});busy=false;render(true)}catch(_){q("#mvMsg").textContent="Not moved."}};
-  const r=q("#rqGo");if(r)r.onclick=async()=>{const t=meTeacher();try{await db.collection("requests").add({sid:st.id,from:st.cls,to:q("#mvTo").value,reason:q("#mvWhy").value.trim(),by:t?t.id:"",status:"open",at:Date.now(),date:iso(today())});busy=false;render(true)}catch(_){q("#mvMsg").textContent="Not sent."}}}
+  const g=q("#mvGo");if(g)g.onclick=async()=>{if(g.dataset.c!=="1"){g.dataset.c="1";g.textContent=(typeof AR!=="undefined"&&AR?arText("Tap again to move"):"Tap again to move");return}try{await db.doc("students/"+st.id).update({cls:q("#mvTo").value});busy=false;render(true)}catch(_){q("#mvMsg").textContent=(typeof AR!=="undefined"&&AR?arText("Not moved."):"Not moved.")}};
+  const r=q("#rqGo");if(r)r.onclick=async()=>{const t=meTeacher();try{await db.collection("requests").add({sid:st.id,from:st.cls,to:q("#mvTo").value,reason:q("#mvWhy").value.trim(),by:t?t.id:"",status:"open",at:Date.now(),date:iso(today())});busy=false;render(true)}catch(_){q("#mvMsg").textContent=(typeof AR!=="undefined"&&AR?arText("Not sent."):"Not sent.")}}}
 
 // ----- juz test examiner: another teacher -----
 function examinerField(st){const act=TEACHERS.filter(t=>t.active!==false&&t.role!=="supervisor");if(!act.length)return "";const mt=mainTeacher(st.cls);
@@ -250,3 +250,5 @@ function wireGroupsEditor(el){el.querySelectorAll("form[data-gid]").forEach(f=>{
     if(!d.name){m.textContent="Write the group name.";return}bt.disabled=true;m.textContent="Saving…";
     try{if(id==="new"){const r=await db.collection("classes").add({...d,n:Date.now()});if(!classes.some(c=>c.id===r.id))classes.push({id:r.id,...d,n:Date.now()})}else{await db.doc("classes/"+id).update(d);Object.assign(classes.find(c=>c.id===id)||{},d)}
       busy=false;render(true)}catch(_){m.textContent="Not saved. Try again.";bt.disabled=false}}})}
+Object.assign(AR_DICT,{"Move to another group":"نقل الطالب إلى مجموعة أخرى","New group":"المجموعة الجديدة","Move student":"انقل الطالب","Tap again to move":"اضغط مرة أخرى للنقل","Not moved.":"لم يُنقل.","The whole history moves with the student. Old sessions keep \"Recorded by\" the teacher who recorded them.":"ينتقل سجل الطالب كله معه. وتبقى الجلسات القديمة باسم المعلّم الذي سجّلها.",
+ "Suggest moving to another group":"اقترح نقل الطالب إلى مجموعة أخرى","Group":"المجموعة","Why? e.g. ahead of the group":"لماذا؟ مثلًا: سبق مجموعته","Send to the admin":"أرسل إلى المسؤول","Not sent.":"لم يُرسل.","Waiting for the admin to move the student to:":"في انتظار المسؤول لنقل الطالب إلى:"});
