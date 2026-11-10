@@ -68,6 +68,7 @@ function schoolAfter(){const v=document.getElementById("view");if(!v)return;
   if((view.name==="today"||(view.name==="list"&&!tchMode()))&&SCHOOLS.length>1&&!v.querySelector("#schSw")){v.insertAdjacentHTML("afterbegin",schSwitch());wireSchSwitch(v)}
   document.body.classList.toggle("roall",schoolOn()&&isSupervisor());
   if(!schoolOn()&&view.name!=="school")return;
+  if(view.name==="today"&&!v.querySelector("#mvNews")){const h=recentMovesPanel();if(h){v.insertAdjacentHTML("afterbegin",h);wireRecentMoves(v)}}
   if(view.name==="today"){const p=v.querySelector(".tnow");if(!p)return;const cid=p.dataset.cid;
     p.classList.toggle("ro",!canEditCls(cid));
     v.querySelectorAll("[data-tcls]").forEach(b=>{if(!canEditCls(b.dataset.tcls)&&!b.dataset.lk){b.dataset.lk=1;b.append(" 🔒")}});
@@ -141,12 +142,21 @@ function wireClaim(el){el.querySelectorAll("[data-claim]").forEach(b=>b.onclick=
 
 // ----- student page, in the More menu: move (admin) or suggest a move (teacher) -----
 // Each move is kept on the student (moves: [{date, from, to, by, at, asked?}]): who moved them, when, and the teacher who suggested it.
+const mvArrow=()=>typeof AR!=="undefined"&&AR?"←":"→"; // points from the old group to the new one, also right-to-left
 const myByName=()=>{const t=meTeacher();return (t&&t.name)||ME_NAME||ME_EMAIL||""};
 async function moveStudent(st,to,req){const m={date:iso(today()),from:st.cls||"",to,by:myByName(),at:Date.now(),...(req&&req.by?{asked:req.by}:{})};
   await db.doc("students/"+st.id).update({cls:to,moves:[...(Array.isArray(st.moves)?st.moves:[]),m]})}
 function studentMovesHTML(st){const L=(Array.isArray(st.moves)?st.moves:[]).slice().sort((a,b)=>(b.at||0)-(a.at||0));if(!L.length)return "";
   const g=id=>`<bdi>${esc(clsName(id)||"a deleted group")}</bdi>`;
-  return `<div id="mvHist"><b class="small muted">Earlier moves</b>${L.map(m=>`<div class="small"><bdi>${fmtShort(m.date)}</bdi> · ${g(m.from)} → ${g(m.to)}${m.by?` · <span>moved by</span> <bdi>${esc(m.by)}</bdi>`:""}${m.asked?` · <span>suggested by</span> <bdi>${esc(tName(m.asked)||"a teacher")}</bdi>`:""}</div>`).join("")}</div>`}
+  return `<div id="mvHist"><b class="small muted">Earlier moves</b>${L.map(m=>`<div class="small"><bdi>${fmtShort(m.date)}</bdi> · ${g(m.from)} ${mvArrow()} ${g(m.to)}${m.by?` · <span>moved by</span> <bdi>${esc(m.by)}</bdi>`:""}${m.asked?` · <span>suggested by</span> <bdi>${esc(tName(m.asked)||"a teacher")}</bdi>`:""}</div>`).join("")}</div>`}
+// Today, for admins: students another admin moved in the last 7 days, until "Got it" on this device.
+function recentMovesPanel(){if(!isAdminV())return "";let seen=0;try{seen=+localStorage.getItem("hifz.movesSeen")||0}catch(_){}
+  const after=Math.max(Date.now()-7*864e5,seen),me=myByName();
+  const L=allStudents.flatMap(st=>(Array.isArray(st.moves)?st.moves:[]).map(m=>({st,m}))).filter(x=>(x.m.at||0)>after&&(!me||x.m.by!==me)).sort((a,b)=>b.m.at-a.m.at);
+  if(!L.length)return "";const g=id=>`<bdi>${esc(clsName(id)||"a deleted group")}</bdi>`;
+  return `<div class="panel" id="mvNews"><h3>Students moved</h3>${L.map(({st,m})=>`<div class="scrow"><span><button class="link" data-mvopen="${st.id}"><bdi>${esc(st.name)}</bdi></button> · ${g(m.from)} ${mvArrow()} ${g(m.to)}${m.by?` · <span>moved by</span> <bdi>${esc(m.by)}</bdi>`:""} · <bdi>${fmtShort(m.date)}</bdi></span></div>`).join("")}<div class="actions"><button class="sm" id="mvSeen">Got it</button></div></div>`}
+function wireRecentMoves(el){el.querySelectorAll("[data-mvopen]").forEach(b=>b.onclick=()=>go({name:"student",id:b.dataset.mvopen}));
+  const s=el.querySelector("#mvSeen");if(s)s.onclick=()=>{try{localStorage.setItem("hifz.movesSeen",String(Date.now()))}catch(_){}const p=el.querySelector("#mvNews");if(p)p.remove()}}
 function studentGroupPanel(st){if(isSupervisor())return "";const others=classes.filter(c=>c.id!==st.cls);if(!others.length)return "";
   const opts=others.map(c=>`<option value="${c.id}">${esc(c.name)}${mainTeacher(c.id)?" — "+esc(mainTeacher(c.id).name):""}${SCHOOLS.length>1&&schById(schOfCls(c.id))?" · "+esc(schById(schOfCls(c.id)).name):""}</option>`).join("");
   const open=REQS.find(r=>r.sid===st.id&&r.status==="open");
@@ -259,4 +269,4 @@ function wireGroupsEditor(el){el.querySelectorAll("form[data-gid]").forEach(f=>{
       busy=false;render(true)}catch(_){m.textContent="Not saved. Try again.";bt.disabled=false}}})}
 Object.assign(AR_DICT,{"Move to another group":"نقل الطالب إلى مجموعة أخرى","New group":"المجموعة الجديدة","Move student":"انقل الطالب","Tap again to move":"اضغط مرة أخرى للنقل","Not moved.":"لم يُنقل.","The whole history moves with the student. Old sessions keep \"Recorded by\" the teacher who recorded them.":"ينتقل سجل الطالب كله معه. وتبقى الجلسات القديمة باسم المعلّم الذي سجّلها.",
  "Suggest moving to another group":"اقترح نقل الطالب إلى مجموعة أخرى","Group":"المجموعة","Why? e.g. ahead of the group":"لماذا؟ مثلًا: سبق مجموعته","Send to the admin":"أرسل إلى المسؤول","Not sent.":"لم يُرسل.","Waiting for the admin to move the student to:":"في انتظار المسؤول لنقل الطالب إلى:",
- "Earlier moves":"سجل النقل","moved by":"نقله","suggested by":"باقتراح من","a deleted group":"مجموعة محذوفة","a teacher":"معلّم"});
+ "Earlier moves":"سجل النقل","Students moved":"طلاب تم نقلهم","Got it":"تمام","moved by":"نقله","suggested by":"باقتراح من","a deleted group":"مجموعة محذوفة","a teacher":"معلّم"});

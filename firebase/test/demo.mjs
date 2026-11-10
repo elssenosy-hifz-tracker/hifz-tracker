@@ -184,7 +184,15 @@ try {
     for (let i = 0; i < 40 && allStudents.find((s) => s.id === 's3').cls !== 'c1'; i++) await new Promise((r) => setTimeout(r, 100));
     return { cls: st.cls, m, hist: h ? h.textContent : '', n: (allStudents.find((s) => s.id === 's3').moves || []).length, now: allStudents.find((s) => s.id === 's3').cls };
   });
+  const news = await page.evaluate(async () => {
+    go({ name: 'today' }); await new Promise((r) => setTimeout(r, 300));
+    const p = document.querySelector('#mvNews'), txt = p ? p.textContent : '';
+    document.querySelector('#mvSeen').click(); go({ name: 'today' }); await new Promise((r) => setTimeout(r, 300));
+    return { txt, gone: !document.querySelector('#mvNews') };
+  });
+  ok('Today shows an admin the students another admin moved, until "Got it"', /Students moved/.test(news.txt) && /Maryam/.test(news.txt) && /moved by Amina/.test(news.txt) && !/Ibrahim/.test(news.txt) && news.gone, JSON.stringify(news));
   ok('a move saves the date, both groups and who moved the student, and lists it', mv.cls === 'c2' && mv.m.from === 'c1' && mv.m.to === 'c2' && mv.m.by === 'Demo Owner' && mv.m.date === new Date().toLocaleDateString('en-CA') && /Earlier moves/.test(mv.hist) && /moved by Demo Owner/.test(mv.hist) && mv.n === 2 && mv.now === 'c1', JSON.stringify(mv));
+  ok("an admin's own moves are not shown to them on Today", await page.evaluate(async () => { localStorage.removeItem('hifz.movesSeen'); go({ name: 'today' }); await new Promise((r) => setTimeout(r, 300)); const t = (document.querySelector('#mvNews') || {}).textContent || ''; return /Maryam/.test(t) && !/Ibrahim/.test(t); }));
   // session: mistake counters stay hidden until "Mistakes and details"
   await page.evaluate(() => { go({ name: 'session', id: 's2' }); });
   await page.waitForSelector('[data-qx="qHC"]');
