@@ -173,6 +173,18 @@ try {
   ok('student page shows two main buttons; the rest are under More', sv.ses && sv.mus && !sv.test && tmAfter, JSON.stringify(sv));
   ok('long sections on the student page start folded', sv.folds >= 8 && sv.open <= 1, JSON.stringify(sv));
   ok('"Move to another group" is in the More menu, with Move student showing', await page.evaluate(() => { const b = document.querySelector('#sMore .smenu #mvBox'); return !!b && /Move to another group/.test(b.textContent) && document.querySelector('#mvGo').getBoundingClientRect().height > 0; }));
+  // moving a student keeps a record: date, from, to and who moved them (shown under "Earlier moves")
+  const mv = await page.evaluate(async () => {
+    go({ name: 'student', id: 's3' }); document.querySelector('#sMore').open = true;
+    const sel = document.querySelector('#mvTo'); sel.value = 'c2'; const g = document.querySelector('#mvGo'); g.click(); g.click();
+    for (let i = 0; i < 40 && allStudents.find((s) => s.id === 's3').cls !== 'c2'; i++) await new Promise((r) => setTimeout(r, 100));
+    const st = allStudents.find((s) => s.id === 's3'), m = (st.moves || []).slice(-1)[0] || {};
+    document.querySelector('#sMore').open = true; const h = document.querySelector('#sMore #mvHist');
+    const back = document.querySelector('#mvGo'); back.click(); back.click(); // move back to the Kids class (c1)
+    for (let i = 0; i < 40 && allStudents.find((s) => s.id === 's3').cls !== 'c1'; i++) await new Promise((r) => setTimeout(r, 100));
+    return { cls: st.cls, m, hist: h ? h.textContent : '', n: (allStudents.find((s) => s.id === 's3').moves || []).length, now: allStudents.find((s) => s.id === 's3').cls };
+  });
+  ok('a move saves the date, both groups and who moved the student, and lists it', mv.cls === 'c2' && mv.m.from === 'c1' && mv.m.to === 'c2' && mv.m.by === 'Demo Owner' && mv.m.date === new Date().toLocaleDateString('en-CA') && /Earlier moves/.test(mv.hist) && /moved by Demo Owner/.test(mv.hist) && mv.n === 2 && mv.now === 'c1', JSON.stringify(mv));
   // session: mistake counters stay hidden until "Mistakes and details"
   await page.evaluate(() => { go({ name: 'session', id: 's2' }); });
   await page.waitForSelector('[data-qx="qHC"]');

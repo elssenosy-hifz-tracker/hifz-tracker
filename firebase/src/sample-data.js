@@ -51,6 +51,8 @@ export function sampleData() {
   ];
   let e = 1;
   const tjp = { s1: { iqlab: [1, 4], ikhfa: [3, 5], madd5: [4, 4] } }; // tajweed practice results (right, asked) per rule
+  // group moves (date, from, to, who): Maryam moved from the Teens class to the Kids class
+  const moves = { s2: [{ date: daysAgo(20), from: 'c2', to: 'c1', by: 'Demo Owner', at: Date.now() - 20 * 864e5 }] };
   // parents' WhatsApp numbers: a teacher sees them only in their own group (Bilal: Kids class)
   const phone = { s1: '+61400555001', s2: '+61400555002', s4: '+61400555004', s5: '+61400555005' };
   for (const [id, name, cls, amount, pos] of kids) {
@@ -58,6 +60,7 @@ export function sampleData() {
     data.students[id] = {
       name, cls, order: 'nas', startS: 113, prevS: [], amount, readPages: 20, readStart: 1, farDays: 7, days, start: daysAgo(60), pos,
       ...(tjp[id] ? { tjp: tjp[id] } : {}),
+      ...(moves[id] ? { moves: moves[id] } : {}),
       ...(phone[id] ? { phone: phone[id] } : {}),
     };
     for (let k = 14; k >= 1; k--) {
