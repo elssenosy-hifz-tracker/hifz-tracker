@@ -3,7 +3,7 @@
 // access {cid,tid,kind day|until|always,from,until,by,at}; absences {cid,tid,date,note,sub,at}; groupnotes/<cid> {text,by,at};
 // requests {sid,from,to,reason,by,status open|done|declined,at}; waiting {name,phone,age,prev,note,date}. School name: settings/main.school.
 let TEACHERS=[],ACCESS=[],ABSENCES=[],REQS=[],LINKS={},WAITING=[],GNOTES={};
-let TCH_LOADED=false,scFlash="",ME_UID=null,ME_EMAIL=null,ME_OWNER=false,scUser=null;
+let TCH_LOADED=false,scFlash="",ME_UID=null,ME_EMAIL=null,ME_NAME="",ME_OWNER=false,scUser=null;
 const SC_ROLES={admin:"Admin",teacher:"Teacher",supervisor:"Supervisor (view only)"};
 const schoolOn=()=>TEACHERS.some(t=>t.active!==false);
 const schoolName=cid=>{try{if(!cid){const st=allStudents.find(s=>s.id===view.id);cid=st&&st.cls}return schoolNameFor(cid)}catch(_){return ((settings.main||{}).school||{}).name||""}};
@@ -51,7 +51,7 @@ function schoolInit(){
   sub("teachers",a=>{TCH_LOADED=true;TEACHERS=a.sort((x,y)=>(x.n||0)-(y.n||0)||String(x.name).localeCompare(String(y.name)))});
   sub("access",a=>ACCESS=a);sub("absences",a=>ABSENCES=a);sub("requests",a=>REQS=a);sub("waiting",a=>WAITING=a);
   sub("links",a=>{LINKS={};a.forEach(x=>LINKS[x.id]=x)});sub("groupnotes",a=>{GNOTES={};a.forEach(x=>GNOTES[x.id]=x)});
-  (async()=>{try{scUser=await claude.use("user");if(!scUser)return;const me=await scUser.me();ME_UID=me.id;ME_EMAIL=me.email;ME_OWNER=!!me.isOwner;render()}catch(_){}})();
+  (async()=>{try{scUser=await claude.use("user");if(!scUser)return;const me=await scUser.me();ME_UID=me.id;ME_EMAIL=me.email;ME_NAME=me.name||"";ME_OWNER=!!me.isOwner;render()}catch(_){}})();
   try{schoolsInit()}catch(e){console.error(e)}
 }
 
@@ -68,6 +68,7 @@ function schoolAfter(){const v=document.getElementById("view");if(!v)return;
   if((view.name==="today"||(view.name==="list"&&!tchMode()))&&SCHOOLS.length>1&&!v.querySelector("#schSw")){v.insertAdjacentHTML("afterbegin",schSwitch());wireSchSwitch(v)}
   document.body.classList.toggle("roall",schoolOn()&&isSupervisor());
   if(!schoolOn()&&view.name!=="school")return;
+  if(view.name==="today"&&!v.querySelector("#mvNews")){const h=recentMovesPanel();if(h){v.insertAdjacentHTML("afterbegin",h);wireRecentMoves(v)}}
   if(view.name==="today"){const p=v.querySelector(".tnow");if(!p)return;const cid=p.dataset.cid;
     p.classList.toggle("ro",!canEditCls(cid));
     v.querySelectorAll("[data-tcls]").forEach(b=>{if(!canEditCls(b.dataset.tcls)&&!b.dataset.lk){b.dataset.lk=1;b.append(" 🔒")}});
@@ -81,7 +82,7 @@ function schoolAfter(){const v=document.getElementById("view");if(!v)return;
   if(view.name==="list")v.querySelectorAll(".row[data-id]").forEach(r=>r.classList.toggle("ro",!canEditSid(r.dataset.id)));
   if(view.name==="student"){const st=allStudents.find(s=>s.id===view.id);if(!st)return;const lk=!canEditSid(st.id);v.classList.toggle("ro",lk);
     if(lk)v.insertAdjacentHTML("afterbegin",`<div class="banner info">🔒 ${esc(st.name)} is in ${esc(clsName(st.cls)||"another group")}${mainTeacher(st.cls)?" ("+esc(mainTeacher(st.cls).name)+")":""}. View only.</div>`);
-    v.insertAdjacentHTML("beforeend",studentGroupPanel(st));wireStudentGroup(v,st)}
+    {const h=studentMovesHTML(st)+studentGroupPanel(st);if(h){(v.querySelector("#sMore .smenu")||v).insertAdjacentHTML("beforeend",h);wireStudentGroup(v,st)}}}
   else v.classList.remove("ro");
   if(view.name==="class"&&view.id)v.classList.toggle("ro",!canEditCls(view.id));
   if(view.name==="add"&&view.wname){const n=v.querySelector("#f_name");if(n&&!n.value)n.value=view.wname;const ph=v.querySelector("#f_phone");if(ph&&view.wphone&&!ph.value)ph.value=view.wphone}
@@ -131,7 +132,7 @@ function wireAdminAlerts(el){
       const msg=`السلام عليكم ${t?t.name:""}،\nأرجو أن تكون بديلًا لحلقة «${c?c.name:""}» يوم ${fmtShort(a.date)}${c&&c.time?" الساعة "+c.time:""}. افتح برنامج متابعة الحفظ، وستجد الحلقة مفتوحة لك للتسجيل.${GNOTES[a.cid]&&GNOTES[a.cid].text?"\nملاحظات المعلم: "+GNOTES[a.cid].text:""}\nجزاك الله خيرًا.`;
       if(ph)window.open(`https://wa.me/${ph}?text=${encodeURIComponent(msg)}`,"_blank")}catch(_){}});
   el.querySelectorAll("[data-absub]").forEach(s=>s.addEventListener("focus",()=>busy=true));
-  el.querySelectorAll("[data-rqok]").forEach(b=>b.onclick=async()=>{const r=REQS.find(x=>x.id===b.dataset.rqok);try{await db.doc("students/"+r.sid).update({cls:r.to});await db.doc("requests/"+r.id).update({status:"done",done:iso(today())})}catch(_){}});
+  el.querySelectorAll("[data-rqok]").forEach(b=>b.onclick=async()=>{const r=REQS.find(x=>x.id===b.dataset.rqok);try{const st=allStudents.find(s=>s.id===r.sid);if(st)await moveStudent(st,r.to,r);await db.doc("requests/"+r.id).update({status:"done",done:iso(today())})}catch(_){}});
   el.querySelectorAll("[data-rqno]").forEach(b=>b.onclick=async()=>{try{await db.doc("requests/"+b.dataset.rqno).update({status:"declined",done:iso(today())})}catch(_){}})}
 
 // ----- "Who are you?" for a teacher opening the link the first time -----
@@ -139,16 +140,32 @@ function claimBox(){const free=TEACHERS.filter(t=>t.active!==false&&t.role!=="ad
   return `<div class="panel"><h3>Who are you?</h3><p class="small muted">Pick your name once. The app then shows your groups.</p><div class="actions">${free.map(t=>`<button class="primary" data-claim="${t.id}">${esc(t.name)}</button>`).join("")}</div></div>`}
 function wireClaim(el){el.querySelectorAll("[data-claim]").forEach(b=>b.onclick=async()=>{try{await db.doc("links/"+ME_UID).set({tid:b.dataset.claim,at:Date.now()})}catch(_){b.textContent="Could not save"}})}
 
-// ----- student page: move (admin) or suggest a move (teacher) -----
+// ----- student page, in the More menu: move (admin) or suggest a move (teacher) -----
+// Each move is kept on the student (moves: [{date, from, to, by, at, asked?}]): who moved them, when, and the teacher who suggested it.
+const mvArrow=()=>typeof AR!=="undefined"&&AR?"←":"→"; // points from the old group to the new one, also right-to-left
+const myByName=()=>{const t=meTeacher();return (t&&t.name)||ME_NAME||ME_EMAIL||""};
+async function moveStudent(st,to,req){const m={date:iso(today()),from:st.cls||"",to,by:myByName(),at:Date.now(),...(req&&req.by?{asked:req.by}:{})};
+  await db.doc("students/"+st.id).update({cls:to,moves:[...(Array.isArray(st.moves)?st.moves:[]),m]})}
+function studentMovesHTML(st){const L=(Array.isArray(st.moves)?st.moves:[]).slice().sort((a,b)=>(b.at||0)-(a.at||0));if(!L.length)return "";
+  const g=id=>`<bdi>${esc(clsName(id)||"a deleted group")}</bdi>`;
+  return `<div id="mvHist"><b class="small muted">Earlier moves</b>${L.map(m=>`<div class="small"><bdi>${fmtShort(m.date)}</bdi> · ${g(m.from)} ${mvArrow()} ${g(m.to)}${m.by?` · <span>moved by</span> <bdi>${esc(m.by)}</bdi>`:""}${m.asked?` · <span>suggested by</span> <bdi>${esc(tName(m.asked)||"a teacher")}</bdi>`:""}</div>`).join("")}</div>`}
+// Today, for admins: students another admin moved in the last 7 days, until "Got it" on this device.
+function recentMovesPanel(){if(!isAdminV())return "";let seen=0;try{seen=+localStorage.getItem("hifz.movesSeen")||0}catch(_){}
+  const after=Math.max(Date.now()-7*864e5,seen),me=myByName();
+  const L=allStudents.flatMap(st=>(Array.isArray(st.moves)?st.moves:[]).map(m=>({st,m}))).filter(x=>(x.m.at||0)>after&&(!me||x.m.by!==me)).sort((a,b)=>b.m.at-a.m.at);
+  if(!L.length)return "";const g=id=>`<bdi>${esc(clsName(id)||"a deleted group")}</bdi>`;
+  return `<div class="panel" id="mvNews"><h3>Students moved</h3>${L.map(({st,m})=>`<div class="scrow"><span><button class="link" data-mvopen="${st.id}"><bdi>${esc(st.name)}</bdi></button> · ${g(m.from)} ${mvArrow()} ${g(m.to)}${m.by?` · <span>moved by</span> <bdi>${esc(m.by)}</bdi>`:""} · <bdi>${fmtShort(m.date)}</bdi></span></div>`).join("")}<div class="actions"><button class="sm" id="mvSeen">Got it</button></div></div>`}
+function wireRecentMoves(el){el.querySelectorAll("[data-mvopen]").forEach(b=>b.onclick=()=>go({name:"student",id:b.dataset.mvopen}));
+  const s=el.querySelector("#mvSeen");if(s)s.onclick=()=>{try{localStorage.setItem("hifz.movesSeen",String(Date.now()))}catch(_){}const p=el.querySelector("#mvNews");if(p)p.remove()}}
 function studentGroupPanel(st){if(isSupervisor())return "";const others=classes.filter(c=>c.id!==st.cls);if(!others.length)return "";
   const opts=others.map(c=>`<option value="${c.id}">${esc(c.name)}${mainTeacher(c.id)?" — "+esc(mainTeacher(c.id).name):""}${SCHOOLS.length>1&&schById(schOfCls(c.id))?" · "+esc(schById(schOfCls(c.id)).name):""}</option>`).join("");
   const open=REQS.find(r=>r.sid===st.id&&r.status==="open");
-  if(isAdminV())return `<details class="panel"><summary><h3>Move to another group</h3></summary><label>New group<select id="mvTo">${opts}</select></label><p class="small muted">The whole history moves with the student. Old sessions keep "Recorded by" the teacher who recorded them.</p><div class="actions"><button class="primary" id="mvGo">Move student</button><span class="small muted" id="mvMsg"></span></div></details>`;
+  if(isAdminV())return `<div id="mvBox"><b class="small muted">Move to another group</b><label>New group<select id="mvTo">${opts}</select></label><p class="small muted">The whole history moves with the student. Old sessions keep "Recorded by" the teacher who recorded them.</p><div class="actions"><button class="primary" id="mvGo">Move student</button><span class="small muted" id="mvMsg"></span></div></div>`;
   if(!canEditSid(st.id))return "";
-  return `<details class="panel"><summary><h3>Suggest moving to another group</h3></summary>${open?`<p class="small">Waiting for the admin: move to ${esc(clsName(open.to))}.</p>`:`<label>Group<select id="mvTo">${opts}</select></label><input id="mvWhy" placeholder="Why? e.g. ahead of the group"><div class="actions"><button class="primary" id="rqGo">Send to the admin</button><span class="small muted" id="mvMsg"></span></div>`}</details>`}
+  return `<div id="mvBox"><b class="small muted">Suggest moving to another group</b>${open?`<p class="small">Waiting for the admin to move the student to: <b>${esc(clsName(open.to))}</b></p>`:`<label>Group<select id="mvTo">${opts}</select></label><input id="mvWhy" placeholder="Why? e.g. ahead of the group"><div class="actions"><button class="primary" id="rqGo">Send to the admin</button><span class="small muted" id="mvMsg"></span></div>`}</div>`}
 function wireStudentGroup(el,st){const q=s=>el.querySelector(s);[q("#mvTo"),q("#mvWhy")].forEach(i=>i&&i.addEventListener("focus",()=>busy=true));
-  const g=q("#mvGo");if(g)g.onclick=async()=>{if(g.dataset.c!=="1"){g.dataset.c="1";g.textContent="Tap again to move";return}try{await db.doc("students/"+st.id).update({cls:q("#mvTo").value});busy=false;render(true)}catch(_){q("#mvMsg").textContent="Not moved."}};
-  const r=q("#rqGo");if(r)r.onclick=async()=>{const t=meTeacher();try{await db.collection("requests").add({sid:st.id,from:st.cls,to:q("#mvTo").value,reason:q("#mvWhy").value.trim(),by:t?t.id:"",status:"open",at:Date.now(),date:iso(today())});busy=false;render(true)}catch(_){q("#mvMsg").textContent="Not sent."}}}
+  const g=q("#mvGo");if(g)g.onclick=async()=>{if(g.dataset.c!=="1"){g.dataset.c="1";g.textContent=(typeof AR!=="undefined"&&AR?arText("Tap again to move"):"Tap again to move");return}try{await moveStudent(st,q("#mvTo").value);busy=false;render(true)}catch(_){q("#mvMsg").textContent=(typeof AR!=="undefined"&&AR?arText("Not moved."):"Not moved.")}};
+  const r=q("#rqGo");if(r)r.onclick=async()=>{const t=meTeacher();try{await db.collection("requests").add({sid:st.id,from:st.cls,to:q("#mvTo").value,reason:q("#mvWhy").value.trim(),by:t?t.id:"",status:"open",at:Date.now(),date:iso(today())});busy=false;render(true)}catch(_){q("#mvMsg").textContent=(typeof AR!=="undefined"&&AR?arText("Not sent."):"Not sent.")}}}
 
 // ----- juz test examiner: another teacher -----
 function examinerField(st){const act=TEACHERS.filter(t=>t.active!==false&&t.role!=="supervisor");if(!act.length)return "";const mt=mainTeacher(st.cls);
@@ -250,3 +267,6 @@ function wireGroupsEditor(el){el.querySelectorAll("form[data-gid]").forEach(f=>{
     if(!d.name){m.textContent="Write the group name.";return}bt.disabled=true;m.textContent="Saving…";
     try{if(id==="new"){const r=await db.collection("classes").add({...d,n:Date.now()});if(!classes.some(c=>c.id===r.id))classes.push({id:r.id,...d,n:Date.now()})}else{await db.doc("classes/"+id).update(d);Object.assign(classes.find(c=>c.id===id)||{},d)}
       busy=false;render(true)}catch(_){m.textContent="Not saved. Try again.";bt.disabled=false}}})}
+Object.assign(AR_DICT,{"Move to another group":"نقل الطالب إلى مجموعة أخرى","New group":"المجموعة الجديدة","Move student":"انقل الطالب","Tap again to move":"اضغط مرة أخرى للنقل","Not moved.":"لم يُنقل.","The whole history moves with the student. Old sessions keep \"Recorded by\" the teacher who recorded them.":"ينتقل سجل الطالب كله معه. وتبقى الجلسات القديمة باسم المعلّم الذي سجّلها.",
+ "Suggest moving to another group":"اقترح نقل الطالب إلى مجموعة أخرى","Group":"المجموعة","Why? e.g. ahead of the group":"لماذا؟ مثلًا: سبق مجموعته","Send to the admin":"أرسل إلى المسؤول","Not sent.":"لم يُرسل.","Waiting for the admin to move the student to:":"في انتظار المسؤول لنقل الطالب إلى:",
+ "Earlier moves":"سجل النقل","Students moved":"طلاب تم نقلهم","Got it":"تمام","moved by":"نقله","suggested by":"باقتراح من","a deleted group":"مجموعة محذوفة","a teacher":"معلّم"});

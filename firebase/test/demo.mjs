@@ -172,6 +172,27 @@ try {
   const tmAfter = await page.evaluate(() => document.querySelector('#tmBtn').getBoundingClientRect().height > 0);
   ok('student page shows two main buttons; the rest are under More', sv.ses && sv.mus && !sv.test && tmAfter, JSON.stringify(sv));
   ok('long sections on the student page start folded', sv.folds >= 8 && sv.open <= 1, JSON.stringify(sv));
+  ok('"Move to another group" is in the More menu, with Move student showing', await page.evaluate(() => { const b = document.querySelector('#sMore .smenu #mvBox'); return !!b && /Move to another group/.test(b.textContent) && document.querySelector('#mvGo').getBoundingClientRect().height > 0; }));
+  // moving a student keeps a record: date, from, to and who moved them (shown under "Earlier moves")
+  const mv = await page.evaluate(async () => {
+    go({ name: 'student', id: 's3' }); document.querySelector('#sMore').open = true;
+    const sel = document.querySelector('#mvTo'); sel.value = 'c2'; const g = document.querySelector('#mvGo'); g.click(); g.click();
+    for (let i = 0; i < 40 && allStudents.find((s) => s.id === 's3').cls !== 'c2'; i++) await new Promise((r) => setTimeout(r, 100));
+    const st = allStudents.find((s) => s.id === 's3'), m = (st.moves || []).slice(-1)[0] || {};
+    document.querySelector('#sMore').open = true; const h = document.querySelector('#sMore #mvHist');
+    const back = document.querySelector('#mvGo'); back.click(); back.click(); // move back to the Kids class (c1)
+    for (let i = 0; i < 40 && allStudents.find((s) => s.id === 's3').cls !== 'c1'; i++) await new Promise((r) => setTimeout(r, 100));
+    return { cls: st.cls, m, hist: h ? h.textContent : '', n: (allStudents.find((s) => s.id === 's3').moves || []).length, now: allStudents.find((s) => s.id === 's3').cls };
+  });
+  const news = await page.evaluate(async () => {
+    go({ name: 'today' }); await new Promise((r) => setTimeout(r, 300));
+    const p = document.querySelector('#mvNews'), txt = p ? p.textContent : '';
+    document.querySelector('#mvSeen').click(); go({ name: 'today' }); await new Promise((r) => setTimeout(r, 300));
+    return { txt, gone: !document.querySelector('#mvNews') };
+  });
+  ok('Today shows an admin the students another admin moved, until "Got it"', /Students moved/.test(news.txt) && /Maryam/.test(news.txt) && /moved by Amina/.test(news.txt) && !/Ibrahim/.test(news.txt) && news.gone, JSON.stringify(news));
+  ok('a move saves the date, both groups and who moved the student, and lists it', mv.cls === 'c2' && mv.m.from === 'c1' && mv.m.to === 'c2' && mv.m.by === 'Demo Owner' && mv.m.date === new Date().toLocaleDateString('en-CA') && /Earlier moves/.test(mv.hist) && /moved by Demo Owner/.test(mv.hist) && mv.n === 2 && mv.now === 'c1', JSON.stringify(mv));
+  ok("an admin's own moves are not shown to them on Today", await page.evaluate(async () => { localStorage.removeItem('hifz.movesSeen'); go({ name: 'today' }); await new Promise((r) => setTimeout(r, 300)); const t = (document.querySelector('#mvNews') || {}).textContent || ''; return /Maryam/.test(t) && !/Ibrahim/.test(t); }));
   // session: mistake counters stay hidden until "Mistakes and details"
   await page.evaluate(() => { go({ name: 'session', id: 's2' }); });
   await page.waitForSelector('[data-qx="qHC"]');
@@ -254,6 +275,7 @@ try {
   await page.waitForFunction(() => view.name === 'student', null, { timeout: 10000 }).catch(() => {});
   if (await page.evaluate(() => view.name === 'edit')) { await page.click('#fForm button[type="submit"]'); await page.waitForFunction(() => view.name === 'student', null, { timeout: 10000 }); }
   ok("the teacher's surah change is saved", await page.evaluate(({ id, s }) => (allStudents.find((x) => x.id === id).prevS || []).includes(s), { id: sids.mine, s: pick.s }));
+  ok('a teacher finds "Suggest moving to another group" in the More menu, not Move student', await page.evaluate(() => { const b = document.querySelector('#sMore .smenu #mvBox'); return !!b && /Suggest moving/.test(b.textContent) && !!document.querySelector('#rqGo') && !document.querySelector('#mvGo'); }));
   await page.evaluate(() => go({ name: 'list' }));
   await page.waitForSelector('.slist .row');
   ok('a teacher sees only their own groups and Whole school as tabs', await page.evaluate(() => JSON.stringify([...document.querySelectorAll('[data-cls]')].map((b) => b.dataset.cls)) === '["c1","school"]' && !document.querySelector('#schSw')));
