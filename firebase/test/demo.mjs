@@ -193,6 +193,22 @@ try {
   ok('Today shows an admin the students another admin moved, until "Got it"', /Students moved/.test(news.txt) && /Maryam/.test(news.txt) && /moved by Amina/.test(news.txt) && !/Ibrahim/.test(news.txt) && news.gone, JSON.stringify(news));
   ok('a move saves the date, both groups and who moved the student, and lists it', mv.cls === 'c2' && mv.m.from === 'c1' && mv.m.to === 'c2' && mv.m.by === 'Demo Owner' && mv.m.date === new Date().toLocaleDateString('en-CA') && /Earlier moves/.test(mv.hist) && /moved by Demo Owner/.test(mv.hist) && mv.n === 2 && mv.now === 'c1', JSON.stringify(mv));
   ok("an admin's own moves are not shown to them on Today", await page.evaluate(async () => { localStorage.removeItem('hifz.movesSeen'); go({ name: 'today' }); await new Promise((r) => setTimeout(r, 300)); const t = (document.querySelector('#mvNews') || {}).textContent || ''; return /Maryam/.test(t) && !/Ibrahim/.test(t); }));
+  // deleting a group from the school page: an empty one directly, one with students after moving them all (recorded)
+  const gd = await page.evaluate(async () => {
+    const wait = async (f) => { for (let i = 0; i < 50 && !f(); i++) await new Promise((r) => setTimeout(r, 100)); };
+    const sid = SCHOOLS[0].id, a = await db.collection('classes').add({ name: 'Empty group', school: sid, n: Date.now() }), b = await db.collection('classes').add({ name: 'Temp group', school: sid, n: Date.now() });
+    await wait(() => classes.some((c) => c.id === a.id) && classes.some((c) => c.id === b.id));
+    await moveStudent(allStudents.find((s) => s.id === 's3'), b.id); await wait(() => allStudents.find((s) => s.id === 's3').cls === b.id);
+    const open = async () => { go({ name: 'schoolv', id: sid, tab: 'groups' }); await new Promise((r) => setTimeout(r, 300)); document.querySelectorAll('.gdel').forEach((d) => { d.open = true; d.closest('details.panel') && (d.closest('details.panel').open = true); }); };
+    await open(); const empty = document.querySelector(`form[data-gid="${a.id}"] .gdel`).textContent;
+    let bt = document.querySelector(`[data-gdel="${a.id}"]`); bt.click(); bt.click(); await wait(() => !classes.some((c) => c.id === a.id));
+    await open(); const full = document.querySelector(`form[data-gid="${b.id}"] .gdel`).textContent;
+    document.querySelector(`form[data-gid="${b.id}"] [data-gmv]`).value = 'c1';
+    bt = document.querySelector(`[data-gdel="${b.id}"]`); bt.click(); bt.click(); await wait(() => !classes.some((c) => c.id === b.id));
+    const st = allStudents.find((s) => s.id === 's3');
+    return { empty: /No students in this group/.test(empty), full: /1 student is in this group/.test(full) && /Move 1 student and delete the group/.test(full), aGone: !classes.some((c) => c.id === a.id), bGone: !classes.some((c) => c.id === b.id), cls: st.cls, last: (st.moves || []).slice(-1)[0] };
+  });
+  ok('an empty group is deleted from the school page; a group with students moves them first, recorded', gd.empty && gd.full && gd.aGone && gd.bGone && gd.cls === 'c1' && gd.last && gd.last.to === 'c1' && gd.last.by === 'Demo Owner', JSON.stringify(gd));
   // session: mistake counters stay hidden until "Mistakes and details"
   await page.evaluate(() => { go({ name: 'session', id: 's2' }); });
   await page.waitForSelector('[data-qx="qHC"]');

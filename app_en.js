@@ -814,7 +814,7 @@ function renderClasses(el,sub){
         ${n?`<label class="chk"><input type="checkbox" class="creadall"> Also set this reading now for the ${n} ${n===1?"student":"students"} in this class</label>`:""}
         <div class="actions"><button type="submit">Save</button><button type="button" data-open="1">Open class log</button>${n?"":'<button type="button" class="link small" data-delcls="1">Delete</button>'}<span class="small muted cmsg"></span></div>
       </form>`}).join(""):'<p class="muted">No classes yet. Add the first one below.</p>'}</div>
-    <p class="note">To move a student to another class, open the student and tap "Edit details". A class can only be deleted when it has no students.</p>
+    <p class="note">To move a student to another class, open the student and tap "More". To delete a class that still has students, open Schools, the school, then "Add or edit groups": it moves them to another class first.</p>
   </div>
   <form class="panel" id="newCls"><label>New class<input id="c_name" placeholder="e.g. Girls' class" required></label>
     <p class="small muted lbl">Class days</p>${dayBoxes([],"d_new")}
