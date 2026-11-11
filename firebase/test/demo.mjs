@@ -209,6 +209,17 @@ try {
     return { empty: /No students in this group/.test(empty), full: /1 student is in this group/.test(full) && /Move 1 student and delete the group/.test(full), aGone: !classes.some((c) => c.id === a.id), bGone: !classes.some((c) => c.id === b.id), cls: st.cls, last: (st.moves || []).slice(-1)[0] };
   });
   ok('an empty group is deleted from the school page; a group with students moves them first, recorded', gd.empty && gd.full && gd.aGone && gd.bGone && gd.cls === 'c1' && gd.last && gd.last.to === 'c1' && gd.last.by === 'Demo Owner', JSON.stringify(gd));
+  const gd2 = await page.evaluate(async () => {
+    const wait = async (f) => { for (let i = 0; i < 50 && !f(); i++) await new Promise((r) => setTimeout(r, 100)); };
+    const b = await db.collection('classes').add({ name: 'Old page group', school: SCHOOLS[0].id, n: Date.now() });
+    await wait(() => classes.some((c) => c.id === b.id));
+    await moveStudent(allStudents.find((s) => s.id === 's3'), b.id); await wait(() => allStudents.find((s) => s.id === 's3').cls === b.id);
+    go({ name: 'classes' }); await new Promise((r) => setTimeout(r, 300));
+    const f = document.querySelector(`form[data-id="${b.id}"]`); f.querySelector('.gdel').open = true; f.querySelector('[data-gmv]').value = 'c1';
+    const bt = f.querySelector('[data-gdel]'); bt.click(); bt.click(); await wait(() => !classes.some((c) => c.id === b.id));
+    return { gone: !classes.some((c) => c.id === b.id), cls: allStudents.find((s) => s.id === 's3').cls, view: view.name };
+  });
+  ok('Settings › Classes also deletes a group with students, after moving them', gd2.gone && gd2.cls === 'c1', JSON.stringify(gd2));
   // session: mistake counters stay hidden until "Mistakes and details"
   await page.evaluate(() => { go({ name: 'session', id: 's2' }); });
   await page.waitForSelector('[data-qx="qHC"]');
