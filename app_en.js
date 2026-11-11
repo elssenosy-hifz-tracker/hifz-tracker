@@ -812,9 +812,10 @@ function renderClasses(el,sub){
         <label class="chk"><input type="checkbox" class="cnoneg" ${c.noNeg?"checked":""}> No minus points in this class (absence, behaviour and the rest give 0 instead)</label>
         <label>Daily reading for new students<select class="cread">${READS.map(r=>`<option value="${r[0]}" ${r[0]===clsRead(c)?"selected":""}>${r[1]}</option>`).join("")}</select></label>
         ${n?`<label class="chk"><input type="checkbox" class="creadall"> Also set this reading now for the ${n} ${n===1?"student":"students"} in this class</label>`:""}
-        <div class="actions"><button type="submit">Save</button><button type="button" data-open="1">Open class log</button>${n?"":'<button type="button" class="link small" data-delcls="1">Delete</button>'}<span class="small muted cmsg"></span></div>
+        <div class="actions"><button type="submit">Save</button><button type="button" data-open="1">Open class log</button><span class="small muted cmsg"></span></div>
+        ${groupDelBox(c)}
       </form>`}).join(""):'<p class="muted">No classes yet. Add the first one below.</p>'}</div>
-    <p class="note">To move a student to another class, open the student and tap "Edit details". A class can only be deleted when it has no students.</p>
+    <p class="note">To move a student to another class, open the student and tap "More". "Delete group" under a class moves its students to another class first, then deletes it.</p>
   </div>
   <form class="panel" id="newCls"><label>New class<input id="c_name" placeholder="e.g. Girls' class" required></label>
     <p class="small muted lbl">Class days</p>${dayBoxes([],"d_new")}
@@ -831,7 +832,8 @@ function renderClasses(el,sub){
       try{const rd=Number(f.querySelector(".cread").value);await db.doc("classes/"+id).update({name,time:f.querySelector(".ctime").value,end:f.querySelector(".cend").value,days:daysOf(f,"d_"+id),noNeg:f.querySelector(".cnoneg").checked,readDef:rd});
         const all=f.querySelector(".creadall");if(all&&all.checked)for(const s of allStudents.filter(s=>s.cls===id))await db.doc("students/"+s.id).update({readPages:rd});busy=false;render(true)}catch(_){f.querySelector(".cmsg").textContent="Not saved. Try again."}};
     f.querySelector("[data-open]").onclick=()=>{busy=false;go({name:"class",id,date:iso(today())})};
-    const d=f.querySelector("[data-delcls]");if(d)d.onclick=async()=>{if(d.dataset.confirm!=="1"){d.dataset.confirm="1";d.textContent="Confirm delete?";return}try{await db.doc("classes/"+id).delete();busy=false;render(true)}catch(_){}}});
+  });
+  wireGroupDel(el);
   const nf=el.querySelector("#newCls");trackForm(nf);
   nf.onsubmit=async e=>{e.preventDefault();const name=nf.querySelector("#c_name").value.trim();if(!name)return;
     try{await db.collection("classes").add({name,n:Date.now(),days:daysOf(nf,"d_new"),time:""});busy=false;render(true)}catch(_){nf.querySelector("#c_msg").textContent="Not added. Try again."}};
