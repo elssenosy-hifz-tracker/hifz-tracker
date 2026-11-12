@@ -16,7 +16,7 @@ function newTest(st,len){const m=memAyahs(st);if(!m.length)return null;
   for(const x of m){const n=x.a2-x.a1+1;if(k<n){r=x;break}k-=n}
   const a=r.a1+k,b=Math.min(r.a2,a+len-1);const w0=ayahWord(r.s,a),w1=ayEndWord(r.s,b);
   return {s:r.s,a1:a,a2:b,len,w0,w1,rev:w0-1,ids:{},kind:"forgot",saved:false}}
-function renderTestMode(el,sub,st){
+function renderTestMode(el,sub,st){SIM_REDRAW=()=>render(true);
   injectFont();
   if(!view.tm||view.tm.sid!==st.id){const t=newTest(st,5);view.tm=t?{...t,sid:st.id}:null}
   const T=view.tm;sub.textContent="Test mode · "+st.name;
@@ -30,7 +30,7 @@ function renderTestMode(el,sub,st){
   <div class="panel tm">
    <div class="head"><h3>🎲 Start here: ${esc(SURAH_NAMES[T.s])}, ayah ${T.a1}</h3><button class="sm" id="tmNew">New place ↻</button></div>
    <p class="small">The student recites <b>${esc(SURAH_NAMES[T.s])} ${T.a1}${T.a2>T.a1?"–"+T.a2:""}</b> from memory. Length <select id="tmLen">${[1,3,5,10].map(n=>`<option value="${n}" ${n===T.len?"selected":""}>${n} ${n===1?"ayah":"ayahs"}</option>`).join("")}</select></p>
-   <div class="tmk"><span class="small muted">Tap a shown word to mark it as:</span>${TK.map(([k,l])=>`<button type="button" class="sm mk k-${k}${k===T.kind?" on":""}" data-tk="${k}">${l}</button>`).join("")}</div>
+   <div class="tmk"><span class="small muted">Tap a shown word to mark it as:</span>${TK.map(([k,l])=>`<button type="button" class="sm mk k-${k}${k===T.kind?" on":""}" data-tk="${k}">${l}</button>`).join("")}${simToggleBtn()}</div>
   </div>
   <div class="mwrap"><div class="mbox tmode">${pageHTML(pg,mm,null,st)}</div></div>
   <div class="actions tmbar"><button class="primary" id="tmW" ${done?"disabled":""}>Next word</button><button id="tmA" ${done?"disabled":""}>Next ayah</button><button id="tmAll" ${done?"disabled":""}>Show all</button></div>
@@ -264,7 +264,7 @@ function openQMus(st,items,idx,SM,onMark,onRange){
   document.querySelectorAll(".qmus").forEach(x=>x.remove());
   const ov=document.createElement("div");ov.className="qmus";document.body.appendChild(ov);document.body.classList.add("qmus-on");
   const close=()=>{ov.remove();document.body.classList.remove("qmus-on");busy=true};
-  const draw=(scroll)=>{const it=items[idx];if(!it){close();return}
+  const draw=(scroll)=>{const it=items[idx];if(!it){close();return}SIM_REDRAW=()=>draw(false);
     const R=itemRange(it),first=R[0][0],last=R[R.length-1][1];
     const E=ext[idx]||(ext[idx]={pre:0,post:0});
     let pages=[...new Set(R.flatMap(([a,b])=>{const o=[];for(let p=pageOfWord(a);p<=pageOfWord(b);p++)o.push(p);return o}))].sort((a,b)=>a-b);
@@ -275,7 +275,7 @@ function openQMus(st,items,idx,SM,onMark,onRange){
     let anc=null;if(!scroll){const b0=ov.querySelector(".qmb2");if(b0){const bt=b0.getBoundingClientRect().top;const bh=b0.clientHeight,L=[];for(const x of b0.querySelectorAll(".mpage .w")){const t=x.getBoundingClientRect().top-bt;if(t>=0&&t<bh)L.push({w:x.dataset.w,d:t});else if(t>=bh)break}anc=L.length?{L,top:b0.scrollTop}:{top:b0.scrollTop}}}
     const n=[...SM].filter(([w,v])=>inRanges(R,w)&&v.k!=="hesitate").length,ns=[...SM].filter(([w,v])=>inRanges(R,w)&&v.k==="hesitate").length;
     ov.innerHTML=`<div class="qmh"><div class="qmt"><button type="button" class="link" id="qmX">✕ Done</button><b>${esc(itemLabel(it))}</b><span class="small muted">${idx+1} of ${items.length}</span></div>
-      <div class="tmk">${TK.map(([k,l])=>`<button type="button" class="sm mk k-${k}${k===kind?" on":""}" data-qk="${k}">${l}</button>`).join("")}<label class="qhide"><input type="checkbox" id="qmHide" ${hide?"checked":""}> Hide text</label></div>
+      <div class="tmk">${TK.map(([k,l])=>`<button type="button" class="sm mk k-${k}${k===kind?" on":""}" data-qk="${k}">${l}</button>`).join("")}<label class="qhide"><input type="checkbox" id="qmHide" ${hide?"checked":""}> Hide text</label>${simToggleBtn()}</div>
       ${tjp?`<div class="qmtj"><b>Which tajweed rule?</b> <span class="mword">${mw()[tjp.w]}</span><div class="actions">${tjp.rules.map(r=>`<button type="button" class="sm" data-tjr="${r}">${TJ_R[r][1]}</button>`).join("")}<select id="qmTjO" aria-label="Another rule"><option value="">Another rule…</option>${Object.keys(TJ_R).filter(r=>!tjp.rules.includes(r)).map(r=>`<option value="${r}">${TJ_R[r][1]}</option>`).join("")}</select><button type="button" class="link sm" id="qmTjX">Skip</button></div></div>`:""}
       ${onRange?`<div class="qrng small">${sel!=null?`<b>Start: ${esc(SURAH_NAMES[AY_SURAH[sel]])} ${sel-SURAH_FIRST[AY_SURAH[sel]]+1}</b> · now tap the number of the ayah where he stopped <button type="button" class="link sm" id="qmSelX">cancel</button>`:`Read more or less? Tap the <b>ayah number</b> where he started, then the one where he stopped.`}</div>`:""}
       <div class="small">Mistakes here: <b>${n}</b>${ns?` · self-corrected ${ns}`:""} <span class="muted">· tap a word to mark, tap again to remove · faint = old mistakes</span></div></div>

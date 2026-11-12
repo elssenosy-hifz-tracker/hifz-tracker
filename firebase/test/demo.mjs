@@ -234,6 +234,18 @@ try {
     return out;
   });
   ok('mushaf marks a similar ayah the student knows; tapping shows both ayat and adds no mistake', simM.marks >= 1 && simM.under > 0 && simM.ayat === 2 && /Abasa 33|عبس/.test(simM.text) && simM.added === 0 && simM.closed && simM.other === 0, JSON.stringify(simM));
+  const simT = await page.evaluate(async () => {
+    try { localStorage.removeItem('hifz.simOn'); } catch (_) {}
+    go({ name: 'mushaf', id: 's4' }); view.page = 584; render(true); await new Promise((r) => setTimeout(r, 300));
+    const o = { diff: [...document.querySelectorAll('.mpage .w.simd')].length, on: document.querySelectorAll('.mpage .simk').length };
+    document.querySelector('.simk').click(); await new Promise((r) => setTimeout(r, 200));
+    o.pop = [...document.querySelectorAll('.simpop .simdw')].map((x) => x.textContent).length; document.querySelector('.simpop [data-simx]').click();
+    document.querySelector('[data-simtog]').click(); await new Promise((r) => setTimeout(r, 300)); o.off = document.querySelectorAll('.mpage .simk').length + document.querySelectorAll('.mpage .w.sim').length;
+    document.querySelector('[data-simtog]').click(); await new Promise((r) => setTimeout(r, 300)); o.back = document.querySelectorAll('.mpage .simk').length;
+    o.ld = simDiff([gAyah(83, 25)], [gAyah(94, 6)]); o.ld = [...o.ld.o].length + [...o.ld.m].length; // "lahum" vs "falahum": one word each
+    return o;
+  });
+  ok('the words that differ are coloured; the Similar verses button hides and shows the marks', simT.diff === 2 && simT.on === 1 && simT.pop === 3 && simT.off === 0 && simT.back === 1 && simT.ld === 2, JSON.stringify(simT));
   // session: mistake counters stay hidden until "Mistakes and details"
   await page.evaluate(() => { go({ name: 'session', id: 's2' }); });
   await page.waitForSelector('[data-qx="qHC"]');
