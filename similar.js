@@ -17,31 +17,49 @@ function similarIn(st,ps,extra=[]){if(!ps||!ps.length)return [];const known=simK
     const k=[x.o.join("."),x.m.join(".")].sort().join("|");if(seen.has(k))continue;seen.add(k);out.push(x)}}
   return out}
 const simLabel=g=>{const s=AY_SURAH[g[0]],a=g[0]-SURAH_FIRST[s]+1,b=g[g.length-1]-SURAH_FIRST[s]+1;return `${SURAH_NAMES[s]} ${a}${b>a?"–"+b:""}`};
-function simText(g){const W=mw(),a=MUS.a[g[0]],e=g[g.length-1]+1,b=(e<MUS.a.length?MUS.a[e]:W.length)-1,to=Math.min(b,a+13);
-  let h="";for(let w=a;w<=to;w++)h+=W[w]+" ";return h+(to<b?"…":`<span class="bae">۝${toAr(g[g.length-1]-SURAH_FIRST[AY_SURAH[g[0]]]+1)}</span>`)}
+// the words of an ayah group (word indexes [a, b)), and the words that differ between two similar groups (letters only, no marks)
+const simRange=g=>{const W=mw(),e=g[g.length-1]+1;return [MUS.a[g[0]],e<MUS.a.length?MUS.a[e]:W.length]};
+const simNorm=w=>w.replace(/[ؐ-ًؚ-ٰٟۖ-ۭ࣓-ࣿـ]/g,"").replace(/[ٱأإآ]/g,"ا").replace(/ى/g,"ي");
+const SIM_D=new Map();
+function simDiff(o,m){const key=o.join(".")+"|"+m.join(".");if(SIM_D.has(key))return SIM_D.get(key);const W=mw(),[a1,b1]=simRange(o),[a2,b2]=simRange(m);
+  const A=[],B=[];for(let w=a1;w<b1;w++)A.push(simNorm(W[w]));for(let w=a2;w<b2;w++)B.push(simNorm(W[w]));const n=A.length,k=B.length;
+  const T=Array.from({length:n+1},()=>new Uint16Array(k+1));for(let i=n-1;i>=0;i--)for(let j=k-1;j>=0;j--)T[i][j]=A[i]===B[j]?T[i+1][j+1]+1:Math.max(T[i+1][j],T[i][j+1]);
+  const dO=new Set(),dM=new Set();let i=0,j=0;while(i<n&&j<k){if(A[i]===B[j]){i++;j++}else if(T[i+1][j]>=T[i][j+1])dO.add(a1+i++);else dM.add(a2+j++)}
+  for(;i<n;i++)dO.add(a1+i);for(;j<k;j++)dM.add(a2+j);const r={o:dO,m:dM};SIM_D.set(key,r);return r}
+// an ayah group in the mushaf font; words in d are highlighted, and the text is cut after max words (keeping the first difference in view)
+function simText(g,d,max=14){const W=mw(),[a,b]=simRange(g);let from=a;if(d&&d.size){const f=Math.min(...d);if(f-a>max-4)from=Math.max(a,f-4)}const to=Math.min(b-1,from+max-1);
+  let h=from>a?"… ":"";for(let w=from;w<=to;w++)h+=(d&&d.has(w)?`<span class="simdw">${W[w]}</span>`:W[w])+" ";return h+(to<b-1?"…":`<span class="bae">۝${toAr(g[g.length-1]-SURAH_FIRST[AY_SURAH[g[0]]]+1)}</span>`)}
 function simPanel(st,ps,extra){const L=similarIn(st,ps,extra);if(!L.length)return "";injectFont();
   return `<details class="qsim" id="qSim"><summary>⚠️ <b>${L.length} similar ${L.length===1?"verse":"verses"} to watch</b> <span class="small muted">in today's hifz and review</span></summary>
     <p class="small muted">Each one looks like an ayah this student already knows. Listen closely here: students often jump from one to the other.</p>
-    ${L.slice(0,12).map(x=>`<div class="bk qsimi"><div class="small"><b>${simLabel(x.o)}</b> looks like <b>${simLabel(x.m)}</b></div><div class="bkt" dir="rtl">${simText(x.o)}</div><div class="bkt" dir="rtl">${simText(x.m)}</div></div>`).join("")}
+    ${L.slice(0,12).map(x=>`<div class="bk qsimi"><div class="small"><b>${simLabel(x.o)}</b> looks like <b>${simLabel(x.m)}</b></div><div class="bkt" dir="rtl">${simText(x.o,simDiff(x.o,x.m).o,24)}</div><div class="bkt" dir="rtl">${simText(x.m,simDiff(x.o,x.m).m,24)}</div></div>`).join("")}
     ${L.length>12?`<p class="small muted">and ${L.length-12} more.</p>`:""}</details>`}
 
 // ----- on the mushaf page: a ≈ mark at the start of each ayah that looks like one the student already knows; tap it to see the other -----
 let SIM_K=null; // {sid, key, known}: what the student knows, kept while their position and earlier surahs stay the same
 function simKnownNow(st){const key=st.id+"|"+st.pos+"|"+(st.order||"")+"|"+JSON.stringify(st.prevS||[])+"|"+JSON.stringify(st.prev||[]);
   if(!SIM_K||SIM_K.key!==key)SIM_K={key,known:simKnown(st,[])};return SIM_K.known}
-const SIM_PG=new Map(); // global ayah index -> similar ayat the student knows, for the pages on screen
+const SIM_PG=new Map(),SIM_DW=new Set(); // ayah index -> similar ayat the student knows; words that differ from the look-alike
 function simOnPage(st,a,b){const known=simKnownNow(st),M=simMap(),out=new Set();
-  for(let i=wordAyah(a);i<MUS.a.length&&MUS.a[i]<b;i++){const L=(M.get(i)||[]).filter(x=>x.o[0]===i&&x.m.some(y=>known[y]&&(y<x.o[0]||y>x.o[x.o.length-1])));if(L.length){SIM_PG.set(i,L);out.add(i)}}
+  for(let i=wordAyah(a);i<MUS.a.length&&MUS.a[i]<b;i++){const L=(M.get(i)||[]).filter(x=>x.o[0]===i&&x.m.some(y=>known[y]&&(y<x.o[0]||y>x.o[x.o.length-1])));
+    if(L.length){SIM_PG.set(i,L);out.add(i);for(const x of L)for(const w of simDiff(x.o,x.m).o)SIM_DW.add(w)}}
   return out}
+// on/off for the marks, remembered on this device; each mushaf view sets SIM_REDRAW to draw itself again
+const simOn=()=>{try{return localStorage.getItem("hifz.simOn")!=="0"}catch(_){return true}};
+let SIM_REDRAW=null;
+const simToggleBtn=()=>{const on=simOn(),ar=typeof AR!=="undefined"&&AR;return `<button type="button" class="sm simtog${on?" on":""}" data-simtog aria-pressed="${on}">≈ ${ar?"المتشابهات":"Similar verses"}${on?"":ar?" (مخفية)":" (hidden)"}</button>`};
 function simPopup(i){const L=SIM_PG.get(i);if(!L)return;const ar=typeof AR!=="undefined"&&AR;injectFont();document.querySelectorAll(".simpop").forEach(x=>x.remove());
   const d=document.createElement("div");d.className="simpop";d.setAttribute("role","dialog");
   const lab=g=>{const s=AY_SURAH[g[0]],a=g[0]-SURAH_FIRST[s]+1,b=g[g.length-1]-SURAH_FIRST[s]+1;return ar?`${SURAH_AR[s]} ${toAr(a)}${b>a?"–"+toAr(b):""}`:simLabel(g)};
   d.innerHTML=`<div class="simpi"><div class="simph"><b>${ar?"آية متشابهة":"Similar verse"}</b><button type="button" class="link" data-simx>${ar?"إغلاق":"Close"}</button></div>
-    <div class="small muted">${lab(L[0].o)}</div><div class="bkt" dir="rtl">${simText(L[0].o)}</div>
-    ${L.map(x=>`<div class="small"><b>${ar?"تشبه":"looks like"} ${lab(x.m)}</b></div><div class="bkt" dir="rtl">${simText(x.m)}</div>`).join("")}
+    <div class="small muted">${lab(L[0].o)}</div><div class="bkt" dir="rtl">${simText(L[0].o,simDiff(L[0].o,L[0].m).o,40)}</div>
+    ${L.map(x=>`<div class="small"><b>${ar?"تشبه":"looks like"} ${lab(x.m)}</b></div><div class="bkt" dir="rtl">${simText(x.m,simDiff(x.o,x.m).m,40)}</div>`).join("")}
     <p class="small muted">${ar?"الطالب يحفظ الآية الأخرى؛ انتبه هنا للانتقال من واحدة إلى الأخرى.":"The student knows the other ayah: listen for a jump from one to the other."}</p></div>`;
   d.onclick=e=>{if(e.target===d||e.target.closest("[data-simx]"))d.remove()};document.body.appendChild(d)}
+document.addEventListener("click",e=>{const t=e.target.closest&&e.target.closest("[data-simtog]");if(!t)return;e.stopPropagation();e.preventDefault();
+  try{localStorage.setItem("hifz.simOn",simOn()?"0":"1")}catch(_){}if(SIM_REDRAW)SIM_REDRAW()},true);
 document.addEventListener("click",e=>{const k=e.target.closest&&e.target.closest("[data-sim]");if(!k)return;e.stopPropagation();e.preventDefault();simPopup(Number(k.dataset.sim))},true);
 (()=>{const st=document.createElement("style");st.textContent=`.simpop{position:fixed;inset:0;z-index:3000;background:rgba(0,0,0,.35);display:flex;align-items:flex-end;justify-content:center}
 .simpi{background:var(--bg,#fff);color:var(--ink,#1b1b1b);width:100%;max-width:560px;max-height:75vh;overflow:auto;border-radius:16px 16px 0 0;padding:14px 16px 18px;box-sizing:border-box}
+.simpi .simdw,.qsim .simdw{background:#ffd98a;color:#8a3b00;border-radius:.2em;padding:0 .08em}.simtog.on{background:#fff3d6;border-color:#d08a00;color:#8a5a00}
 .simph{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}.simpi .bkt{font-family:"KFGQPC Hafs",serif;font-size:22px;line-height:1.9;background:#fff8e6;border-radius:8px;padding:4px 10px;margin:4px 0 10px;color:#1b1b1b}`;document.head.appendChild(st)})();

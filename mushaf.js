@@ -30,11 +30,12 @@ const MUSHAF_CSS=`.mpage{font-family:"KFGQPC Hafs",serif;direction:rtl;line-heig
 .sh{justify-content:center;border:1px solid #c9b47a;border-radius:.3em;background:#f5edd3;margin:.15em 0;line-height:1.6}
 .bs{justify-content:center}
 .pno{text-align:center;font-size:.55em;color:#7a6a3a;line-height:1.6}
+.ml .w.simd{background:rgba(255,190,70,.32)}
 .ml .w.sim{text-decoration:underline dotted #d08a00;text-decoration-thickness:.06em;text-underline-offset:.35em}
 .simk{display:inline-block;font:700 .62em/1 system-ui,sans-serif;color:#fff;background:#d08a00;border-radius:1em;padding:.2em .45em;margin:0 .12em;vertical-align:.35em;cursor:pointer;box-shadow:0 0 0 .12em #fff3d6}`;
 function pageHTML(pg,markMap,tj,simSt){
   const W=mw(),E=aend(),a=MUS.p[pg-1],b=pg<604?MUS.p[pg]:W.length,c=pg<=2,T=tj?(tjInject(),tjRange(W,w=>!!E[w],a,b,null,null,tj==="all")):null;
-  const SG=simSt&&typeof simOnPage==="function"?simOnPage(simSt,a,b):null;let ai=wordAyah(a),inSim=false; // similar verses the student knows
+  const SG=simSt&&typeof simOnPage==="function"&&simOn()?simOnPage(simSt,a,b):null;let ai=wordAyah(a),inSim=false; // similar verses the student knows
   let html="",li=bsr(MUS.l,a);
   for(;li<MUS.l.length&&MUS.l[li]<b;li++){
     const x=MUS.l[li],y=li+1<MUS.l.length?MUS.l[li+1]:W.length;
@@ -43,7 +44,7 @@ function pageHTML(pg,markMap,tj,simSt){
     let row="";
     for(let w=x;w<y;w++){const mk=markMap&&markMap.get(w);
       if(SG){while(ai+1<MUS.a.length&&MUS.a[ai+1]<=w)ai++;if(MUS.a[ai]===w){inSim=SG.has(ai);if(inSim)row+=`<span class="simk" data-sim="${ai}" role="button" aria-label="Similar verse">≈</span>`}}
-      row+=`<span class="w${mk?` m k-${mk.k}${mk.fx?" fx":""}`:""}${SG&&inSim?" sim":""}" data-w="${w}">${T?T[w-a]:W[w]}</span>`;
+      row+=`<span class="w${mk?` m k-${mk.k}${mk.fx?" fx":""}`:""}${SG&&(inSim||SIM_DW.has(w))?" sim":""}${SG&&SIM_DW.has(w)?" simd":""}" data-w="${w}">${T?T[w-a]:W[w]}</span>`;
       if(E[w])row+=`<span class="ae">۝<b>${toAr(E[w])}</b></span>`}
     html+=`<div class="ml${c?" c":""}">${row}</div>`}
   return `<div class="mpage">${html}<div class="pno">${toAr(pg)}</div></div>`;
@@ -60,7 +61,7 @@ function markMapFor(list){const m=new Map();for(const x of list.slice().sort((a,
 const markPlace=m=>{const p=wordPlace(m.w);return `${SURAH_NAMES[p.s]} ${p.a}`};
 const markRange=(list,from,to)=>list.filter(m=>m.date>=from&&m.date<=to);
 function renderMushaf(el,sub,st){
-  injectFont();
+  injectFont();SIM_REDRAW=()=>render(true);
   const la=lastAyahOf(st.pos);
   const pg=Math.min(604,Math.max(1,view.page||(la?pageOfAyah(la.s,la.a2):1)));view.page=pg;
   const flt=view.mf||"all",z=view.mz||0,t=iso(today());
@@ -77,7 +78,7 @@ function renderMushaf(el,sub,st){
       <button id="mHere" class="small">Today's hifz</button>
       <span class="zoom"><button id="mZo" class="small" ${z<=0?"disabled":""} aria-label="Smaller">A−</button><button id="mZi" class="small" ${z>=2?"disabled":""} aria-label="Larger">A+</button></span></div>
     <div class="mkinds" role="radiogroup" aria-label="Mistake kind"><span class="small muted">Tap a word to mark:</span>${MK_ORDER.map(k=>`<label class="mk k-${k}"><input type="radio" name="mk" value="${k}" ${k===MK_KIND?"checked":""}> ${ERR_KINDS[k]}</label>`).join("")}</div>
-    <div class="filters">${[["all","All marks"],["30","Last 30 days"],["today","Today"]].map(([k,l])=>`<button class="fbtn ${k===flt?"on":""}" data-mf="${k}">${l}</button>`).join("")}</div>
+    <div class="filters">${[["all","All marks"],["30","Last 30 days"],["today","Today"]].map(([k,l])=>`<button class="fbtn ${k===flt?"on":""}" data-mf="${k}">${l}</button>`).join("")}${typeof simToggleBtn==="function"?simToggleBtn():""}</div>
   </div>
   <div class="mwrap"><div class="mbox${z?" big"+z:""}">${pageHTML(pg,markMapFor(shown),null,st)}</div></div>
   <p class="small muted mcap">Page ${pg} · juz ${juzOfPage(pg)} · ${SURAH_NAMES[ps.s]}. ${z?"Large text: long lines continue on the next row; dotted lines show where each mushaf line ends. ":""}Swipe or use the arrow keys to turn pages.</p>
