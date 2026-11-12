@@ -220,6 +220,10 @@ try {
     return { gone: !classes.some((c) => c.id === b.id), cls: allStudents.find((s) => s.id === 's3').cls, view: view.name };
   });
   ok('Settings › Classes also deletes a group with students, after moving them', gd2.gone && gd2.cls === 'c1', JSON.stringify(gd2));
+  // session: similar verses (mutashabihat) that look like ayat the student already knows are flagged for the teacher
+  const sim = await page.evaluate(() => { go({ name: 'session', id: 's4' }); render(true); const d = document.querySelector('#qSim'); return d ? { n: d.querySelectorAll('.qsimi').length, ar: d.querySelectorAll('.qsimi .bkt').length } : null; });
+  ok('session warns about similar verses the student already knows', !!sim && sim.n >= 1 && sim.ar === sim.n * 2, JSON.stringify(sim));
+  ok('no similar-verses box when nothing known looks alike', await page.evaluate(() => { go({ name: 'session', id: 's3' }); render(true); return !document.querySelector('#qSim'); }));
   // session: mistake counters stay hidden until "Mistakes and details"
   await page.evaluate(() => { go({ name: 'session', id: 's2' }); });
   await page.waitForSelector('[data-qx="qHC"]');

@@ -9,7 +9,7 @@ s = rd('app_en.js')
 assert s.rstrip().endswith('init();')
 m = rd('mushaf.js').replace('/*MUSDATA*/', rd('mushaf/mus.json')).replace('/*HAFSFONT*/', rd('mushaf/hafs.b64'))
 hj = rd('heart.js').replace('/*HEARTVEC*/', rd('heart/heartvec.json'))
-mods = ['guide.js','classrep.js','extras.js','more.js','quick.js','smart.js','goals.js','tarteel.js','tajweed.js','tour.js','school.js','schools.js','feedback.js']
+mods = ['guide.js','classrep.js','extras.js','more.js','quick.js','similar.js','smart.js','goals.js','tarteel.js','tajweed.js','tour.js','school.js','schools.js','feedback.js']
 s = s.rstrip()[:-len('init();')] + m + '\n' + hj + '\n' + '\n'.join(rd(f) for f in mods) + '\ninit();\n'
 js = s.replace('/*QDATA*/', rd('qdata.json'))
 t = h.index('</style>') + len('</style>')

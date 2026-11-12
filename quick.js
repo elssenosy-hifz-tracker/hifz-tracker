@@ -42,6 +42,7 @@ function quickSession(el,f,st,c){
    ${dup?`<div class="banner warn" id="qDup">Already recorded today${recAt?" at "+recAt:""}. Changes here <b>update</b> that record, they don't add a new one. <button type="button" class="link sm" id="qAdd">Add a second record instead</button></div>`:""}
    ${(()=>{try{return backBanner(st)}catch(_){return ""}})()}
    <div class="qplan"><b>Today's hifz:</b> <span id="qPlanH">${esc(planH)}</span><br><b>Review:</b> <span id="qPlanR"></span><div><button type="button" class="sm qmall" id="qMusAll">📖 Recite all in order in the mushaf</button></div></div>
+   ${(()=>{try{const h=defEnd!=null?pieces(st.pos,defEnd):[],r=dayPlan(st,today(),st.pos).nearP||[];return simPanel(st,[...h,...r])}catch(_){return ""}})()}
    <div class="qcard" id="qAttC"><div class="qh">1 · Attendance</div>
     <div class="qg q4">${[["present","✓","On time"],["late","⏰","Late"],["absent","✕","Absent"],["excused","✉","Excused"]].map(([k,i,l])=>`<button type="button" class="qb" data-qatt="${k}"><i>${i}</i>${l}</button>`).join("")}</div>
     <div id="qArr"></div></div>
