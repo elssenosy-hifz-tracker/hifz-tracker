@@ -224,6 +224,16 @@ try {
   const sim = await page.evaluate(() => { go({ name: 'session', id: 's4' }); render(true); const d = document.querySelector('#qSim'); return d ? { n: d.querySelectorAll('.qsimi').length, ar: d.querySelectorAll('.qsimi .bkt').length } : null; });
   ok('session warns about similar verses the student already knows', !!sim && sim.n >= 1 && sim.ar === sim.n * 2, JSON.stringify(sim));
   ok('no similar-verses box when nothing known looks alike', await page.evaluate(() => { go({ name: 'session', id: 's3' }); render(true); return !document.querySelector('#qSim'); }));
+  // mushaf page: a ≈ mark at the start of an ayah that looks like one the student knows; tapping it shows both, adds no mistake
+  const simM = await page.evaluate(async () => {
+    go({ name: 'mushaf', id: 's4' }); view.page = 584; render(true); await new Promise((r) => setTimeout(r, 300));
+    const k = document.querySelector('.mpage .simk'), n0 = marks.length; if (k) k.click(); await new Promise((r) => setTimeout(r, 200));
+    const p = document.querySelector('.simpop'), out = { marks: document.querySelectorAll('.mpage .simk').length, under: document.querySelectorAll('.mpage .w.sim').length, ayat: p ? p.querySelectorAll('.bkt').length : 0, text: p ? p.textContent : '', added: marks.length - n0 };
+    if (p) p.querySelector('[data-simx]').click(); out.closed = !document.querySelector('.simpop');
+    go({ name: 'mushaf', id: 's3' }); view.page = 584; render(true); await new Promise((r) => setTimeout(r, 300)); out.other = document.querySelectorAll('.mpage .simk').length;
+    return out;
+  });
+  ok('mushaf marks a similar ayah the student knows; tapping shows both ayat and adds no mistake', simM.marks >= 1 && simM.under > 0 && simM.ayat === 2 && /Abasa 33|عبس/.test(simM.text) && simM.added === 0 && simM.closed && simM.other === 0, JSON.stringify(simM));
   // session: mistake counters stay hidden until "Mistakes and details"
   await page.evaluate(() => { go({ name: 'session', id: 's2' }); });
   await page.waitForSelector('[data-qx="qHC"]');
