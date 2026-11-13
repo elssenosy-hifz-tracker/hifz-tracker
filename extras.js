@@ -135,9 +135,9 @@ function juzCertificate(st,e){const g=GRD(),c=clsName(st.cls);
 
 // ----- 5. full backup and restore -----
 let bkFlash="";
-const BK_COLLS=["students","events","classes","meetings","breaks","marks","settings","schedule","fees","teachers","access","absences","groupnotes","requests","waiting","links","schools","hours"];
+const BK_COLLS=["students","events","classes","meetings","breaks","marks","settings","schedule","fees","teachers","access","absences","groupnotes","requests","waiting","links","schools","hours","simpairs"];
 function backupJson(){const pack=(arr)=>Object.fromEntries(arr.map(({id,...d})=>[id,d]));
-  return JSON.stringify({app:"hifz-tracker",v:1,date:iso(today()),data:{students:pack(allStudents),events:pack(events),classes:pack(classes),meetings:pack(meetings),breaks:pack(breaks),marks:pack(marks),schedule:pack(schedule),fees:pack(fees),settings:settings,teachers:pack(TEACHERS),access:pack(ACCESS),absences:pack(ABSENCES),requests:pack(REQS),waiting:pack(WAITING),groupnotes:GNOTES_PACK(),links:LINKS_PACK(),schools:pack(SCHOOLS),hours:pack(HOURS)}},null,1)}
+  return JSON.stringify({app:"hifz-tracker",v:1,date:iso(today()),data:{students:pack(allStudents),events:pack(events),classes:pack(classes),meetings:pack(meetings),breaks:pack(breaks),marks:pack(marks),schedule:pack(schedule),fees:pack(fees),settings:settings,teachers:pack(TEACHERS),access:pack(ACCESS),absences:pack(ABSENCES),requests:pack(REQS),waiting:pack(WAITING),groupnotes:GNOTES_PACK(),links:LINKS_PACK(),schools:pack(SCHOOLS),hours:pack(HOURS),simpairs:pack(SIMPAIRS)}},null,1)}
 function backupPanel(){const last=(settings.main||{}).lastBackup;
   return `<div class="panel" id="bkPanel"><h3>Backup</h3>
     <p class="small muted">${last?`Last full backup: ${fmt(parse(last))}.`:"No full backup yet."} Download one every week or two and keep it on your phone or in Google Drive.</p>

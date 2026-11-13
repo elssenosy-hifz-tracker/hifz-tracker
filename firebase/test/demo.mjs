@@ -246,6 +246,39 @@ try {
     return o;
   });
   ok('the words that differ are coloured; the Similar verses button hides and shows the marks', simT.diff === 2 && simT.on === 1 && simT.pop === 3 && simT.off === 0 && simT.back === 1 && simT.ld === 2, JSON.stringify(simT));
+  // the six next steps for similar verses
+  const six = await page.evaluate(async () => {
+    const wait = async (f) => { for (let i = 0; i < 40 && !f(); i++) await new Promise((r) => setTimeout(r, 100)); };
+    const o = {}; busy = false;
+    // 1. the session box in Arabic
+    // 2. a mistake on a similar ayah asks; yes keeps it as a mix-up with that ayah
+    MK_KIND = 'forgot'; go({ name: 'mushaf', id: 's4' }); view.page = 584; render(true); await new Promise((r) => setTimeout(r, 200));
+    const w = [...document.querySelectorAll('.mpage .w.simd')].find((x) => !marks.some((m) => m.sid === 's4' && m.w === Number(x.dataset.w)));
+    w.click(); await wait(() => document.querySelector('.simpop [data-simmx]'));
+    const pops = [...document.querySelectorAll('.simpop')]; o.pops = pops.map((p) => p.textContent.trim().slice(0, 30)); o.ask = pops.some((p) => /Did he jump to a similar ayah|هل انتقل إلى آية متشابهة/.test(p.textContent));
+    document.querySelector('.simpop [data-simmx]').click();
+    await wait(() => marks.some((m) => m.sid === 's4' && m.w === Number(w.dataset.w) && m.k === 'mix'));
+    const mk = marks.find((m) => m.sid === 's4' && m.w === Number(w.dataset.w)); o.mix = !!mk && mk.k === 'mix' && Array.isArray(mk.mx) && mk.mx[0] === SURAH_FIRST[79] + 32;
+    // 3. practice: a question with two endings, one right
+    SIMQ = null; go({ name: 'simprac', id: 's4' }); render(true);
+    const opts = [...document.querySelectorAll('[data-spo]')]; o.q = opts.length === 2;
+    const right = SIMQ.q.right; opts.find((b) => b.textContent === right).click(); o.score = SIMQ.right === 1 && SIMQ.asked === 1 && !!document.querySelector('.spo.ok');
+    // 4. reports list the mix-ups
+    go({ name: 'report', id: 's4' }); render(true); o.rep = [...document.querySelectorAll('.report .simrr')].map((x) => x.textContent).join(' | ');
+    go({ name: 'crep', id: 'c2' }); render(true); o.crep = [...document.querySelectorAll('.crep .simrr')].map((x) => x.textContent).join(' | ');
+    // 5. a finished juz lists the similar ayat to review, with practice
+    go({ name: 'student', id: 's6' }); render(true); const jz = document.getElementById('simJuz'); o.juz = !!jz && /Review before the test/.test(jz.textContent) && !!jz.querySelector('[data-simgo]');
+    // 6. a pair the school added is used and listed; a new one can be added
+    o.custom = (simMap().get(54) || []).some((x) => x.m[0] === 129 && !!x.note);
+    go({ name: 'simprac', id: 's4' }); render(true); document.getElementById('simAdd').open = true;
+    document.getElementById('spS1').value = '2'; document.getElementById('spA1').value = '1'; document.getElementById('spS2').value = '2'; document.getElementById('spA2').value = '2';
+    const n0 = SIMPAIRS.length; document.getElementById('spAdd').click(); await wait(() => SIMPAIRS.length > n0);
+    o.added = SIMPAIRS.length === n0 + 1 && SIMPAIRS.some((p) => p.o[0] === SURAH_FIRST[2] && p.m[0] === SURAH_FIRST[2] + 1);
+    // 1. (last, as it switches the language) the session box in Arabic
+    busy = false; AR = true; go({ name: 'session', id: 's4' }); render(true); o.ar = /آيات متشابهة انتبه لها/.test((document.querySelector('#qSim summary') || {}).textContent || ''); AR = false; render(true);
+    return o;
+  });
+  ok('similar verses: Arabic box, mix-up question, practice, reports, juz list, school pairs', six.ar && six.ask && six.mix && six.q && six.score && /An-Nazi'at 34 ↔ Abasa 33/.test(six.rep) && /2 students/.test(six.crep) && six.juz && six.custom && six.added, JSON.stringify(six));
   // session: mistake counters stay hidden until "Mistakes and details"
   await page.evaluate(() => { go({ name: 'session', id: 's2' }); });
   await page.waitForSelector('[data-qx="qHC"]');

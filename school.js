@@ -49,7 +49,7 @@ const lastByTeacher=()=>{const t=meTeacher();return t?t.name:null};
 function schoolInit(){
   const sub=(c,f,k=0)=>{try{db.collection(c).onSnapshot(s=>{f(s.docs.map(d=>({...d.data(),id:d.id})));render()},()=>{if(k<5)setTimeout(()=>sub(c,f,k+1),3000)})}catch(_){}};
   sub("teachers",a=>{TCH_LOADED=true;TEACHERS=a.sort((x,y)=>(x.n||0)-(y.n||0)||String(x.name).localeCompare(String(y.name)))});
-  sub("access",a=>ACCESS=a);sub("absences",a=>ABSENCES=a);sub("requests",a=>REQS=a);sub("waiting",a=>WAITING=a);
+  sub("access",a=>ACCESS=a);sub("simpairs",a=>{SIMPAIRS=a;SIM=null});sub("absences",a=>ABSENCES=a);sub("requests",a=>REQS=a);sub("waiting",a=>WAITING=a);
   sub("links",a=>{LINKS={};a.forEach(x=>LINKS[x.id]=x)});sub("groupnotes",a=>{GNOTES={};a.forEach(x=>GNOTES[x.id]=x)});
   (async()=>{try{scUser=await claude.use("user");if(!scUser)return;const me=await scUser.me();ME_UID=me.id;ME_EMAIL=me.email;ME_NAME=me.name||"";ME_OWNER=!!me.isOwner;render()}catch(_){}})();
   try{schoolsInit()}catch(e){console.error(e)}
@@ -287,4 +287,4 @@ function wireGroupsEditor(el){wireGroupDel(el);
       busy=false;render(true)}catch(_){m.textContent="Not saved. Try again.";bt.disabled=false}}})}
 Object.assign(AR_DICT,{"Move to another group":"نقل الطالب إلى مجموعة أخرى","New group":"المجموعة الجديدة","Move student":"انقل الطالب","Tap again to move":"اضغط مرة أخرى للنقل","Not moved.":"لم يُنقل.","The whole history moves with the student. Old sessions keep \"Recorded by\" the teacher who recorded them.":"ينتقل سجل الطالب كله معه. وتبقى الجلسات القديمة باسم المعلّم الذي سجّلها.",
  "Suggest moving to another group":"اقترح نقل الطالب إلى مجموعة أخرى","Group":"المجموعة","Why? e.g. ahead of the group":"لماذا؟ مثلًا: سبق مجموعته","Send to the admin":"أرسل إلى المسؤول","Not sent.":"لم يُرسل.","Waiting for the admin to move the student to:":"في انتظار المسؤول لنقل الطالب إلى:",
- "Earlier moves":"سجل النقل","Students moved":"طلاب تم نقلهم","Got it":"تمام","To move a student to another class, open the student and tap \"More\". \"Delete group\" under a class moves its students to another class first, then deletes it.":"لنقل طالب إلى فصل آخر افتح الطالب واضغط «المزيد». و«احذف المجموعة» تحت أي فصل تنقل طلابه إلى فصل آخر أولًا ثم تحذفه.","moved by":"نقله","suggested by":"باقتراح من","a deleted group":"مجموعة محذوفة","a teacher":"معلّم"});
+ "Earlier moves":"سجل النقل","Students moved":"طلاب تم نقلهم","Got it":"تمام","Similar verses practice":"تدريب المتشابهات","To move a student to another class, open the student and tap \"More\". \"Delete group\" under a class moves its students to another class first, then deletes it.":"لنقل طالب إلى فصل آخر افتح الطالب واضغط «المزيد». و«احذف المجموعة» تحت أي فصل تنقل طلابه إلى فصل آخر أولًا ثم تحذفه.","moved by":"نقله","suggested by":"باقتراح من","a deleted group":"مجموعة محذوفة","a teacher":"معلّم"});
