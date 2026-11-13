@@ -285,7 +285,7 @@ function renderCore(force){
   if(SUB&&["classes","edit","add","fees","place","settings","school","waitlist","schools","schoolv","teacher","gmove","handover","sover"].includes(view.name)&&!(view.name==="add"&&tchCanAdd())&&!(view.name==="edit"&&tchSurahsOnly(allStudents.find(s=>s.id===view.id))))view={name:"list"};
   try{schoolGuard()}catch(e){console.error(e)}
   if(view.name==="schools")return renderSchools(el,sub);if(view.name==="schoolv")return renderSchoolV(el,sub);if(view.name==="teacher")return renderTeacher(el,sub);if(view.name==="gmove")return renderGMove(el,sub);if(view.name==="handover")return renderHandover(el,sub);if(view.name==="school")return renderSchool(el,sub);if(view.name==="sover")return renderSover(el,sub);if(view.name==="waitlist")return renderWaitlist(el,sub);
-  if(view.name==="today")return renderToday(el,sub,ta);if(view.name==="roll")return renderRoll(el,sub);if(view.name==="msgs")return renderMsgs(el,sub);if(view.name==="reports")return renderReports(el,sub);if(view.name==="settings")return renderSettings(el,sub);if(view.name==="wsum")return renderWsum(el,sub);if(view.name==="star")return renderStar(el,sub);if(view.name==="buddy")return renderBuddy(el,sub);
+  if(view.name==="today")return renderToday(el,sub,ta);if(view.name==="roll")return renderRoll(el,sub);if(view.name==="mrep")return renderMrep(el,sub);if(view.name==="msgs")return renderMsgs(el,sub);if(view.name==="reports")return renderReports(el,sub);if(view.name==="settings")return renderSettings(el,sub);if(view.name==="wsum")return renderWsum(el,sub);if(view.name==="star")return renderStar(el,sub);if(view.name==="buddy")return renderBuddy(el,sub);
   if(view.name==="tajweed")return renderTajweed(el,sub);
   if(view.name==="feedback")return renderFeedback(el,sub);if(view.name==="inbox")return renderInbox(el,sub);
   if(view.name==="list")return renderList(el,sub,ta);
@@ -735,7 +735,7 @@ function renderForm(el,sub,st){
   ${backBtn("Back",isNew?{name:"list"}:{name:"student",id:st.id})}
   <form class="panel" id="fForm">
     <div class="fields">
-      <label>Student name<input id="f_name" required value="${esc(st.name)}" autocomplete="off"></label>
+      <label>Student name<input id="f_name" required value="${esc(st.name)}" autocomplete="off"></label>${isNew?`<details class="fmany"><summary class="small">Add several students at once</summary><textarea id="f_many" rows="4" placeholder="One name on each line"></textarea><p class="small muted">Everyone gets the group and plan chosen below. Each one can be changed later.</p></details>`:""}
       <label>Class<select id="f_cls">${cls.map(c=>`<option value="${c.id}" ${c.id===st.cls?"selected":""}>${esc(c.name)}</option>`).join("")}${tchAdd?`<option value="__new" ${st.cls==="__new"?"selected":""}>＋ New group</option>`:`<option value="" ${classes.some(c=>c.id===st.cls)?"":"selected"}>No class</option>`}</select></label>
       <label>First surah of new hifz<select id="f_s0">${SURAH_NAMES.map((n,x)=>`<option value="${x}" ${x===Number(ORDER_KEY.split("|")[1])?"selected":""}>${x+1}. ${n}</option>`).join("")}</select></label>
       <label>Then goes<select id="f_order">${Object.entries(ORDER_NAMES).map(([k,v])=>`<option value="${k}" ${k===ORDER_KEY.split("|")[0]?"selected":""}>${v}</option>`).join("")}</select></label>
@@ -783,6 +783,7 @@ function renderForm(el,sub,st){
   s0el.onchange=()=>ord.onchange();
   if(isNew){const fc=f.querySelector("#f_cls"),fr=f.querySelector("#f_read"),ng=f.querySelector("#f_newg");fc.addEventListener("change",()=>{fr.value=String(clsRead(classes.find(c=>c.id===fc.value)));if(ng)ng.hidden=fc.value!=="__new"})}
   prevCount();
+  {const mn=f.querySelector("#f_many");if(mn)mn.addEventListener("input",()=>{f.querySelector("#f_name").required=!mn.value.trim()})}
   f.onsubmit=async ev=>{ev.preventDefault();
     const days=[...f.querySelectorAll(".days input:not([data-ngd]):checked")].map(i=>Number(i.value)),msg=f.querySelector("#f_msg");
     if(!days.length){msg.textContent="Pick at least one hifz day.";return}
@@ -801,7 +802,10 @@ function renderForm(el,sub,st){
         if(!f.dataset.ngid){const g={name:ngName,teacher:meTeacher().id,time:f.querySelector("#ng_s").value,end:f.querySelector("#ng_e").value,days:[...f.querySelectorAll("[data-ngd]:checked")].map(i=>Number(i.value)),n:Date.now()},sc=tchNewSchool();if(sc)g.school=sc;
           f.dataset.ngid=(await db.collection("classes").add(g)).id}
         data.cls=f.dataset.ngid}
-      if(isNew){const r=await db.collection("students").add(data);for(let i=0;i<30&&!allStudents.some(s=>s.id===r.id);i++)await new Promise(w=>setTimeout(w,100));busy=false;go({name:"student",id:r.id})}
+      if(isNew){const many=((f.querySelector("#f_many")||{}).value||"").split("\n").map(x=>x.trim()).filter(Boolean),names=[...new Set([data.name,...many].filter(Boolean))];
+        if(!names.length){msg.textContent="Write the student's name.";return}
+        if(names.length>1){for(const nm of names)await db.collection("students").add({...data,name:nm});busy=false;go({name:"list"});return}
+        const r=await db.collection("students").add(data);for(let i=0;i<30&&!allStudents.some(s=>s.id===r.id);i++)await new Promise(w=>setTimeout(w,100));busy=false;go({name:"student",id:r.id})}
       else{const up=lim?Object.fromEntries(["order","startS","prevS","prev","pos","posLog"].filter(k=>k in data).map(k=>[k,data[k]])):data;
         await db.doc("students/"+st.id).update(up);busy=false;go({name:"student",id:st.id})}}
     catch(e){msg.textContent="Not saved. Check your connection and try again."}
@@ -840,6 +844,7 @@ function renderClasses(el,sub){
   ${pointsSettings()}
   ${breaksPanel()}
   ${backupPanel()}`;
+  if(view.sec){const P=[...el.children].filter(n=>n.classList&&n.classList.contains("panel")),keep={groups:[P[0],el.querySelector("#newCls")],points:[el.querySelector("#ptsForm")],breaks:[P.find(n=>/Ramadan and holidays/.test(n.textContent))],backup:[el.querySelector("#bkPanel")]}[view.sec]||P;P.forEach(n=>{if(!keep.includes(n))n.hidden=true})}
   wireBreaks(el);wirePtsSettings(el);
   wireBackup(el);
   wireBack(el);

@@ -163,7 +163,7 @@ try {
   await page.click('#back');
   await page.waitForSelector('.tpick');
   await page.evaluate(() => { go({ name: 'settings' }); });
-  await page.waitForSelector('[data-hub="backup"]');
+  await page.waitForSelector('.setrow[data-sec="backup"]');
   ok('Backup and Schools are in Settings', !!(await page.$('[data-hub="schools"]')));
   // student page: two main buttons, the rest under More, long sections folded
   await page.evaluate(() => { go({ name: 'student', id: 's1' }); });
@@ -297,6 +297,25 @@ try {
     return o;
   });
   ok('teacher tools: student tabs, quick attendance saves, class-end summary and parent messages list', tt.tabs === 'today,progress,mistakes,reports' && tt.todayFirst && tt.progress && tt.reports && tt.grid && tt.saved && tt.end && tt.msgs, JSON.stringify(tt));
+  // admin tools: dashboard on Today, settings in sections, people search, month report, several students at once
+  const at = await page.evaluate(async () => {
+    const wait = async (f) => { for (let i = 0; i < 40 && !f(); i++) await new Promise((r) => setTimeout(r, 100)); };
+    const o = {}; busy = false; go({ name: 'today' }); render(true);
+    const dash = document.querySelector('.addash'); o.dash = !!dash && /Attendance/.test(dash.textContent) && /Teachers today/.test(dash.textContent) && /Bilal/.test(dash.textContent);
+    busy = false; go({ name: 'settings' }); render(true); o.rows = document.querySelectorAll('.setrow').length;
+    document.querySelector('.setrow[data-sec="breaks"]').click();
+    o.sec = view.sec === 'breaks' && [...document.querySelectorAll('#view > .panel')].filter((n) => !n.hidden).length === 1;
+    busy = false; go({ name: 'list' }); render(true); const i = document.getElementById('srch'); i.value = 'teens'; i.dispatchEvent(new Event('input'));
+    o.search = /Teens class/.test((document.getElementById('srchMore') || {}).textContent || ''); i.value = ''; i.dispatchEvent(new Event('input')); listQ = '';
+    busy = false; go({ name: 'mrep' }); render(true); o.mrep = /Month report/.test(document.querySelector('.mrep').textContent) && document.querySelectorAll('.mrep .adk').length === 5;
+    busy = false; go({ name: 'add' }); render(true); const n0 = allStudents.length; document.querySelector('.fmany').open = true;
+    const ta = document.getElementById('f_many'); ta.value = 'Bulk One\nBulk Two'; ta.dispatchEvent(new Event('input'));
+    document.querySelector('#fForm button[type="submit"]').click(); await wait(() => allStudents.length === n0 + 2);
+    o.bulk = allStudents.length - n0; const added = allStudents.filter((s) => /^Bulk /.test(s.name));
+    for (const s of added) await db.doc('students/' + s.id).delete(); await wait(() => !allStudents.some((s) => /^Bulk /.test(s.name)));
+    return o;
+  });
+  ok('admin tools: dashboard, settings sections, people search, month report, add several students', at.dash && at.rows === 6 && at.sec && at.search && at.mrep && at.bulk === 2, JSON.stringify(at));
   // the six next steps for similar verses
   const six = await page.evaluate(async () => {
     const wait = async (f) => { for (let i = 0; i < 40 && !f(); i++) await new Promise((r) => setTimeout(r, 100)); };
