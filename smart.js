@@ -63,9 +63,10 @@ function renderToday(el,sub,ta){
     ${isToday?`<div class="actions">${classTimeChip(c,m)}${classTimeButtons(c,m)}</div>`:""}
     <div class="tprog"><div class="bar"><i style="width:${list.length?Math.round(done/list.length*100):0}%"></i></div><span class="small"><b>${done} of ${list.length}</b> recorded</span></div>
     ${nx?`<button class="primary qnext" data-trec="${nx.id}">Record next › ${esc(nx.name)}</button>`:list.length?`<div class="banner ok">Everyone is recorded for today.</div>`:""}
+    ${list.length&&isToday&&(typeof canEditCls!=="function"||canEditCls(c.id))?`<button type="button" class="qnext tbud" data-simgo='${JSON.stringify({name:"roll",id:c.id})}'>📋 Quick attendance</button>`:""}
     ${list.length>=2?`<button type="button" class="qnext tbud" id="tBuddy">👥 Buddy recitation</button>`:""}
     <div class="tlist">${list.map(s=>{const e=ses(s.id);return `<div class="trow ${doneToday(s.id)?"done":""}"><button type="button" class="tname" data-tst="${s.id}"><b>${esc(s.name)}${flameChip(s)}</b><span class="small muted">${e?esc(line(e)):esc(planShort(s))}</span></button><span class="tatt">${isToday?attCtl(s,iso(today())):""}</span><button type="button" class="${doneToday(s.id)?"":"primary"} sm" data-trec="${s.id}">${doneToday(s.id)?"Edit":"Record"}</button></div>`}).join("")}</div>
-   </div>${alertsPanel(list)}${testsPanel()}${challengeCard(c)}`;
+   </div>${isToday&&typeof endSummaryHTML==="function"?endSummaryHTML(c,m,list):""}${alertsPanel(list)}${testsPanel()}${challengeCard(c)}`;
   wireBack(el);wireChallenge(el);{const bb=el.querySelector("#tBuddy");if(bb)bb.onclick=()=>go({name:"buddy",cls:c.id})}el.querySelectorAll("[data-tcls]").forEach(b=>b.onclick=()=>go({name:"today",cls:b.dataset.tcls}));
   el.querySelectorAll("[data-trec]").forEach(b=>b.onclick=()=>go({name:"session",id:b.dataset.trec}));
   el.querySelectorAll("[data-tst]").forEach(b=>b.onclick=()=>go({name:"student",id:b.dataset.tst}));

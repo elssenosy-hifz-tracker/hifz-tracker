@@ -115,7 +115,8 @@ try {
   await page.waitForTimeout(200);
 
   // student page: practice results (weakest first) and tajweed mistakes by rule; practise the weakest rule with that student
-  await page.evaluate(() => { go({ name: 'student', id: 's1' }); });
+  await page.evaluate(() => { view.stab = 'today'; go({ name: 'student', id: 's1' }); });
+  await page.click('[data-stab="mistakes"]');
   await page.click('details[data-sf="tajweed"] > summary');
   await page.waitForSelector('.tjstud');
   const sp = await page.evaluate(() => ({ first: document.querySelector('.tjstud .tjweak .tjar').textContent, text: document.querySelector('.tjstud').textContent }));
@@ -268,6 +269,34 @@ try {
       near: arText('Near review · last 10 hifz days'), cov: arText('recorded by Bilal (covering)'), keep: arText('Some brand new sentence nobody translated') };
   });
   ok('Arabic: no half-English text on the main pages, and the common lines are translated', arMix.nMixed === 0 && arMix.nEn === 0 && arMix.near === 'المراجعة القريبة · آخر 10 أيام حفظ' && arMix.cov === 'سجّلها Bilal (بديل)' && arMix.keep === 'Some brand new sentence nobody translated', JSON.stringify(arMix));
+  // teacher tools: student page in four tabs, quick attendance for the whole group, summary when the class ends
+  const tt = await page.evaluate(async () => {
+    const wait = async (f) => { for (let i = 0; i < 40 && !f(); i++) await new Promise((r) => setTimeout(r, 100)); };
+    const o = {}; busy = false; view.stab = 'today'; go({ name: 'student', id: 's2' }); render(true);
+    const vis = (sel) => { const e = document.querySelector(sel); return !!e && !e.closest('[hidden]'); };
+    o.tabs = [...document.querySelectorAll('.stabs [data-stab]')].map((b) => b.dataset.stab).join();
+    o.todayFirst = vis('.tasks') && !vis('details[data-sf="points"]');
+    document.querySelector('[data-stab="progress"]').click(); o.progress = vis('details[data-sf="points"]') && !vis('.tasks');
+    document.querySelector('[data-stab="reports"]').click(); o.reports = vis('.srep [data-sclick="repBtn"]');
+    document.querySelector('[data-stab="today"]').click(); view.stab = 'today';
+    // quick attendance: Zakariya (s5, Teens class) late, Hana (s6) excused
+    const d = iso(today()); busy = false; ROLL = null; go({ name: 'roll', id: 'c2' }); render(true);
+    const tap = (id, n) => { for (let i = 0; i < n; i++) { document.querySelector(`[data-roll="${id}"]`).click(); } };
+    const st0 = { ...ROLL.st }; const target = { s5: 'late', s6: 'excused' };
+    for (const [id, want] of Object.entries(target)) { let g = 0; while (ROLL.st[id] !== want && g++ < 5) tap(id, 1); }
+    o.grid = document.querySelectorAll('[data-roll]').length === 3;
+    document.getElementById('rollSave').click();
+    await wait(() => view.name === 'today');
+    const att = (id) => (events.filter((e) => e.type === 'session' && e.sid === id && e.date === d).sort((a, b) => (b.t || 0) - (a.t || 0))[0] || {}).att;
+    o.saved = att('s5') === 'late' && att('s6') === 'excused';
+    // end of class summary
+    const m = { cls: 'c2', date: d, status: 'held', started: '17:30', ended: '19:00' };
+    const html = endSummaryHTML(classes.find((c) => c.id === 'c2'), m, classOrder('c2'));
+    const div = document.createElement('div'); div.innerHTML = html; o.end = /Class ended/.test(div.textContent) && !!div.querySelector('[data-simgo*="msgs"]');
+    busy = false; go({ name: 'msgs', id: 'c2' }); render(true); o.msgs = document.querySelectorAll('.mrow').length === 3;
+    return o;
+  });
+  ok('teacher tools: student tabs, quick attendance saves, class-end summary and parent messages list', tt.tabs === 'today,progress,mistakes,reports' && tt.todayFirst && tt.progress && tt.reports && tt.grid && tt.saved && tt.end && tt.msgs, JSON.stringify(tt));
   // the six next steps for similar verses
   const six = await page.evaluate(async () => {
     const wait = async (f) => { for (let i = 0; i < 40 && !f(); i++) await new Promise((r) => setTimeout(r, 100)); };

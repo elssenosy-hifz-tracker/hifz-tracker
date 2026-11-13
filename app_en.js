@@ -285,7 +285,7 @@ function renderCore(force){
   if(SUB&&["classes","edit","add","fees","place","settings","school","waitlist","schools","schoolv","teacher","gmove","handover","sover"].includes(view.name)&&!(view.name==="add"&&tchCanAdd())&&!(view.name==="edit"&&tchSurahsOnly(allStudents.find(s=>s.id===view.id))))view={name:"list"};
   try{schoolGuard()}catch(e){console.error(e)}
   if(view.name==="schools")return renderSchools(el,sub);if(view.name==="schoolv")return renderSchoolV(el,sub);if(view.name==="teacher")return renderTeacher(el,sub);if(view.name==="gmove")return renderGMove(el,sub);if(view.name==="handover")return renderHandover(el,sub);if(view.name==="school")return renderSchool(el,sub);if(view.name==="sover")return renderSover(el,sub);if(view.name==="waitlist")return renderWaitlist(el,sub);
-  if(view.name==="today")return renderToday(el,sub,ta);if(view.name==="reports")return renderReports(el,sub);if(view.name==="settings")return renderSettings(el,sub);if(view.name==="wsum")return renderWsum(el,sub);if(view.name==="star")return renderStar(el,sub);if(view.name==="buddy")return renderBuddy(el,sub);
+  if(view.name==="today")return renderToday(el,sub,ta);if(view.name==="roll")return renderRoll(el,sub);if(view.name==="msgs")return renderMsgs(el,sub);if(view.name==="reports")return renderReports(el,sub);if(view.name==="settings")return renderSettings(el,sub);if(view.name==="wsum")return renderWsum(el,sub);if(view.name==="star")return renderStar(el,sub);if(view.name==="buddy")return renderBuddy(el,sub);
   if(view.name==="tajweed")return renderTajweed(el,sub);
   if(view.name==="feedback")return renderFeedback(el,sub);if(view.name==="inbox")return renderInbox(el,sub);
   if(view.name==="list")return renderList(el,sub,ta);
@@ -422,7 +422,22 @@ function renderStudent(el,sub,st){
   const ub=el.querySelector("#unarchBtn");if(ub)ub.onclick=()=>setArchived(st,false);
   wireFix(el,st);wirePoints(el,st);
   wireDeletes(el,st);
+  studentTabs(el);
 }
+// The student page in four tabs (Today, Progress, Mistakes, Reports) instead of one long page. The chosen tab stays while moving between students.
+function studentTabs(el){const hdr=el.querySelector(":scope > .panel");if(!hdr)return;
+  const T=[["today","Today"],["progress","Progress"],["mistakes","Mistakes"],["reports","Reports"]],cur=view.stab||"today";
+  const bar=document.createElement("div");bar.className="stabs";bar.setAttribute("role","tablist");
+  bar.innerHTML=T.map(([k,l])=>`<button type="button" role="tab" data-stab="${k}" class="${k===cur?"on":""}" aria-selected="${k===cur}">${l}</button>`).join("");
+  const after=[];let n=hdr.nextElementSibling;while(n){after.push(n);n=n.nextElementSibling}hdr.after(bar);
+  const tabOf=x=>{const sf=x.dataset&&x.dataset.sf;if(!sf)return "today";return sf==="book"||sf==="tajweed"?"mistakes":sf==="sugg"?"today":"progress"};
+  const G={today:[],progress:[],mistakes:[],reports:[]};after.forEach(x=>G[tabOf(x)].push(x));
+  const L=[["repBtn","Report"],["yrBtn","Year report"],["weekBtn","Plan sheet"],["mprBtn","Print mistakes"],["waBtn","Message parents"],["histBtn","Student history"]].filter(([id])=>el.querySelector("#"+id));
+  const rep=document.createElement("div");rep.className="panel srep";rep.innerHTML=`<div class="srepg">${L.map(([id,l])=>`<button type="button" data-sclick="${id}">${l}</button>`).join("")}</div>`;el.appendChild(rep);G.reports.push(rep);
+  {const j=hdr.querySelector(".sjuz");if(j){j.open=true;const box=document.createElement("div");box.className="panel";box.append(j);el.insertBefore(box,G.progress[0]||rep);G.progress.unshift(box)}}
+  const show=k=>{for(const [g,ns] of Object.entries(G))ns.forEach(x=>x.hidden=g!==k);bar.querySelectorAll("[data-stab]").forEach(b=>{const on=b.dataset.stab===k;b.classList.toggle("on",on);b.setAttribute("aria-selected",on)})};show(cur);
+  bar.onclick=e=>{const b=e.target.closest("[data-stab]");if(!b)return;view.stab=b.dataset.stab;show(view.stab)};
+  rep.onclick=e=>{const b=e.target.closest("[data-sclick]");if(b){const o=el.querySelector("#"+b.dataset.sclick);if(o)o.click()}}}
 // folded sections on the student page; which ones are open is remembered on this device. Opening one redraws the page so charts get their size.
 let S_OPEN=null;const sOpen=()=>S_OPEN||(S_OPEN=(()=>{try{return new Set(JSON.parse(localStorage.getItem("hifz.sfold")||"[]"))}catch(_){return new Set()}})());
 function sFold(k,title,html,show=true){if(!html||!String(html).trim()||!show)return "";const t=(String(html).match(/<h[23][^>]*>([\s\S]*?)<\/h[23]>/)||[])[1];const label=t?t.replace(/<[^>]+>/g,"").trim()||title:title;return `<details class="sfold" data-sf="${k}" ${sOpen().has(k)?"open":""}><summary>${esc(label)}</summary><div class="sfb">${html}</div></details>`}

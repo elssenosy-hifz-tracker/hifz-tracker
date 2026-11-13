@@ -58,7 +58,7 @@ function schoolInit(){
 
 // ----- route guard: no recording where the viewer has no edit right -----
 function schoolGuard(){if(!schoolOn())return;
-  if(isSupervisor()&&["session","test","buddy","edit","add","classes","fees","place","settings","school","waitlist","saved"].includes(view.name)){view=view.id?{name:"student",id:view.id}:{name:"today"};return}
+  if(isSupervisor()&&["session","test","buddy","edit","add","roll","classes","fees","place","settings","school","waitlist","saved"].includes(view.name)){view=view.id?{name:"student",id:view.id}:{name:"today"};return}
   if(["session","test","saved"].includes(view.name)&&view.id&&!canEditSid(view.id))view={name:"student",id:view.id,locked:1};
   if(view.name==="wa"&&view.id&&!seesPersonal(view.id))view={name:"student",id:view.id};
   if(["school","waitlist"].includes(view.name)&&!isAdminV())view={name:"today"}}
