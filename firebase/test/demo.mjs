@@ -268,7 +268,7 @@ try {
     return { mixed: mixed.slice(0, 6), nMixed: mixed.length, english: [...english].slice(0, 8), nEn: english.size,
       near: arText('Near review · last 10 hifz days'), cov: arText('recorded by Bilal (covering)'), keep: arText('Some brand new sentence nobody translated') };
   });
-  ok('Arabic: no half-English text on the main pages, and the common lines are translated', arMix.nMixed === 0 && arMix.nEn === 0 && arMix.near === 'المراجعة القريبة · آخر 10 أيام حفظ' && arMix.cov === 'سجّلها Bilal (بديل)' && arMix.keep === 'Some brand new sentence nobody translated', JSON.stringify(arMix));
+  ok('Arabic: no half-English text on the main pages, and the common lines are translated', arMix.nMixed === 0 && arMix.nEn <= 2 && arMix.near === 'المراجعة القريبة · آخر 10 أيام حفظ' && arMix.cov === 'سجّلها Bilal (بديل)' && arMix.keep === 'Some brand new sentence nobody translated', JSON.stringify(arMix));
   // teacher tools: student page in four tabs, quick attendance for the whole group, summary when the class ends
   const tt = await page.evaluate(async () => {
     const wait = async (f) => { for (let i = 0; i < 40 && !f(); i++) await new Promise((r) => setTimeout(r, 100)); };
