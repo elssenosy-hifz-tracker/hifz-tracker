@@ -19,7 +19,7 @@ function oddChecks(st,d,usual){const w=[];
   return w}
 
 // ---------- 3. bottom bar + search ----------
-const NAV=[["today","◷","Today"],["list","☰","Students"],["tajweed","۞","Tajweed"],["reports","▤","Reports"],["settings","⚙","Settings"]];
+const NAV=[["today",'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>',"Today"],["list",'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.6-3.6 3.3-5.5 6.5-5.5s5.9 1.9 6.5 5.5"/><circle cx="17" cy="7" r="2.5"/><path d="M16.5 12.5c2.6.2 4.4 1.9 5 4.5"/></svg>',"Students"],["tajweed",'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 6c-2-1.5-5-2-8-1.5v14c3-.5 6 0 8 1.5 2-1.5 5-2 8-1.5v-14c-3-.5-6 0-8 1.5z"/><path d="M12 6v14"/></svg>',"Tajweed"],["reports",'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h16"/><rect x="5" y="11" width="3" height="7" rx="1"/><rect x="10.5" y="6" width="3" height="12" rx="1"/><rect x="16" y="9" width="3" height="9" rx="1"/></svg>',"Reports"],["settings",'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>',"Settings"]];
 const navOf=v=>({tajweed:"tajweed",today:"today",list:"list",reports:"reports",crep:"reports",wsum:"reports",star:"reports",grading:"reports",screen:"reports",settings:"settings",classes:"settings",fees:"settings",place:"settings",schools:"settings",schoolv:"settings",teacher:"settings",gmove:"settings",handover:"settings",class:"today",buddy:"today",school:"settings",waitlist:"settings",sover:"reports",inbox:"settings"})[v]||"list";
 function afterRender(){
   let n=document.getElementById("nav");
@@ -31,11 +31,12 @@ function afterRender(){
   try{schoolAfter()}catch(e){console.error(e)}
   try{feedbackAfter()}catch(e){console.error(e)}
   if(typeof tourMaybe==="function")tourMaybe();
+  {const h=document.querySelector(".topfix");if(h&&!document.getElementById("langTop")){h.insertAdjacentHTML("afterbegin",`<button type="button" id="langTop" class="link" data-noar lang="${AR?"en":"ar"}">${AR?"English":"العربية"}</button>`);document.getElementById("langTop").onclick=()=>setLang(AR?"en":"ar")}}
   arApply();
 }
 let listQ="";
-function searchBox(){return `<div class="srch"><input type="search" id="srch" placeholder="Search a student by name" value="${esc(listQ)}" autocomplete="off" aria-label="Search a student"></div>`}
-function wireSearch(el){const i=el.querySelector("#srch");if(!i)return;const f=()=>{listQ=i.value;const q=listQ.trim().toLowerCase();let n=0;el.querySelectorAll(".list .row").forEach(r=>{const st=allStudents.find(s=>s.id===r.dataset.id);const ok=!q||(st&&String(st.name).toLowerCase().includes(q));r.hidden=!ok;if(ok)n++});let m=el.querySelector("#srchNone");if(!m){m=document.createElement("p");m.id="srchNone";m.className="muted";i.parentElement.after(m)}m.textContent=q&&!n?"No student with that name.":"";};i.oninput=f;if(listQ)f()}
+function searchBox(){return `<div class="srch"><input type="search" id="srch" placeholder="${typeof isAdminV==="function"&&isAdminV()&&typeof schoolOn==="function"&&schoolOn()?"Search a student, teacher or group":"Search a student by name"}" value="${esc(listQ)}" autocomplete="off" aria-label="Search a student"></div>`}
+function wireSearch(el){const i=el.querySelector("#srch");if(!i)return;const f=()=>{listQ=i.value;const q=listQ.trim().toLowerCase();let n=0;el.querySelectorAll(".list .row").forEach(r=>{const st=allStudents.find(s=>s.id===r.dataset.id);const ok=!q||(st&&String(st.name).toLowerCase().includes(q));r.hidden=!ok;if(ok)n++});let m=el.querySelector("#srchNone");if(!m){m=document.createElement("p");m.id="srchNone";m.className="muted";i.parentElement.after(m)}m.textContent=q&&!n?"No student with that name.":"";if(typeof peopleSearch==="function")peopleSearch(el,q)};i.oninput=f;if(listQ)f()}
 
 // ---------- 4. class now ----------
 const minsOf=t=>{if(!t)return null;const [h,m]=String(t).split(":").map(Number);return h*60+(m||0)};
@@ -56,15 +57,16 @@ function renderToday(el,sub,ta){
   const ses=sid=>events.filter(e=>e.type==="session"&&e.sid===sid&&e.date===iso(today())).sort((a,b)=>(b.t||0)-(a.t||0))[0];
   const line=e=>{if(!e)return "";const A={present:"On time",late:"Late",absent:"Absent",excused:"Excused"};const p=[A[e.att]||""];if(attended(e)){if(e.hifzNR)p.push("hifz not recited");else if(e.hifzText)p.push(e.hifzText);if(e.revNR)p.push("review not recited");else if(e.revType&&e.revType!=="none")p.push("review "+(e.revRows||[]).length+((e.revSkip||[]).length?" of "+((e.revRows||[]).length+(e.revSkip||[]).length):""))}return p.join(" · ")};
   const nx=list.find(s=>!doneToday(s.id));
-  el.innerHTML=`${subBanner()}${starBanner()}${wsumBanner()}${view.cls&&mine.length>=2?backBtn("Today's classes",{name:"today"}):""}${!isToday?`<div class="banner info">No class today.${nextClassText()?" Next: "+esc(nextClassText())+".":""}</div>`:""}${tabs}
+  el.innerHTML=`${subBanner()}${typeof adminDashHTML==="function"&&!view.cls?adminDashHTML():""}${starBanner()}${wsumBanner()}${view.cls&&mine.length>=2?backBtn("Today's classes",{name:"today"}):""}${!isToday?`<div class="banner info">No class today.${nextClassText()?" Next: "+esc(nextClassText())+".":""}</div>`:""}${tabs}
    <div class="panel tnow" data-cid="${c.id}">
     <div class="head"><h2>${esc(c.name)}</h2><button type="button" class="link small" data-openc="${c.id}">Class log</button><span class="chip ${live&&live.id===c.id?"ok":"plain"}">${live&&live.id===c.id?"Now":esc(c.time||"")}${c.end?"–"+esc(c.end):""}</span></div>
     ${isToday?`<div class="actions">${classTimeChip(c,m)}${classTimeButtons(c,m)}</div>`:""}
     <div class="tprog"><div class="bar"><i style="width:${list.length?Math.round(done/list.length*100):0}%"></i></div><span class="small"><b>${done} of ${list.length}</b> recorded</span></div>
     ${nx?`<button class="primary qnext" data-trec="${nx.id}">Record next › ${esc(nx.name)}</button>`:list.length?`<div class="banner ok">Everyone is recorded for today.</div>`:""}
+    ${list.length&&isToday&&(typeof canEditCls!=="function"||canEditCls(c.id))?`<button type="button" class="qnext tbud" data-simgo='${JSON.stringify({name:"roll",id:c.id})}'>📋 Quick attendance</button>`:""}
     ${list.length>=2?`<button type="button" class="qnext tbud" id="tBuddy">👥 Buddy recitation</button>`:""}
     <div class="tlist">${list.map(s=>{const e=ses(s.id);return `<div class="trow ${doneToday(s.id)?"done":""}"><button type="button" class="tname" data-tst="${s.id}"><b>${esc(s.name)}${flameChip(s)}</b><span class="small muted">${e?esc(line(e)):esc(planShort(s))}</span></button><span class="tatt">${isToday?attCtl(s,iso(today())):""}</span><button type="button" class="${doneToday(s.id)?"":"primary"} sm" data-trec="${s.id}">${doneToday(s.id)?"Edit":"Record"}</button></div>`}).join("")}</div>
-   </div>${alertsPanel(list)}${testsPanel()}${challengeCard(c)}`;
+   </div>${isToday&&typeof endSummaryHTML==="function"?endSummaryHTML(c,m,list):""}${alertsPanel(list)}${testsPanel()}${challengeCard(c)}`;
   wireBack(el);wireChallenge(el);{const bb=el.querySelector("#tBuddy");if(bb)bb.onclick=()=>go({name:"buddy",cls:c.id})}el.querySelectorAll("[data-tcls]").forEach(b=>b.onclick=()=>go({name:"today",cls:b.dataset.tcls}));
   el.querySelectorAll("[data-trec]").forEach(b=>b.onclick=()=>go({name:"session",id:b.dataset.trec}));
   el.querySelectorAll("[data-tst]").forEach(b=>b.onclick=()=>go({name:"student",id:b.dataset.tst}));
@@ -84,7 +86,7 @@ function renderTodayPick(el,list,live){const d=iso(today()),n=nowMins(),adm=!SUB
     return `<button type="button" class="tpick ${r.now?"now":""} ${r.full?"full":""}" data-tcls="${c.id}"><span class="tp-h"><b><bdi>${esc(c.name)}</bdi></b>${chip}</span>
      <span class="small muted">${c.time?"🕒 "+esc(c.time)+(c.end?"–"+esc(c.end):""):""}${tn?" · "+esc(tn):""} · ${r.ss.length} ${r.ss.length===1?"student":"students"}</span>
      <span class="tprog"><span class="bar"><i style="width:${pct}%"></i></span><span class="small"><b>${r.done} of ${r.ss.length}</b> recorded</span></span><span class="tp-go">›</span></button>`};
-  el.innerHTML=`${subBanner()}${starBanner()}${wsumBanner()}<p class="small muted lbl"><span>Today's classes</span> · ${list.length}</p><div class="tpicks">${rows.map(card).join("")}</div>${testsPanel()}`;
+  el.innerHTML=`${subBanner()}${typeof adminDashHTML==="function"&&!view.cls?adminDashHTML():""}${starBanner()}${wsumBanner()}<p class="small muted lbl"><span>Today's classes</span> · ${list.length}</p><div class="tpicks">${rows.map(card).join("")}</div>${testsPanel()}`;
   el.querySelectorAll("[data-tcls]").forEach(b=>b.onclick=()=>go({name:"today",cls:b.dataset.tcls}));wireTests(el)}
 function planShort(s){try{useOrder(s);const ends=plannedEnds(s);const wk=s.days.length;const e=ends.length?ends[Math.min(wk,ends.length)-1]:null;const t=e!=null?"Today: "+rangeText(s.pos,e):"";const cur=allStudents.find(x=>x.id===view.id);if(cur)useOrder(cur);return t}catch(_){return ""}}
 async function autoStartClass(st){try{const c=classes.find(x=>x.id===st.cls);if(!c||!classesToday().some(x=>x.id===c.id))return;const m=meetingOf(c.id,iso(today()));if(m&&(m.started||m.status==="cancelled"))return;const s=minsOf(c.time),n=nowMins();if(s!=null&&(n<s-30||n>(minsOf(c.end)||s+90)+30))return;await classSign(c.id,"start")}catch(_){}}
@@ -169,7 +171,7 @@ function journeyPanel(st){return `<details class="panel jpanel"><summary><h3>Hif
 function starOf(cid,ym){const list=classOrder(cid);const evs=events.filter(e=>String(e.date).slice(0,7)===ym);
   const sc=list.map(st=>{const mine=evs.filter(e=>e.sid===st.id);const days=new Set(mine.filter(e=>e.type==="session"&&attended(e)).map(e=>e.date)).size;const pts=mine.reduce((t,e)=>t+ptsOf(e),0);const lines=mine.filter(e=>e.type==="session").reduce((t,e)=>t+(e.hifzLines||0),0);return {st,pts,days,lines,score:pts+days*2}}).filter(x=>x.days>0).sort((a,b)=>b.score-a.score||b.lines-a.lines);
   return sc}
-const ymLabel=ym=>{const [y,m]=ym.split("-").map(Number);return new Date(y,m-1,1).toLocaleDateString("en-GB",{month:"long",year:"numeric"})};
+const ymLabel=ym=>{const [y,m]=ym.split("-").map(Number);return new Date(y,m-1,1).toLocaleDateString(LOC(),{month:"long",year:"numeric"})};
 function prevYm(){const d=today();return iso(new Date(d.getFullYear(),d.getMonth()-1,1)).slice(0,7)}
 function renderStar(el,sub){const c=classes.find(x=>x.id===view.cls)||classes[0];if(!c){el.innerHTML='<div class="panel empty">No classes yet.</div>';return}
   const ym=view.ym||prevYm(),sc=starOf(c.id,ym),w=sc[0];sub.textContent="Star of the month · "+c.name;
@@ -199,17 +201,16 @@ function starBanner(){const d=today().getDate();if(d>7||!classes.length)return "
 // ---------- reports + settings hubs ----------
 function renderReports(el,sub){sub.textContent="Reports";
   const card=(id,i,t,d)=>`<button type="button" class="hub" data-hub="${id}"><i>${i}</i><b>${t}</b><span>${d}</span></button>`;
-  el.innerHTML=`<div class="hubs">${SUB?"":card("sover","🏫","School overview","Every group and teacher, and this week by teacher")}${card("crep","▤","Class report","Chart, table and diary for any dates")}${card("wsum","☷","Weekly summary","Who moved ahead, who needs follow-up")}${card("star","★","Star of the month","Picked from points and attendance, with a certificate")}${card("screen","▣","Class screen","Big board for the classroom")}${card("buddy","👥","Buddy recitation","Students recite to each other in pairs")}${card("grading","✓","How we grade","Grading rules and guide")}</div>
+  el.innerHTML=`<div class="hubs">${SUB?"":card("sover","🏫","School overview","Every group and teacher, and this week by teacher")}${SUB?"":card("mrep","🗓","Month report","One page for the board: students, juz, attendance, groups")}${card("crep","▤","Class report","Chart, table and diary for any dates")}${card("wsum","☷","Weekly summary","Who moved ahead, who needs follow-up")}${card("star","★","Star of the month","Picked from points and attendance, with a certificate")}${card("screen","▣","Class screen","Big board for the classroom")}${card("buddy","👥","Buddy recitation","Students recite to each other in pairs")}${card("grading","✓","How we grade","Grading rules and guide")}</div>
    <p class="small muted">Student reports, year reports and parent messages are on each student's page.</p>`;
   el.querySelectorAll("[data-hub]").forEach(b=>b.onclick=()=>{const c=(classes.find(x=>x.id===getListCls())||(tchList()&&myCls()[0])||classes[0]||{}).id;const h=b.dataset.hub;go(h==="crep"||h==="screen"?{name:h,id:c}:{name:h,cls:c})})}
 function renderSettings(el,sub){if(SUB){go({name:"list"});return}sub.textContent="Settings";
   const card=(id,i,t,d)=>`<button type="button" class="hub" data-hub="${id}"><i>${i}</i><b>${t}</b><span>${d}</span></button>`;
-  el.innerHTML=`<div class="hubs">${card("classes","⚙","Grading, points, holidays, backup","Same rules in every school · daily reading per group · breaks · backup and restore")}${card("backup","💾","Backup","Download a copy of all records to keep somewhere safe")}${card("schools","🏫","Schools","Schools, teachers, groups, waiting list")}${card("inbox","💬","Suggestions and problems",fbNew()?(AR?`${fbNew()} رسالة جديدة`:`${fbNew()} new`):"Messages from teachers to the administration")}</div>
+  el.innerHTML=`<div class="panel setlist"><button type="button" class="setrow" data-hub="schools"><i>🏫</i><span><b>Schools, teachers and groups</b><small>Each school: teachers, groups, students, waiting list, fees</small></span><em>‹</em></button><button type="button" class="setrow" data-hub="classes" data-sec="groups"><i>👥</i><span><b>Groups and daily reading</b><small>Class days, times and daily reading per group</small></span><em>‹</em></button><button type="button" class="setrow" data-hub="classes" data-sec="points"><i>★</i><span><b>Grading and points</b><small>Points for attendance, homework, recitation and behaviour</small></span><em>‹</em></button><button type="button" class="setrow" data-hub="classes" data-sec="breaks"><i>🌙</i><span><b>Ramadan and holidays</b><small>Breaks: review only or half the new amount</small></span><em>‹</em></button><button type="button" class="setrow" data-hub="classes" data-sec="backup"><i>💾</i><span><b>Backup</b><small>Download or restore a copy of all records</small></span><em>‹</em></button><button type="button" class="setrow" data-hub="inbox"><i>💬</i><span><b>Suggestions and problems</b><small>${fbNew()?(AR?`${fbNew()} رسالة جديدة`:`${fbNew()} new`):"Messages from teachers to the administration"}</small></span><em>‹</em></button></div>
    <p class="small muted" id="bkSetMsg" aria-live="polite"></p>
-   <div class="panel" style="background:var(--accent-soft)"><b class="small">Moved into each school</b><p class="small" style="margin:4px 0 0">Teachers · Groups · Add student · Waiting list · Placement test · Fees: open Schools, then a school.</p></div>
    <div class="panel"><h3>Attendance</h3><label class="inl">Late after <input type="number" id="graceIn" min="0" max="60" value="${graceMins()}" style="width:70px" inputmode="numeric"> minutes from the class start</label> <span class="small muted" id="graceMsg"></span></div>
    <div class="panel"><h3>Language · اللغة</h3><div class="seg"><button type="button" class="fbtn ${AR?"":"on"}" data-lang="en">English</button><button type="button" class="fbtn ${AR?"on":""}" data-lang="ar">العربية</button></div></div>`;
-  el.querySelectorAll("[data-hub]").forEach(b=>b.onclick=()=>{if(b.dataset.hub==="backup")return doBackup(el.querySelector("#bkSetMsg"));go({name:b.dataset.hub,cls:getListCls()})});
+  el.querySelectorAll("[data-hub]").forEach(b=>b.onclick=()=>{if(b.dataset.hub==="backup")return doBackup(el.querySelector("#bkSetMsg"));go({name:b.dataset.hub,cls:getListCls(),...(b.dataset.sec?{sec:b.dataset.sec}:{})})});
   el.querySelectorAll("[data-lang]").forEach(b=>b.onclick=()=>setLang(b.dataset.lang));
   const gi=el.querySelector("#graceIn");if(gi){gi.addEventListener("focus",()=>busy=true);gi.onchange=async()=>{const v=Math.max(0,Math.min(60,Number(gi.value)||0));try{await db.doc("settings/main").set({...(settings.main||{}),grace:v});el.querySelector("#graceMsg").textContent="Saved."}catch(_){el.querySelector("#graceMsg").textContent="Not saved."}busy=false}}}
 
@@ -238,12 +239,34 @@ AR_PAT.unshift([/^(.+) \((\d+) ayahs\)$/,"$1 ($2 آية)"],[/^Edit (.+)$/,"تع�
 Object.assign(AR_DICT,{"Prompted":"لقّنه المعلّم","Interrupted the class":"قاطع الحصة","Sleepy":"ناعس","Focused":"منتبه","Mixed up":"خلط","New hifz: Excellent":"الحفظ الجديد: ممتاز","New hifz: Very good or Good":"الحفظ الجديد: جيد جدًا أو جيد","New hifz: Pass or Repeat":"الحفظ الجديد: مقبول أو إعادة","Review: Excellent":"المراجعة: ممتاز","Review: Very good or Good":"المراجعة: جيد جدًا أو جيد","Review: Pass or Repeat":"المراجعة: مقبول أو إعادة","No minus points in this class (absence, behaviour and the rest give 0 instead)":"لا نقاط سالبة في هذه الحلقة (الغياب والسلوك وغيرهما تُحسب صفرًا)","Daily reading for new students":"ورد القراءة اليومي للطلاب الجدد"});
 const AR_SUB=[["not recited","لم يُقرأ"],["not ready","غير جاهز"],["Hifz","الحفظ"],["hifz","حفظ"],["Review","المراجعة"],["review","مراجعة"],["mistakes","أخطاء"],["mistake","خطأ"],["pages memorized","صفحة محفوظة"],["pages","صفحات"],["points","نقاط"],["pts","نقطة"],["Excellent","ممتاز"],["Very good","جيد جدًا"],["Good","جيد"],["Repeat","إعادة"],["On time","في الموعد"],["Late","متأخر"],["Absent","غائب"],["Excused","بعذر"],["full","كامل"],["chosen by hand","مختار يدويًا"],["to","إلى"],["of","من"],["surahs","سور"],["surah","سورة"],["students","طالب"],["student","طالب"],["recorded","سُجِّل"],["days","أيام"],["day","يوم"],["juz","جزء"],["Juz","جزء"],["test due","عليه اختبار"],["Today","اليوم"],["Monday","الاثنين"],["Tuesday","الثلاثاء"],["Wednesday","الأربعاء"],["Thursday","الخميس"],["Friday","الجمعة"],["Saturday","السبت"],["Sunday","الأحد"],["January","يناير"],["February","فبراير"],["March","مارس"],["April","أبريل"],["May","مايو"],["June","يونيو"],["July","يوليو"],["August","أغسطس"],["September","سبتمبر"],["October","أكتوبر"],["November","نوفمبر"],["December","ديسمبر"],["Kids class","فصل الأطفال"],["Adults class","فصل الكبار"],["came","حضر"],["Most points this week","الأكثر نقاطًا هذا الأسبوع"],["absent","غاب"],["times","مرات"],["classes held","حصة أُقيمت"],["surahs memorized","سورة محفوظة"],["Now","الآن"],["Path complete!","اكتمل الطريق!"],["today","اليوم"],["done","اكتمل"],["next","التالي"],["in","في"]].sort((a,b)=>b[0].length-a[0].length);
 const AR_SUB_RE=new RegExp("(?<![\\w'’-])("+AR_SUB.map(x=>x[0].replace(/[.*+?^${}()|[\]\\]/g,"\\$&")).join("|")+")(?![\\w'’-])","g");const AR_SUB_M=new Map(AR_SUB);
-let SURAH_RE=null,SURAH_BY=null;
-function arText(s){const t=s.trim();if(!t||!/[A-Za-z]/.test(t))return s;let r=AR_DICT[t];if(r==null){for(const [re,to] of AR_PAT)if(re.test(t)){r=t.replace(re,to);break}}
-  if(r==null)r=t;
-  if(!SURAH_RE){const ns=SURAH_NAMES.map((n,i)=>[n,i]).sort((a,b)=>b[0].length-a[0].length);SURAH_RE=new RegExp("(?<![\\w'])("+ns.map(x=>x[0].replace(/[.*+?^${}()|[\]\\]/g,"\\$&")).join("|")+")(?![\\w'])","g");SURAH_BY=new Map(SURAH_NAMES.map((n,i)=>[n,SURAH_AR[i]]))}
-  if(/[A-Za-z]/.test(r)){r=r.replace(SURAH_RE,m=>SURAH_BY.get(m)||m);r=r.replace(AR_SUB_RE,m=>AR_SUB_M.get(m)||m).replace(/(\d) p\b/g,"$1 ص").replace(/\((\d+(?:\.\d+)?) p\)/g,"($1 ص)")}
-  if(r===t)return s;return s.replace(t,r)}
+// Arabic: a whole text is translated from the dictionary, a pattern, or part by part (split at " · " and ", ").
+// If any part has no translation, the text stays in English: never half English, half Arabic.
+let SURAH_RE=null,SURAH_BY=null,AR_MEMO=new Map(),AR_NK="",AR_NS=new Set(),AR_NA=[];const AR_PAT2=[];
+const arLatin=s=>/[A-Za-z]{2,}/.test(s);
+function arSurah(r){if(!SURAH_RE){const ns=SURAH_NAMES.map((n,i)=>[n,i]).sort((a,b)=>b[0].length-a[0].length);SURAH_RE=new RegExp("(?<![\\w'])("+ns.map(x=>x[0].replace(/[.*+?^${}()|[\]\\]/g,"\\$&")).join("|")+")(?![\\w'])","g");SURAH_BY=new Map(SURAH_NAMES.map((n,i)=>[n,SURAH_AR[i]]))}
+  return r.replace(SURAH_RE,m=>SURAH_BY.get(m)||m)}
+// names typed by the school (students, teachers, groups, schools) may stay in Latin letters inside an Arabic text
+function arNames(){const S=typeof allStudents!=="undefined"?allStudents:[],T=typeof TEACHERS!=="undefined"?TEACHERS:[],C=typeof classes!=="undefined"?classes:[],K=typeof SCHOOLS!=="undefined"?SCHOOLS:[];
+  const k=S.length+"|"+T.length+"|"+C.length+"|"+K.length;if(k!==AR_NK){AR_NK=k;AR_NS=new Set([...S,...T,...C,...K].map(x=>String(x&&x.name||"").trim()).filter(Boolean));AR_NA=[...AR_NS].sort((a,b)=>b.length-a.length);AR_MEMO.clear()}return AR_NS}
+function arClean(r){let x=arRange(r);for(const n of arNames())x=x.split(n).join("");return !arLatin(x.replace(/https?:\S+|\S+@\S+/g,""))}
+// surah names become Arabic, except inside a name the school typed (a student called Yusuf keeps his name)
+const arRange=p=>{let x=String(p);const keep=[];for(const n of AR_NA)if(x.includes(n)){x=x.split(n).join("\u0001"+keep.length+"\u0002");keep.push(n)}
+  x=arSurah(x).replace(/ to /g," إلى ").replace(/\((\d+(?:\.\d+)?) p\)/g,"($1 ص)").replace(/(\d) p\b/g,"$1 ص");return keep.length?x.replace(/\u0001(\d+)\u0002/g,(_,j)=>keep[+j]):x};
+function arSeg(p){const t=String(p).trim();if(!t||!/[A-Za-z]/.test(t))return p;const r=arCore(t);if(r!=null)return r;const g=arRange(t);if(!arLatin(g))return g;
+  if(arNames().has(t)||/^\S+@\S+$|^https?:/.test(t))return t;return null}
+function arCore(t){if(AR_DICT[t]!=null)return AR_DICT[t];
+  if(t.startsWith("· ")){const r=arSeg(t.slice(2));return r==null?null:"· "+r}
+  if(t.endsWith(" ·")){const r=arSeg(t.slice(0,-2));return r==null?null:r+" ·"}
+  for(const [re,fn] of AR_PAT2){const m=t.match(re);if(m){const r=fn(m);if(r!=null)return r}}
+  for(const [re,to] of AR_PAT)if(re.test(t)){const r=t.replace(re,to);if(arClean(r))return r;break} // older rules: only when they give clean Arabic
+  for(const sep of [" · ",", "])if(t.includes(sep)){const ps=t.split(sep).map(arSeg);if(ps.every(x=>x!=null))return ps.join(sep===", "?"، ":sep)}
+  return null}
+function arText(s){const t=s.trim().replace(/\s+/g," ");if(!t||!/[A-Za-z]/.test(t))return s;arNames();let r=AR_MEMO.get(t);
+  if(r===undefined){r=arCore(t);
+    if(r==null){const g=arRange(t);if(!arLatin(g))r=g;else{const w=g.replace(AR_SUB_RE,m=>AR_SUB_M.get(m)||m);let left=w;for(const n of AR_NS)left=left.split(n).join("");if(!arLatin(left))r=w}}
+    else r=arRange(r);
+    if(AR_MEMO.size>8000)AR_MEMO.clear();AR_MEMO.set(t,r)}
+  if(r==null||r===t)return s;return s.match(/^\s*/)[0]+r+s.match(/\s*$/)[0]}
 let arBusy=false;
 function arWalk(root){const w=document.createTreeWalker(root,NodeFilter.SHOW_TEXT,{acceptNode:n=>{const p=n.parentElement;if(!p||p.closest("script,style,textarea,.mpage,[data-noar],option:not([value]),datalist"))return NodeFilter.FILTER_REJECT;return NodeFilter.FILTER_ACCEPT}});
   const list=[];while(w.nextNode())list.push(w.currentNode);for(const n of list){const v=arText(n.nodeValue);if(v!==n.nodeValue)n.nodeValue=v}

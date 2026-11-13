@@ -115,7 +115,8 @@ try {
   await page.waitForTimeout(200);
 
   // student page: practice results (weakest first) and tajweed mistakes by rule; practise the weakest rule with that student
-  await page.evaluate(() => { go({ name: 'student', id: 's1' }); });
+  await page.evaluate(() => { view.stab = 'today'; go({ name: 'student', id: 's1' }); });
+  await page.click('[data-stab="mistakes"]');
   await page.click('details[data-sf="tajweed"] > summary');
   await page.waitForSelector('.tjstud');
   const sp = await page.evaluate(() => ({ first: document.querySelector('.tjstud .tjweak .tjar').textContent, text: document.querySelector('.tjstud').textContent }));
@@ -162,7 +163,7 @@ try {
   await page.click('#back');
   await page.waitForSelector('.tpick');
   await page.evaluate(() => { go({ name: 'settings' }); });
-  await page.waitForSelector('[data-hub="backup"]');
+  await page.waitForSelector('.setrow[data-sec="backup"]');
   ok('Backup and Schools are in Settings', !!(await page.$('[data-hub="schools"]')));
   // student page: two main buttons, the rest under More, long sections folded
   await page.evaluate(() => { go({ name: 'student', id: 's1' }); });
@@ -246,6 +247,87 @@ try {
     return o;
   });
   ok('the words that differ are coloured; the Similar verses button hides and shows the marks', simT.diff === 2 && simT.on === 1 && simT.pop === 3 && simT.off === 0 && simT.back === 1 && simT.ld === 2, JSON.stringify(simT));
+  // Arabic: with the app in Arabic, every text on the main pages is fully Arabic (school names may stay as typed), never half and half
+  const arMix = await page.evaluate(async () => {
+    const mixed = [], english = new Set(), t = iso(today()); busy = false; AR = true;
+    const isAr = (x) => /[؀-ۿ]/.test(x);
+    const views = [{ name: 'today' }, { name: 'list' }, { name: 'reports' }, { name: 'class', id: 'c1', date: t }, { name: 'crep', id: 'c1' }, { name: 'student', id: 's1' }, { name: 'session', id: 's1' }, { name: 'history', id: 's1' }, { name: 'report', id: 's1' }, { name: 'mushaf', id: 's1' }, { name: 'week', id: 's1' }];
+    for (const vw of views) {
+      busy = false; go(vw); render(true); await new Promise((r) => setTimeout(r, 150));
+      const w = document.createTreeWalker(document.getElementById('view'), NodeFilter.SHOW_TEXT);
+      while (w.nextNode()) {
+        const n = w.currentNode, p = n.parentElement; if (!p || p.closest('script,style,textarea,.mpage,[data-noar],datalist')) continue;
+        const x = n.nodeValue.trim(); if (!/[A-Za-z]{2,}/.test(x)) continue;
+        let left = x; for (const nm of arNames()) left = left.split(nm).join('');
+        left = left.replace(/https?:\S+|\S+@\S+|PDF|Google Drive|Firebase|AUD|SMART|English|Language/g, '');
+        if (!/[A-Za-z]{2,}/.test(left)) continue;
+        if (isAr(x)) mixed.push(x); else english.add(x);
+      }
+    }
+    AR = false; if (arObs) { arObs.disconnect(); arObs = null; } document.documentElement.removeAttribute('dir'); document.documentElement.setAttribute('lang', 'en'); document.body.classList.remove('ar'); document.getElementById('app').setAttribute('dir', 'ltr'); AR_MEMO.clear(); busy = false; render(true);
+    return { mixed: mixed.slice(0, 6), nMixed: mixed.length, english: [...english].slice(0, 8), nEn: english.size,
+      near: arText('Near review · last 10 hifz days'), cov: arText('recorded by Bilal (covering)'), keep: arText('Some brand new sentence nobody translated') };
+  });
+  ok('Arabic: no half-English text on the main pages, and the common lines are translated', arMix.nMixed === 0 && arMix.nEn === 0 && arMix.near === 'المراجعة القريبة · آخر 10 أيام حفظ' && arMix.cov === 'سجّلها Bilal (بديل)' && arMix.keep === 'Some brand new sentence nobody translated', JSON.stringify(arMix));
+  // teacher tools: student page in four tabs, quick attendance for the whole group, summary when the class ends
+  const tt = await page.evaluate(async () => {
+    const wait = async (f) => { for (let i = 0; i < 40 && !f(); i++) await new Promise((r) => setTimeout(r, 100)); };
+    const o = {}; busy = false; view.stab = 'today'; go({ name: 'student', id: 's2' }); render(true);
+    const vis = (sel) => { const e = document.querySelector(sel); return !!e && !e.closest('[hidden]'); };
+    o.tabs = [...document.querySelectorAll('.stabs [data-stab]')].map((b) => b.dataset.stab).join();
+    o.todayFirst = vis('.tasks') && !vis('details[data-sf="points"]');
+    document.querySelector('[data-stab="progress"]').click(); o.progress = vis('details[data-sf="points"]') && !vis('.tasks');
+    document.querySelector('[data-stab="reports"]').click(); o.reports = vis('.srep [data-sclick="repBtn"]');
+    document.querySelector('[data-stab="today"]').click(); view.stab = 'today';
+    // quick attendance: Zakariya (s5, Teens class) late, Hana (s6) excused
+    const d = iso(today()); busy = false; ROLL = null; go({ name: 'roll', id: 'c2' }); render(true);
+    const tap = (id, n) => { for (let i = 0; i < n; i++) { document.querySelector(`[data-roll="${id}"]`).click(); } };
+    const st0 = { ...ROLL.st }; const target = { s5: 'late', s6: 'excused' };
+    for (const [id, want] of Object.entries(target)) { let g = 0; while (ROLL.st[id] !== want && g++ < 5) tap(id, 1); }
+    o.grid = document.querySelectorAll('[data-roll]').length === 3;
+    document.getElementById('rollSave').click();
+    await wait(() => view.name === 'today');
+    const att = (id) => (events.filter((e) => e.type === 'session' && e.sid === id && e.date === d).sort((a, b) => (b.t || 0) - (a.t || 0))[0] || {}).att;
+    o.saved = att('s5') === 'late' && att('s6') === 'excused';
+    // end of class summary
+    const m = { cls: 'c2', date: d, status: 'held', started: '17:30', ended: '19:00' };
+    const html = endSummaryHTML(classes.find((c) => c.id === 'c2'), m, classOrder('c2'));
+    const div = document.createElement('div'); div.innerHTML = html; o.end = /Class ended/.test(div.textContent) && !!div.querySelector('[data-simgo*="msgs"]');
+    busy = false; go({ name: 'msgs', id: 'c2' }); render(true); o.msgs = document.querySelectorAll('.mrow').length === 3;
+    return o;
+  });
+  ok('teacher tools: student tabs, quick attendance saves, class-end summary and parent messages list', tt.tabs === 'today,progress,mistakes,reports' && tt.todayFirst && tt.progress && tt.reports && tt.grid && tt.saved && tt.end && tt.msgs, JSON.stringify(tt));
+  // admin tools: dashboard on Today, settings in sections, people search, month report, several students at once
+  const at = await page.evaluate(async () => {
+    const wait = async (f) => { for (let i = 0; i < 40 && !f(); i++) await new Promise((r) => setTimeout(r, 100)); };
+    const o = {}; busy = false; go({ name: 'today' }); render(true);
+    const dash = document.querySelector('.addash'); o.dash = !!dash && /Attendance/.test(dash.textContent) && /Teachers today/.test(dash.textContent) && /Bilal/.test(dash.textContent);
+    busy = false; go({ name: 'settings' }); render(true); o.rows = document.querySelectorAll('.setrow').length;
+    document.querySelector('.setrow[data-sec="breaks"]').click();
+    o.sec = view.sec === 'breaks' && [...document.querySelectorAll('#view > .panel')].filter((n) => !n.hidden).length === 1;
+    busy = false; go({ name: 'list' }); render(true); const i = document.getElementById('srch'); i.value = 'teens'; i.dispatchEvent(new Event('input'));
+    o.search = /Teens class/.test((document.getElementById('srchMore') || {}).textContent || ''); i.value = ''; i.dispatchEvent(new Event('input')); listQ = '';
+    busy = false; go({ name: 'mrep' }); render(true); o.mrep = /Month report/.test(document.querySelector('.mrep').textContent) && document.querySelectorAll('.mrep .adk').length === 5;
+    busy = false; go({ name: 'add' }); render(true); const n0 = allStudents.length; document.querySelector('.fmany').open = true;
+    const ta = document.getElementById('f_many'); ta.value = 'Bulk One\nBulk Two'; ta.dispatchEvent(new Event('input'));
+    document.querySelector('#fForm button[type="submit"]').click(); await wait(() => allStudents.length === n0 + 2);
+    o.bulk = allStudents.length - n0; const added = allStudents.filter((s) => /^Bulk /.test(s.name));
+    for (const s of added) await db.doc('students/' + s.id).delete(); await wait(() => !allStudents.some((s) => /^Bulk /.test(s.name)));
+    return o;
+  });
+  ok('admin tools: dashboard, settings sections, people search, month report, add several students', at.dash && at.rows === 6 && at.sec && at.search && at.mrep && at.bulk === 2, JSON.stringify(at));
+  // gifts for families: weekly message in Arabic, weekly card picture, congratulations on the class screen
+  const gf = await page.evaluate(async () => {
+    const st = allStudents.find((s) => s.id === 's4'), t = iso(today()), f = iso(addDays(today(), -6)), o = {};
+    const ar = parentMsg(st, f, t, 'ar'); o.ar = /^السلام عليكم/.test(ar) && /الحضور: \d+ من \d+/.test(ar) && /النازعات 34/.test(ar) && !/[a-z]{3,}/.test(ar.replace(st.name, '').replace(/Ahmed|Bilal|Demo Owner/g, ''));
+    o.en = /^Assalamu alaikum/.test(parentMsg(st, f, t, 'en'));
+    const b = await weekCardPng(st, f, t, 'ar'); o.png = !!b && b.type === 'image/png' && b.size > 20000;
+    const id = 'celebrate1'; await db.doc('events/' + id).set({ sid: 's4', type: 'test', date: t, juz: 30, result: 'pass', mistakes: 0, t: Date.now() });
+    for (let i = 0; i < 30 && !events.some((e) => e.id === id); i++) await new Promise((r) => setTimeout(r, 100));
+    busy = false; go({ name: 'screen', id: 'c2' }); render(true); o.cel = /completed juz 30/.test((document.querySelector('.scrcel') || {}).textContent || '');
+    await db.doc('events/' + id).delete(); return o;
+  });
+  ok('families: weekly message in Arabic, weekly card picture, congratulations on the class screen', gf.ar && gf.en && gf.png && gf.cel, JSON.stringify(gf));
   // the six next steps for similar verses
   const six = await page.evaluate(async () => {
     const wait = async (f) => { for (let i = 0; i < 40 && !f(); i++) await new Promise((r) => setTimeout(r, 100)); };

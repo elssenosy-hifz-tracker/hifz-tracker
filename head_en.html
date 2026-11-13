@@ -380,6 +380,27 @@ body.roall [data-trec],body.roall .tatt,body.roall [data-cstart],body.roall [dat
 .errT{position:fixed;left:12px;right:12px;bottom:90px;z-index:60;background:#B42318;color:#fff;padding:12px 14px;border-radius:12px;font-weight:600;box-shadow:0 6px 20px rgba(0,0,0,.2)}.errm{color:var(--bad,#B42318);font-weight:600}
 .qsc.bud{border-style:dashed;opacity:.85}
 .qsim{border:1px solid #e8c46a;background:#fff8e6;border-radius:12px;padding:8px 12px;margin:8px 0}.qsim summary{cursor:pointer;line-height:1.5}.qsim .bk{background:#fff}.qsimi .bkt{font-size:20px;margin:4px 0}
+
+/* look and feel: one font for headings and text, buttons big enough for a thumb, soft cards, matching icons */
+h2,h3{font-family:var(--body);font-weight:700}
+button,.btn{min-height:40px;border-radius:10px}
+button.sm,.btn.sm{min-height:34px}
+button.link,.bnav button,button.chip,.chip,.qb,.spo{min-height:0}
+.panel{border-radius:14px;box-shadow:0 1px 2px rgba(16,40,36,.05)}
+.bnav button i svg{width:22px;height:22px;display:block}
+.bnav button span{font-size:11.5px}
+.topfix #langTop{font-weight:600}
+.banner .bandis{margin-inline-start:6px}
+body.ar .wrap,body.ar .bnav{font-family:"IBM Plex Sans Arabic","Segoe UI","Noto Sans Arabic","Geeza Pro",Tahoma,sans-serif}
+.stabs{display:flex;gap:4px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:4px;position:sticky;top:0;z-index:5}
+.stabs button{flex:1;min-height:38px;border:0;background:none;color:var(--muted);font-size:13.5px;border-radius:9px;padding:6px 2px}
+.stabs button.on{background:var(--accent-soft);color:var(--accent)}
+.srepg{display:grid;grid-template-columns:1fr 1fr;gap:8px}.srepg button{min-height:52px}
+.qmf2{flex-direction:column;align-items:stretch}.qmf2 .tmk{margin:0;justify-content:center}.qmf2 .tmk .mk{min-height:40px;flex:1 1 30%}.qmfb{display:flex;gap:8px;justify-content:space-between}
+.setlist{gap:0;padding:6px 12px}.setrow{display:flex;align-items:center;gap:12px;width:100%;border:0;border-bottom:1px solid var(--line);border-radius:0;background:none;padding:12px 2px;text-align:start;min-height:56px}.setrow:last-child{border-bottom:0}
+.setrow i{font-style:normal;font-size:20px;width:28px;text-align:center}.setrow span{flex:1;display:flex;flex-direction:column}.setrow small{color:var(--muted);font-weight:400;font-size:12.5px}.setrow em{font-style:normal;color:var(--muted)}
+body:not(.ar) .setrow em{transform:scaleX(-1)}.fmany{margin-top:4px}.fmany textarea{margin-top:6px}
+.scrcel{background:#FBEFDC;color:#7a4a08;border-radius:12px;padding:12px 16px;margin:8px 0;font-size:1.4em;font-weight:700;text-align:center}
 </style>
 
 <div class="wrap" dir="ltr" lang="en" id="app">

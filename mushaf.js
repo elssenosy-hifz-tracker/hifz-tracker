@@ -160,7 +160,7 @@ function renderMPrint(el,sub,st){
   el.querySelector("#r_to").onchange=e=>setR(el.querySelector("#r_from").value,e.target.value);
   el.querySelectorAll("[data-rf]").forEach(b=>b.onclick=()=>setR(b.dataset.rf,b.dataset.rt));
   ["list","notes","pages"].forEach(k=>el.querySelector("#o_"+k).onchange=e=>{view.po={...o,[k]:e.target.checked};render(true)});
-  el.querySelector("#p_dl").onclick=()=>{const df=new Intl.DateTimeFormat("en-GB",{day:"numeric",month:"short",year:"numeric"}),label=from===to?df.format(parse(from)):`${df.format(parse(from))} – ${df.format(parse(to))}`;
+  el.querySelector("#p_dl").onclick=()=>{const df=new Intl.DateTimeFormat(LOC(),{day:"numeric",month:"short",year:"numeric"}),label=from===to?df.format(parse(from)):`${df.format(parse(from))} – ${df.format(parse(to))}`;
     const pagesH=r.pages.map(p=>`<div class="mbox pbox">${pageHTML(p,r.mm)}</div>`).join("");
     saveFile(`mistakes-${fileSafe(st.name)}-${from}_${to}.html`,`<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Mistakes - ${esc(st.name)} - ${label}</title><style>${PRINT_CSS}${r.pages.length||r.count?FONT_CSS():""}${MUSHAF_CSS}.mword{font-family:"KFGQPC Hafs",serif;font-size:20px}.mbox{width:150mm;max-width:100%;container-type:inline-size;margin:0 auto 8mm;break-inside:avoid;page-break-inside:avoid}.mpage{font-size:3.7cqw}.mlist td{vertical-align:middle}</style></head><body><h1>Mistakes to review · ${esc(st.name)}</h1><p class="muted">${label}</p>${r.h}${pagesH?`<h2 style="page-break-before:always">Mushaf pages</h2>${pagesH}`:""}<script>document.fonts.ready.then(()=>{${FIT_JS}})<\/script></body></html>`,el.querySelector("#p_msg"))};
 }

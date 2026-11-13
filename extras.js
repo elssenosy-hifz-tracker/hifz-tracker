@@ -5,8 +5,8 @@ async function detectRole(k=0){try{const u=await claude.use("user");if(u&&typeof
 
 // ----- 1. weekly message for parents -----
 const phoneDigits=s=>String(s||"").replace(/[^\d]/g,"");
-function parentMsg(st,from,to){
-  useOrder(st);const g=GRD();
+function parentMsg(st,from,to,lang){
+  useOrder(st);const g=GRD();if(lang==="ar")return parentMsgAr(st,from,to);
   const evs=events.filter(e=>e.sid===st.id&&e.date>=from&&e.date<=to);
   const ses=evs.filter(e=>e.type==="session").sort((a,b)=>a.date.localeCompare(b.date));
   const att=ses.filter(attended),late=ses.filter(e=>e.att==="late").length,abs=ses.filter(e=>e.att==="absent").length,exc=ses.filter(e=>e.att==="excused").length;
@@ -43,22 +43,71 @@ function parentMsg(st,from,to){
   L.push("");L.push(`Jazakum Allahu khairan. ${g.teacher||""}`.trim());
   return L.join("\n");
 }
+// the same weekly message in Arabic (for families who read Arabic); surah names, dates and grades in Arabic too
+function parentMsgAr(st,from,to){useOrder(st);const g=GRD(),R=x=>arRange(String(x)),df=d=>new Intl.DateTimeFormat("ar-u-nu-latn",{weekday:"long",day:"numeric",month:"long"}).format(parse(d));
+  const GA={Excellent:"ممتاز","Very good":"جيد جدًا",Good:"جيد",Pass:"مقبول",Repeat:"إعادة"};
+  const evs=events.filter(e=>e.sid===st.id&&e.date>=from&&e.date<=to),ses=evs.filter(e=>e.type==="session").sort((a,b)=>a.date.localeCompare(b.date));
+  const att=ses.filter(attended),late=ses.filter(e=>e.att==="late").length,abs=ses.filter(e=>e.att==="absent").length,exc=ses.filter(e=>e.att==="excused").length,left=ses.filter(e=>e.left).length;
+  const hl=ses.reduce((t,e)=>t+(Number(e.hifzLines)||0),0),revL=e=>(e.revRows||[]).reduce((t,r)=>t+rowLines(r),0),rl=ses.reduce((t,e)=>t+revL(e),0);
+  const hm=ses.reduce((t,e)=>t+(Number(e.hifzMist)||0),0),rm=ses.reduce((t,e)=>t+(Number(e.revMist)||0),0);
+  const parts=ses.filter(e=>Number(e.hifzLines)>0&&((e.hifzRows&&e.hifzRows.length)||e.hifzText)).map(e=>e.hifzRows&&e.hifzRows.length?rowsText(e.hifzRows):e.hifzText);
+  const grades=ses.map(e=>gradeEn(e.hifzGrade)).filter(Boolean).map(x=>GA[x]||x),hw=ses.filter(e=>e.hw!=null),hwDone=hw.filter(e=>e.hw).length;
+  const nr=ses.filter(e=>e.hifzNR).length+ses.filter(e=>e.revNR).length,tests=evs.filter(e=>e.type==="test"),pts=evs.reduce((t,e)=>t+ptsOf(e),0);
+  const notes=ses.filter(e=>e.note).map(e=>e.note),lastNote=notes[notes.length-1],pct=Math.round((st.pos+PREV_LINES)/ALL*1000)/10,cj=currentJuz(st.pos);
+  const plan=weekPlan(st,addDays(today(),1),7).filter(d=>d.isHifz&&d.neu&&!/Paused/.test(d.neu));
+  const goal=plan.length?`${plan.length} ${plan.length===1?"يوم حفظ":"أيام حفظ"}، حتى ${R((()=>{const la=lastAyahOf(plan[plan.length-1].end);return la?pieceText({...la,a1:la.a2}):""})())}`:"";
+  const L=[`السلام عليكم ورحمة الله، هذا ملخص ${st.name} من ${df(from)} إلى ${df(to)}:`,""];
+  if(ses.length)L.push(`• الحضور: ${att.length} من ${ses.length}${late?` (متأخر ${late})`:""}${left?`، خرج مبكرًا ${left} مرة`:""}${abs?`، غاب ${abs}`:""}${exc?`، بعذر ${exc}`:""}`);else L.push("• لم تُسجَّل حصص في هذه الفترة.");
+  if(hl>0)L.push(`• الحفظ الجديد: ${pagesOf(hl)} صفحة${parts.length?` (${R(parts.join("؛ "))})`:""}، والأخطاء ${hm}`);else if(ses.length)L.push("• الحفظ الجديد: لم يسمّع حفظًا جديدًا في هذه الفترة.");
+  if(rl>0)L.push(`• المراجعة: ${pagesOf(rl)} صفحة، والأخطاء ${rm}`);
+  if(grades.length)L.push(`• التقديرات: ${grades.join("، ")}`);
+  if(hw.length)L.push(`• الواجب: أدّاه ${hwDone} من ${hw.length}`);
+  if(nr)L.push(`• جاء غير جاهز للتسميع ${nr} ${nr===1?"مرة":"مرات"}. نرجو مساعدته على المراجعة في البيت.`);
+  for(const t of tests)L.push(`• اختبار الجزء ${t.juz}: ${t.result==="pass"?"ناجح":"لم ينجح بعد"}${t.mistakes!=null?` (الأخطاء ${t.mistakes})`:""}`);
+  {const sk=streakOf(st);if(sk.cur>=2)L.push(`• جاء جاهزًا ${sk.cur} حصص متتالية (أفضلها ${sk.best})`)}
+  L.push(`• النقاط: ${pts>=0?"+":""}${pts} في هذه الفترة، و${ptsSum(st.id)} إجمالًا`);
+  L.push(`• المحفوظ حتى الآن: ${pagesOf(st.pos+PREV_LINES)} من 604 صفحة (${pct}%)${cj?`، والآن في الجزء ${cj}`:"، القرآن كاملًا"}`);
+  const rep=errorBook(st).filter(r=>r.count>=2&&!r.fixed).slice(0,4);if(rep.length)L.push(`• مواضع يتدرّب عليها في البيت: ${R(rep.map(errPlace).join("، "))}`);
+  if(goal)L.push(`• هدف الأسبوع القادم: ${goal}`);if(lastNote)L.push(`• ملاحظة المعلّم: ${lastNote}`);
+  L.push("");L.push(`جزاكم الله خيرًا. ${g.teacher||""}`.trim());return L.join("\n")}
+// the week as a picture (PNG) to send with the message: name, pages, attendance, points, streak and next week's goal
+async function weekCardPng(st,from,to,lang){const ar=lang==="ar",T=(en,a)=>ar?a:en,W=1080,H=1350,cv=document.createElement("canvas");cv.width=W;cv.height=H;const x=cv.getContext("2d");
+  const ses=events.filter(e=>e.sid===st.id&&e.type==="session"&&e.date>=from&&e.date<=to),att=ses.filter(attended).length,hl=ses.reduce((t,e)=>t+(Number(e.hifzLines)||0),0);
+  const pts=events.filter(e=>e.sid===st.id&&e.date>=from&&e.date<=to).reduce((t,e)=>t+ptsOf(e),0),sk=streakOf(st).cur,school=((settings.main||{}).school||{}).name||"";
+  const df=d=>new Intl.DateTimeFormat(ar?"ar-u-nu-latn":"en-GB",{day:"numeric",month:"short"}).format(parse(d));
+  x.fillStyle="#F5F7F5";x.fillRect(0,0,W,H);x.fillStyle="#0D6B5E";x.fillRect(0,0,W,250);x.direction=ar?"rtl":"ltr";x.textAlign="center";
+  const font=(s,w)=>`${w||400} ${s}px "IBM Plex Sans Arabic","Segoe UI",Tahoma,sans-serif`;
+  x.fillStyle="#fff";x.font=font(40);x.fillText(school,W/2,95);x.font=font(34);x.fillText(`${df(from)} – ${df(to)}`,W/2,170);
+  x.fillStyle="#1B2626";x.font=font(84,700);x.fillText(st.name,W/2,400);
+  if(sk>=2){x.fillStyle="#FBEFDC";const tw=520;x.beginPath();x.roundRect((W-tw)/2,450,tw,80,40);x.fill();x.fillStyle="#A6620B";x.font=font(38,600);x.fillText(T(`🔥 ${sk} classes in a row`,`🔥 ${sk} حصص متتالية`),W/2,505)}
+  const tiles=[[T("Memorized","حفظ"),T(`${pagesOf(hl)} p`,`${pagesOf(hl)} ص`)],[T("Attendance","الحضور"),`${att}/${ses.length}`],[T("Points","النقاط"),`${pts>=0?"+":""}${pts}`],[T("Total","المحفوظ"),`${pagesOf(st.pos+PREV_LINES)} ${T("p","ص")}`]];
+  tiles.forEach(([l,v],i)=>{const cx=i%2?W*0.73:W*0.27,cy=640+Math.floor(i/2)*260;x.fillStyle="#fff";x.beginPath();x.roundRect(cx-220,cy,440,220,32);x.fill();x.fillStyle="#5C6B69";x.font=font(36);x.fillText(l,cx,cy+75);x.fillStyle="#0D6B5E";x.font=font(76,700);x.fillText(ar?"‎"+v:v,cx,cy+170)});
+  const plan=weekPlan(st,addDays(today(),1),7).filter(d=>d.isHifz&&d.neu&&!/Paused/.test(d.neu)),la=plan.length?lastAyahOf(plan[plan.length-1].end):null;
+  if(la){const g=pieceText({...la,a1:la.a2});x.fillStyle="#1B2626";x.font=font(38);x.fillText(T(`Next week: up to ${g}`,`الأسبوع القادم: حتى ${arRange(g)}`),W/2,1240)}
+  return await new Promise(r=>cv.toBlob(r,"image/png"))}
 function renderParentMsg(el,sub,st){
   const t=iso(today());view.from=view.from||iso(addDays(today(),-6));view.to=view.to||t;
   sub.textContent="Message for parents · "+st.name;
-  const msg=parentMsg(st,view.from,view.to),ph=phoneDigits(st.phone);
+  let pl="";try{pl=localStorage.getItem("hifz.plang."+st.id)||""}catch(_){}if(!pl)pl=AR?"ar":"en";
+  const msg=parentMsg(st,view.from,view.to,pl),ph=phoneDigits(st.phone);
   const wa=`https://wa.me/${ph}?text=${encodeURIComponent(msg)}`;
   el.innerHTML=`${backBtn(st.name,{name:"student",id:st.id})}
   <div class="panel">
     <h3>Weekly message for parents</h3>
     <div class="fields"><label>From<input type="date" id="pm_from" value="${view.from}"></label><label>To<input type="date" id="pm_to" value="${view.to}"></label></div>
     <div class="filters"><button type="button" class="fbtn" data-pf="${iso(addDays(today(),-6))}">Last 7 days</button><button type="button" class="fbtn" data-pf="${iso(addDays(today(),-13))}">Last 2 weeks</button><button type="button" class="fbtn" data-pf="${t.slice(0,8)}01">This month</button></div>
+    <div class="filters" data-noar><span class="small muted">${AR?"لغة الرسالة:":"Message language:"}</span><button type="button" class="fbtn ${pl==="ar"?"on":""}" data-pl="ar" lang="ar">العربية</button><button type="button" class="fbtn ${pl==="en"?"on":""}" data-pl="en" lang="en">English</button></div>
     <label class="lbl small muted" for="pm_txt">You can change the text before sending</label>
     <textarea id="pm_txt" rows="16" dir="auto" style="width:100%;font:inherit;line-height:1.5">${esc(msg)}</textarea>
-    <div class="actions"><button class="primary" id="pm_copy">Copy message</button><button id="pm_card" ${downloads?"":"hidden"}>Download progress card (PDF)</button><a class="btn" id="pm_wa" href="${wa}" target="_blank" rel="noopener">Open in WhatsApp</a><span class="small muted" id="pm_msg"></span></div>
+    <div class="actions"><button class="primary" id="pm_copy">Copy message</button><button id="pm_card" ${downloads?"":"hidden"}>Download progress card (PDF)</button><button id="pm_img" ${downloads||navigator.share?"":"hidden"}>Weekly card (picture)</button><a class="btn" id="pm_wa" href="${wa}" target="_blank" rel="noopener">Open in WhatsApp</a><span class="small muted" id="pm_msg"></span></div>
     <p class="note">${ph?`WhatsApp opens a chat with ${esc(st.phone)}.`:`No parent number saved yet, so WhatsApp asks you to pick the chat. Add the number in "Edit details".`} If WhatsApp does not open, tap "Copy message" and paste it in the chat.</p>
   </div>`;
   wireBack(el);wireParentCard(el,st);
+  el.querySelectorAll("[data-pl]").forEach(b=>b.onclick=()=>{try{localStorage.setItem("hifz.plang."+st.id,b.dataset.pl)}catch(_){}busy=false;render(true)});
+  {const ib=el.querySelector("#pm_img");if(ib)ib.onclick=async()=>{const m=el.querySelector("#pm_msg");try{const blob=await weekCardPng(st,view.from,view.to,pl),name=`week-${fileSafe(st.name)}-${view.to}.png`;
+    const file=typeof File==="function"?new File([blob],name,{type:"image/png"}):null;
+    if(file&&navigator.canShare&&navigator.canShare({files:[file]})){await navigator.share({files:[file]});return}
+    if(downloads){await downloads.save({filename:name,data:blob});m.textContent="Saved. Open the file on your device."}}catch(e){if(!(e&&e.name==="AbortError"))m.textContent="Not saved. Try again."}}}
   const txt=el.querySelector("#pm_txt"),a=el.querySelector("#pm_wa");
   txt.oninput=()=>{busy=true;a.href=`https://wa.me/${ph}?text=${encodeURIComponent(txt.value)}`};
   const setR=(f,to)=>{busy=false;view={...view,from:f,to:to||view.to};render(true)};

@@ -159,8 +159,10 @@ const iso=d=>`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
 const parse=s=>{const[y,m,d]=String(s).split("-").map(Number);return new Date(y,m-1,d)};
 const addDays=(d,n)=>{const x=new Date(d);x.setDate(x.getDate()+n);return x};
 const daysBetween=(a,b)=>Math.round((parse(iso(b))-parse(iso(a)))/864e5);
-const fmt=d=>new Intl.DateTimeFormat("en-GB",{weekday:"long",day:"numeric",month:"long"}).format(d);
-const fmtShort=s=>new Intl.DateTimeFormat("en-GB",{weekday:"short",day:"numeric",month:"short"}).format(parse(s));
+// dates in the app's language (Arabic month and day names, Western digits)
+const LOC=()=>typeof AR!=="undefined"&&AR?"ar-u-nu-latn":"en-GB";
+const fmt=d=>new Intl.DateTimeFormat(LOC(),{weekday:"long",day:"numeric",month:"long"}).format(d);
+const fmtShort=s=>new Intl.DateTimeFormat(LOC(),{weekday:"short",day:"numeric",month:"short"}).format(parse(s));
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const today=()=>parse(iso(new Date()));
 const pagesOf=l=>Math.round(l/LINES*10)/10;
@@ -283,7 +285,7 @@ function renderCore(force){
   if(SUB&&["classes","edit","add","fees","place","settings","school","waitlist","schools","schoolv","teacher","gmove","handover","sover"].includes(view.name)&&!(view.name==="add"&&tchCanAdd())&&!(view.name==="edit"&&tchSurahsOnly(allStudents.find(s=>s.id===view.id))))view={name:"list"};
   try{schoolGuard()}catch(e){console.error(e)}
   if(view.name==="schools")return renderSchools(el,sub);if(view.name==="schoolv")return renderSchoolV(el,sub);if(view.name==="teacher")return renderTeacher(el,sub);if(view.name==="gmove")return renderGMove(el,sub);if(view.name==="handover")return renderHandover(el,sub);if(view.name==="school")return renderSchool(el,sub);if(view.name==="sover")return renderSover(el,sub);if(view.name==="waitlist")return renderWaitlist(el,sub);
-  if(view.name==="today")return renderToday(el,sub,ta);if(view.name==="reports")return renderReports(el,sub);if(view.name==="settings")return renderSettings(el,sub);if(view.name==="wsum")return renderWsum(el,sub);if(view.name==="star")return renderStar(el,sub);if(view.name==="buddy")return renderBuddy(el,sub);
+  if(view.name==="today")return renderToday(el,sub,ta);if(view.name==="roll")return renderRoll(el,sub);if(view.name==="mrep")return renderMrep(el,sub);if(view.name==="msgs")return renderMsgs(el,sub);if(view.name==="reports")return renderReports(el,sub);if(view.name==="settings")return renderSettings(el,sub);if(view.name==="wsum")return renderWsum(el,sub);if(view.name==="star")return renderStar(el,sub);if(view.name==="buddy")return renderBuddy(el,sub);
   if(view.name==="tajweed")return renderTajweed(el,sub);
   if(view.name==="feedback")return renderFeedback(el,sub);if(view.name==="inbox")return renderInbox(el,sub);
   if(view.name==="list")return renderList(el,sub,ta);
@@ -420,7 +422,22 @@ function renderStudent(el,sub,st){
   const ub=el.querySelector("#unarchBtn");if(ub)ub.onclick=()=>setArchived(st,false);
   wireFix(el,st);wirePoints(el,st);
   wireDeletes(el,st);
+  studentTabs(el);
 }
+// The student page in four tabs (Today, Progress, Mistakes, Reports) instead of one long page. The chosen tab stays while moving between students.
+function studentTabs(el){const hdr=el.querySelector(":scope > .panel");if(!hdr)return;
+  const T=[["today","Today"],["progress","Progress"],["mistakes","Mistakes"],["reports","Reports"]],cur=view.stab||"today";
+  const bar=document.createElement("div");bar.className="stabs";bar.setAttribute("role","tablist");
+  bar.innerHTML=T.map(([k,l])=>`<button type="button" role="tab" data-stab="${k}" class="${k===cur?"on":""}" aria-selected="${k===cur}">${l}</button>`).join("");
+  const after=[];let n=hdr.nextElementSibling;while(n){after.push(n);n=n.nextElementSibling}hdr.after(bar);
+  const tabOf=x=>{const sf=x.dataset&&x.dataset.sf;if(!sf)return "today";return sf==="book"||sf==="tajweed"?"mistakes":sf==="sugg"?"today":"progress"};
+  const G={today:[],progress:[],mistakes:[],reports:[]};after.forEach(x=>G[tabOf(x)].push(x));
+  const L=[["repBtn","Report"],["yrBtn","Year report"],["weekBtn","Plan sheet"],["mprBtn","Print mistakes"],["waBtn","Message parents"],["histBtn","Student history"]].filter(([id])=>el.querySelector("#"+id));
+  const rep=document.createElement("div");rep.className="panel srep";rep.innerHTML=`<div class="srepg">${L.map(([id,l])=>`<button type="button" data-sclick="${id}">${l}</button>`).join("")}</div>`;el.appendChild(rep);G.reports.push(rep);
+  {const j=hdr.querySelector(".sjuz");if(j){j.open=true;const box=document.createElement("div");box.className="panel";box.append(j);el.insertBefore(box,G.progress[0]||rep);G.progress.unshift(box)}}
+  const show=k=>{for(const [g,ns] of Object.entries(G))ns.forEach(x=>x.hidden=g!==k);bar.querySelectorAll("[data-stab]").forEach(b=>{const on=b.dataset.stab===k;b.classList.toggle("on",on);b.setAttribute("aria-selected",on)})};show(cur);
+  bar.onclick=e=>{const b=e.target.closest("[data-stab]");if(!b)return;view.stab=b.dataset.stab;show(view.stab)};
+  rep.onclick=e=>{const b=e.target.closest("[data-sclick]");if(b){const o=el.querySelector("#"+b.dataset.sclick);if(o)o.click()}}}
 // folded sections on the student page; which ones are open is remembered on this device. Opening one redraws the page so charts get their size.
 let S_OPEN=null;const sOpen=()=>S_OPEN||(S_OPEN=(()=>{try{return new Set(JSON.parse(localStorage.getItem("hifz.sfold")||"[]"))}catch(_){return new Set()}})());
 function sFold(k,title,html,show=true){if(!html||!String(html).trim()||!show)return "";const t=(String(html).match(/<h[23][^>]*>([\s\S]*?)<\/h[23]>/)||[])[1];const label=t?t.replace(/<[^>]+>/g,"").trim()||title:title;return `<details class="sfold" data-sf="${k}" ${sOpen().has(k)?"open":""}><summary>${esc(label)}</summary><div class="sfb">${html}</div></details>`}
@@ -530,7 +547,7 @@ function renderSession(el,sub,st){
         <div class="fields">
           <label>Recited<select id="s_hifz"><option value="0">Nothing new</option><option value="nr">Not ready (did not recite)</option>${ends.map((e,i)=>`<option value="${e}" ${i===Math.min(wk,ends.length)-1?"selected":""}>${i+1===1?"1 day's portion":`${i+1} days' portions`}: ${rangeText(st.pos,e)}</option>`).join("")}<option value="custom">Other: choose surahs…</option></select></label>
           <label>Hifz mistakes<input type="number" id="s_hm" min="0" value="0" inputmode="numeric"></label>
-          <label>Grade<select id="s_hg">${GRADES.map(g=>`<option>${g}</option>`).join("")}</select><span class="small muted autog" id="s_hgx"></span></label>
+          <label>Grade<select id="s_hg">${GRADES.map(g=>`<option value="${g}">${g}</option>`).join("")}</select><span class="small muted autog" id="s_hgx"></span></label>
         </div>
         <p class="small" id="h_editW"><button type="button" class="sm listen" id="h_edit">Recited less? Set where they stopped</button></p>
         <div id="h_rowsW" hidden><p class="small muted lbl">Change "To ayah" to where the student stopped, or remove a surah they did not recite.</p>${rowsBox("h_rows")}</div>
@@ -538,7 +555,7 @@ function renderSession(el,sub,st){
         <div class="fields">
           <label>Type<select id="s_rt"><option value="near">Near</option><option value="far">Far</option><option value="both">Near and far</option><option value="none">No review</option><option value="nr">Not ready (did not recite)</option></select></label>
           <label>Review mistakes<input type="number" id="s_rm" min="0" value="0" inputmode="numeric"></label>
-          <label>Grade<select id="s_rg">${GRADES.map(g=>`<option>${g}</option>`).join("")}</select><span class="small muted autog" id="s_rgx"></span></label>
+          <label>Grade<select id="s_rg">${GRADES.map(g=>`<option value="${g}">${g}</option>`).join("")}</select><span class="small muted autog" id="s_rgx"></span></label>
         </div>
         <div id="r_rowsW"><p class="small muted lbl">Surahs recited, filled from today's plan. If the student recited less, change "To ayah". Tap "Not recited" under any surah they did not read (for example 1 of 4).</p>${rowsBox("r_rows")}</div>
         ${errsBlock(st)}
@@ -718,7 +735,7 @@ function renderForm(el,sub,st){
   ${backBtn("Back",isNew?{name:"list"}:{name:"student",id:st.id})}
   <form class="panel" id="fForm">
     <div class="fields">
-      <label>Student name<input id="f_name" required value="${esc(st.name)}" autocomplete="off"></label>
+      <label>Student name<input id="f_name" required value="${esc(st.name)}" autocomplete="off"></label>${isNew?`<details class="fmany"><summary class="small">Add several students at once</summary><textarea id="f_many" rows="4" placeholder="One name on each line"></textarea><p class="small muted">Everyone gets the group and plan chosen below. Each one can be changed later.</p></details>`:""}
       <label>Class<select id="f_cls">${cls.map(c=>`<option value="${c.id}" ${c.id===st.cls?"selected":""}>${esc(c.name)}</option>`).join("")}${tchAdd?`<option value="__new" ${st.cls==="__new"?"selected":""}>＋ New group</option>`:`<option value="" ${classes.some(c=>c.id===st.cls)?"":"selected"}>No class</option>`}</select></label>
       <label>First surah of new hifz<select id="f_s0">${SURAH_NAMES.map((n,x)=>`<option value="${x}" ${x===Number(ORDER_KEY.split("|")[1])?"selected":""}>${x+1}. ${n}</option>`).join("")}</select></label>
       <label>Then goes<select id="f_order">${Object.entries(ORDER_NAMES).map(([k,v])=>`<option value="${k}" ${k===ORDER_KEY.split("|")[0]?"selected":""}>${v}</option>`).join("")}</select></label>
@@ -766,6 +783,7 @@ function renderForm(el,sub,st){
   s0el.onchange=()=>ord.onchange();
   if(isNew){const fc=f.querySelector("#f_cls"),fr=f.querySelector("#f_read"),ng=f.querySelector("#f_newg");fc.addEventListener("change",()=>{fr.value=String(clsRead(classes.find(c=>c.id===fc.value)));if(ng)ng.hidden=fc.value!=="__new"})}
   prevCount();
+  {const mn=f.querySelector("#f_many");if(mn)mn.addEventListener("input",()=>{f.querySelector("#f_name").required=!mn.value.trim()})}
   f.onsubmit=async ev=>{ev.preventDefault();
     const days=[...f.querySelectorAll(".days input:not([data-ngd]):checked")].map(i=>Number(i.value)),msg=f.querySelector("#f_msg");
     if(!days.length){msg.textContent="Pick at least one hifz day.";return}
@@ -784,7 +802,10 @@ function renderForm(el,sub,st){
         if(!f.dataset.ngid){const g={name:ngName,teacher:meTeacher().id,time:f.querySelector("#ng_s").value,end:f.querySelector("#ng_e").value,days:[...f.querySelectorAll("[data-ngd]:checked")].map(i=>Number(i.value)),n:Date.now()},sc=tchNewSchool();if(sc)g.school=sc;
           f.dataset.ngid=(await db.collection("classes").add(g)).id}
         data.cls=f.dataset.ngid}
-      if(isNew){const r=await db.collection("students").add(data);for(let i=0;i<30&&!allStudents.some(s=>s.id===r.id);i++)await new Promise(w=>setTimeout(w,100));busy=false;go({name:"student",id:r.id})}
+      if(isNew){const many=((f.querySelector("#f_many")||{}).value||"").split("\n").map(x=>x.trim()).filter(Boolean),names=[...new Set([data.name,...many].filter(Boolean))];
+        if(!names.length){msg.textContent="Write the student's name.";return}
+        if(names.length>1){for(const nm of names)await db.collection("students").add({...data,name:nm});busy=false;go({name:"list"});return}
+        const r=await db.collection("students").add(data);for(let i=0;i<30&&!allStudents.some(s=>s.id===r.id);i++)await new Promise(w=>setTimeout(w,100));busy=false;go({name:"student",id:r.id})}
       else{const up=lim?Object.fromEntries(["order","startS","prevS","prev","pos","posLog"].filter(k=>k in data).map(k=>[k,data[k]])):data;
         await db.doc("students/"+st.id).update(up);busy=false;go({name:"student",id:st.id})}}
     catch(e){msg.textContent="Not saved. Check your connection and try again."}
@@ -823,6 +844,7 @@ function renderClasses(el,sub){
   ${pointsSettings()}
   ${breaksPanel()}
   ${backupPanel()}`;
+  if(view.sec){const P=[...el.children].filter(n=>n.classList&&n.classList.contains("panel")),keep={groups:[P[0],el.querySelector("#newCls")],points:[el.querySelector("#ptsForm")],breaks:[P.find(n=>/Ramadan and holidays/.test(n.textContent))],backup:[el.querySelector("#bkPanel")]}[view.sec]||P;P.forEach(n=>{if(!keep.includes(n))n.hidden=true})}
   wireBreaks(el);wirePtsSettings(el);
   wireBackup(el);
   wireBack(el);
@@ -1030,7 +1052,7 @@ function reportBody(st,from,to){
   const hl=ses.reduce((t,e)=>t+(e.hifzLines||0),0),hm=ses.reduce((t,e)=>t+(e.hifzMist||0),0),rm=ses.reduce((t,e)=>t+(e.revMist||0),0);
   const tests=mine.filter(e=>e.type==="test"),mon=mine.filter(e=>e.type==="monthly"),notes=mine.filter(e=>e.type==="note"||e.note);
   const errs=[...mine.flatMap(e=>e.errs||[]),...markRange(marksOf(st),from,to).map(m=>({...wordPlace(m.w),k:m.k}))];const la=lastAyahOf(st.pos);
-  const df=new Intl.DateTimeFormat("en-GB",{day:"numeric",month:"short",year:"numeric"}),label=from===to?df.format(parse(from)):`${df.format(parse(from))} – ${df.format(parse(to))}`;
+  const df=new Intl.DateTimeFormat(LOC(),{day:"numeric",month:"short",year:"numeric"}),label=from===to?df.format(parse(from)):`${df.format(parse(from))} – ${df.format(parse(to))}`;
   return {label,html:`
     <p><b>${esc(st.name)}</b>${clsName(st.cls)?" · "+esc(clsName(st.cls)):""} · ${amountLabel(st.amount)} a day · ${orderName()}</p>
     <table><tr><th>Attended</th><th>Late</th><th>Absent</th><th>Excused</th><th>Points</th><th>Pages memorized</th><th>Hifz mistakes</th><th>Review mistakes</th><th>Juz done in total</th></tr>
