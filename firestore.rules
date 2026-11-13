@@ -132,12 +132,12 @@ service cloud.firestore {
     match /{coll}/{id} {
       allow read: if coll in ['students', 'events', 'classes', 'meetings', 'breaks', 'marks', 'settings', 'schedule',
                               'fees', 'teachers', 'access', 'absences', 'groupnotes', 'requests', 'waiting', 'links',
-                              'schools', 'hours', 'simpairs']
+                              'schools', 'hours', 'simpairs', 'sharekeys']
         && canRead();
       allow delete: if coll != 'members' && isAdmin();
       allow create, update: if coll in ['students', 'events', 'classes', 'meetings', 'breaks', 'marks', 'settings',
                                         'schedule', 'fees', 'teachers', 'access', 'absences', 'groupnotes', 'requests',
-                                        'waiting', 'links', 'schools', 'hours', 'simpairs']
+                                        'waiting', 'links', 'schools', 'hours', 'simpairs', 'share', 'sharekeys']
         && safeId(id) && safeData(id) && isAdmin();
     }
 
@@ -149,6 +149,26 @@ service cloud.firestore {
       allow update: if isTeacher() && safeData(id) && canRecordStudent(resource.data.get('sid', ''))
         && canRecordStudent(request.resource.data.get('sid', ''));
       allow delete: if isTeacher() && canRecordStudent(resource.data.get('sid', ''));
+    }
+    // A student's page at home. share/<token>: anyone with the link may read that one document (never list them); the
+    // token is long and random. A teacher who can record for the student writes or stops it, with only these fields.
+    // sharekeys/<student id> keeps the token for the school (read like the other collections).
+    match /share/{tok} {
+      allow get: if true;
+      allow create, update: if isTeacher() && safeId(tok) && tok.size() >= 20
+        && canRecordStudent(request.resource.data.get('sid', ''))
+        && request.resource.data.keys().hasOnly(['sid', 'title', 'school', 'lang', 'updated', 'tasks', 'stats', 'watch', 'note'])
+        && request.resource.data.title is string && request.resource.data.title.size() <= 100
+        && request.resource.data.get('note', '') is string && request.resource.data.get('note', '').size() <= 300
+        && request.resource.data.get('tasks', []) is list && request.resource.data.get('tasks', []).size() <= 8
+        && request.resource.data.get('watch', []) is list && request.resource.data.get('watch', []).size() <= 8
+        && (resource == null || resource.data.get('sid', '') == request.resource.data.get('sid', ''));
+      allow delete: if isTeacher() && canRecordStudent(resource.data.get('sid', ''));
+    }
+    match /sharekeys/{sid} {
+      allow create, update: if isTeacher() && safeId(sid) && canRecordStudent(sid)
+        && request.resource.data.keys().hasOnly(['tok', 'by', 'at']) && request.resource.data.tok is string;
+      allow delete: if isTeacher() && canRecordStudent(sid);
     }
     // Similar verses a teacher adds for the whole school: two lists of ayah numbers, a short note, who and when.
     match /simpairs/{id} {
