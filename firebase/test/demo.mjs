@@ -316,6 +316,18 @@ try {
     return o;
   });
   ok('admin tools: dashboard, settings sections, people search, month report, add several students', at.dash && at.rows === 6 && at.sec && at.search && at.mrep && at.bulk === 2, JSON.stringify(at));
+  // gifts for families: weekly message in Arabic, weekly card picture, congratulations on the class screen
+  const gf = await page.evaluate(async () => {
+    const st = allStudents.find((s) => s.id === 's4'), t = iso(today()), f = iso(addDays(today(), -6)), o = {};
+    const ar = parentMsg(st, f, t, 'ar'); o.ar = /^السلام عليكم/.test(ar) && /الحضور: \d+ من \d+/.test(ar) && /النازعات 34/.test(ar) && !/[a-z]{3,}/.test(ar.replace(st.name, '').replace(/Ahmed|Bilal|Demo Owner/g, ''));
+    o.en = /^Assalamu alaikum/.test(parentMsg(st, f, t, 'en'));
+    const b = await weekCardPng(st, f, t, 'ar'); o.png = !!b && b.type === 'image/png' && b.size > 20000;
+    const id = 'celebrate1'; await db.doc('events/' + id).set({ sid: 's4', type: 'test', date: t, juz: 30, result: 'pass', mistakes: 0, t: Date.now() });
+    for (let i = 0; i < 30 && !events.some((e) => e.id === id); i++) await new Promise((r) => setTimeout(r, 100));
+    busy = false; go({ name: 'screen', id: 'c2' }); render(true); o.cel = /completed juz 30/.test((document.querySelector('.scrcel') || {}).textContent || '');
+    await db.doc('events/' + id).delete(); return o;
+  });
+  ok('families: weekly message in Arabic, weekly card picture, congratulations on the class screen', gf.ar && gf.en && gf.png && gf.cel, JSON.stringify(gf));
   // the six next steps for similar verses
   const six = await page.evaluate(async () => {
     const wait = async (f) => { for (let i = 0; i < 40 && !f(); i++) await new Promise((r) => setTimeout(r, 100)); };

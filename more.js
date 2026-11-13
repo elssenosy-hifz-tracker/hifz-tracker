@@ -52,7 +52,8 @@ function renderScreen(el,sub){const c=classes.find(x=>x.id===view.id);if(!c){vie
   const hv=classHeartView(c,from,to),full=hv.fr?null:null;
   sub.textContent="Class screen · "+c.name;
   el.innerHTML=`${backBtn("Class report",{name:"crep",id:c.id})}<div class="actions"><button id="scrFull" class="primary">Full screen</button></div>
-  <div class="scr" id="scrBox"><div class="scrhead"><b>${esc(c.name)}</b><span>This week · ${fmtShort(from)} – ${fmtShort(to)}</span></div>${challengeCard(c,true)}
+  <div class="scr" id="scrBox"><div class="scrhead"><b>${esc(c.name)}</b><span>This week · ${fmtShort(from)} – ${fmtShort(to)}</span></div>${(()=>{const ids=new Set(kids.map(s=>s.id)),w0=iso(addDays(today(),-6)),P=events.filter(e=>e.type==="test"&&e.result==="pass"&&ids.has(e.sid)&&e.date>=w0).sort((a,b)=>b.date.localeCompare(a.date));
+    return P.map(e=>{const s=kids.find(k=>k.id===e.sid);return `<div class="scrcel" data-noar>🎉 ${AR?`مبروك! ${esc(s.name)} أتمّ الجزء ${e.juz}`:`Well done! ${esc(s.name)} completed juz ${e.juz}`}</div>`}).join("")})()}${challengeCard(c,true)}
   <div class="scrgrid"><div><h4>Points this week</h4>${top.length?top.map((x,i)=>`<div class="lb"><span class="rk">${i+1}</span><span class="nm">${esc(x.st.name)}${flameChip(x.st)}</span><span class="lbar"><i style="width:${Math.max(0,x.p)/max*100}%"></i></span><b>${x.p}</b></div>`).join(""):'<p>No students yet.</p>'}
   ${star?`<div class="star">★ Star of the week: <b>${esc(star.st.name)}</b></div>`:""}
   ${stk&&stk.s>0?`<div class="star stk">${FLAME} Longest ready streak: <b>${esc(stk.st.name)}</b> · ${stk.s} classes</div>`:""}</div>
