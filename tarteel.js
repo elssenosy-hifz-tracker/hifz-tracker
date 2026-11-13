@@ -203,7 +203,7 @@ function classWeakAlerts(list){const out=[];const by=new Map();for(const st of l
 function classStrengthMap(c){const kids=students.filter(s=>s.cls===c.id);if(!kids.length)return "";
   const data=keepOrder(()=>kids.map(st=>{const fr=surahFrac(st),S=surahStrength(st);return {st,fr,S}}));
   const cols=[];for(let s=0;s<114;s++)if(data.some(d=>d.fr[s]>=0.005))cols.push(s);if(!cols.length)return "";
-  const sh=n=>n.replace(/^(Al|An|At|Ash|Ad|Az|As|Ar|Adh|Ath|Ad-Du|Al-)-/,"").slice(0,7);
+  const sh=n=>{if(typeof AR!=="undefined"&&AR){const i=SURAH_NAMES.indexOf(n);if(i>=0)return SURAH_AR[i].replace(/^ال/,"")}return n.replace(/^(Al|An|At|Ash|Ad|Az|As|Ar|Adh|Ath|Ad-Du|Al-)-/,"").slice(0,7)};
   const C={strong:"#cfe9d9",good:"#e6f2d0",weak:"#fbe3b5",bad:"#f4b9b2",stale:"#dfe5e3"};
   const cell=(d,s)=>{if(d.fr[s]<0.005)return `<td style="background:#f3f5f4" title="${esc(d.st.name)} · ${esc(SURAH_NAMES[s])}: not memorized"></td>`;const lv=strengthLevel(d.S[s]);return `<td style="background:${C[lv]}" title="${esc(d.st.name)} · ${esc(SURAH_NAMES[s])}: ${STR_TEXT[lv]}${d.S[s]?` · ${rr1(d.S[s].rate)} mistakes / page`:""}"></td>`};
   return `<h2>Class strength map</h2><p class="small muted">Each student in each surah, last 60 days. Tap or hover a square for details.</p>

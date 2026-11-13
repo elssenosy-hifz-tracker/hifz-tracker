@@ -169,7 +169,7 @@ function journeyPanel(st){return `<details class="panel jpanel"><summary><h3>Hif
 function starOf(cid,ym){const list=classOrder(cid);const evs=events.filter(e=>String(e.date).slice(0,7)===ym);
   const sc=list.map(st=>{const mine=evs.filter(e=>e.sid===st.id);const days=new Set(mine.filter(e=>e.type==="session"&&attended(e)).map(e=>e.date)).size;const pts=mine.reduce((t,e)=>t+ptsOf(e),0);const lines=mine.filter(e=>e.type==="session").reduce((t,e)=>t+(e.hifzLines||0),0);return {st,pts,days,lines,score:pts+days*2}}).filter(x=>x.days>0).sort((a,b)=>b.score-a.score||b.lines-a.lines);
   return sc}
-const ymLabel=ym=>{const [y,m]=ym.split("-").map(Number);return new Date(y,m-1,1).toLocaleDateString("en-GB",{month:"long",year:"numeric"})};
+const ymLabel=ym=>{const [y,m]=ym.split("-").map(Number);return new Date(y,m-1,1).toLocaleDateString(LOC(),{month:"long",year:"numeric"})};
 function prevYm(){const d=today();return iso(new Date(d.getFullYear(),d.getMonth()-1,1)).slice(0,7)}
 function renderStar(el,sub){const c=classes.find(x=>x.id===view.cls)||classes[0];if(!c){el.innerHTML='<div class="panel empty">No classes yet.</div>';return}
   const ym=view.ym||prevYm(),sc=starOf(c.id,ym),w=sc[0];sub.textContent="Star of the month · "+c.name;
@@ -238,12 +238,34 @@ AR_PAT.unshift([/^(.+) \((\d+) ayahs\)$/,"$1 ($2 آية)"],[/^Edit (.+)$/,"تع�
 Object.assign(AR_DICT,{"Prompted":"لقّنه المعلّم","Interrupted the class":"قاطع الحصة","Sleepy":"ناعس","Focused":"منتبه","Mixed up":"خلط","New hifz: Excellent":"الحفظ الجديد: ممتاز","New hifz: Very good or Good":"الحفظ الجديد: جيد جدًا أو جيد","New hifz: Pass or Repeat":"الحفظ الجديد: مقبول أو إعادة","Review: Excellent":"المراجعة: ممتاز","Review: Very good or Good":"المراجعة: جيد جدًا أو جيد","Review: Pass or Repeat":"المراجعة: مقبول أو إعادة","No minus points in this class (absence, behaviour and the rest give 0 instead)":"لا نقاط سالبة في هذه الحلقة (الغياب والسلوك وغيرهما تُحسب صفرًا)","Daily reading for new students":"ورد القراءة اليومي للطلاب الجدد"});
 const AR_SUB=[["not recited","لم يُقرأ"],["not ready","غير جاهز"],["Hifz","الحفظ"],["hifz","حفظ"],["Review","المراجعة"],["review","مراجعة"],["mistakes","أخطاء"],["mistake","خطأ"],["pages memorized","صفحة محفوظة"],["pages","صفحات"],["points","نقاط"],["pts","نقطة"],["Excellent","ممتاز"],["Very good","جيد جدًا"],["Good","جيد"],["Repeat","إعادة"],["On time","في الموعد"],["Late","متأخر"],["Absent","غائب"],["Excused","بعذر"],["full","كامل"],["chosen by hand","مختار يدويًا"],["to","إلى"],["of","من"],["surahs","سور"],["surah","سورة"],["students","طالب"],["student","طالب"],["recorded","سُجِّل"],["days","أيام"],["day","يوم"],["juz","جزء"],["Juz","جزء"],["test due","عليه اختبار"],["Today","اليوم"],["Monday","الاثنين"],["Tuesday","الثلاثاء"],["Wednesday","الأربعاء"],["Thursday","الخميس"],["Friday","الجمعة"],["Saturday","السبت"],["Sunday","الأحد"],["January","يناير"],["February","فبراير"],["March","مارس"],["April","أبريل"],["May","مايو"],["June","يونيو"],["July","يوليو"],["August","أغسطس"],["September","سبتمبر"],["October","أكتوبر"],["November","نوفمبر"],["December","ديسمبر"],["Kids class","فصل الأطفال"],["Adults class","فصل الكبار"],["came","حضر"],["Most points this week","الأكثر نقاطًا هذا الأسبوع"],["absent","غاب"],["times","مرات"],["classes held","حصة أُقيمت"],["surahs memorized","سورة محفوظة"],["Now","الآن"],["Path complete!","اكتمل الطريق!"],["today","اليوم"],["done","اكتمل"],["next","التالي"],["in","في"]].sort((a,b)=>b[0].length-a[0].length);
 const AR_SUB_RE=new RegExp("(?<![\\w'’-])("+AR_SUB.map(x=>x[0].replace(/[.*+?^${}()|[\]\\]/g,"\\$&")).join("|")+")(?![\\w'’-])","g");const AR_SUB_M=new Map(AR_SUB);
-let SURAH_RE=null,SURAH_BY=null;
-function arText(s){const t=s.trim();if(!t||!/[A-Za-z]/.test(t))return s;let r=AR_DICT[t];if(r==null){for(const [re,to] of AR_PAT)if(re.test(t)){r=t.replace(re,to);break}}
-  if(r==null)r=t;
-  if(!SURAH_RE){const ns=SURAH_NAMES.map((n,i)=>[n,i]).sort((a,b)=>b[0].length-a[0].length);SURAH_RE=new RegExp("(?<![\\w'])("+ns.map(x=>x[0].replace(/[.*+?^${}()|[\]\\]/g,"\\$&")).join("|")+")(?![\\w'])","g");SURAH_BY=new Map(SURAH_NAMES.map((n,i)=>[n,SURAH_AR[i]]))}
-  if(/[A-Za-z]/.test(r)){r=r.replace(SURAH_RE,m=>SURAH_BY.get(m)||m);r=r.replace(AR_SUB_RE,m=>AR_SUB_M.get(m)||m).replace(/(\d) p\b/g,"$1 ص").replace(/\((\d+(?:\.\d+)?) p\)/g,"($1 ص)")}
-  if(r===t)return s;return s.replace(t,r)}
+// Arabic: a whole text is translated from the dictionary, a pattern, or part by part (split at " · " and ", ").
+// If any part has no translation, the text stays in English: never half English, half Arabic.
+let SURAH_RE=null,SURAH_BY=null,AR_MEMO=new Map(),AR_NK="",AR_NS=new Set(),AR_NA=[];const AR_PAT2=[];
+const arLatin=s=>/[A-Za-z]{2,}/.test(s);
+function arSurah(r){if(!SURAH_RE){const ns=SURAH_NAMES.map((n,i)=>[n,i]).sort((a,b)=>b[0].length-a[0].length);SURAH_RE=new RegExp("(?<![\\w'])("+ns.map(x=>x[0].replace(/[.*+?^${}()|[\]\\]/g,"\\$&")).join("|")+")(?![\\w'])","g");SURAH_BY=new Map(SURAH_NAMES.map((n,i)=>[n,SURAH_AR[i]]))}
+  return r.replace(SURAH_RE,m=>SURAH_BY.get(m)||m)}
+// names typed by the school (students, teachers, groups, schools) may stay in Latin letters inside an Arabic text
+function arNames(){const S=typeof allStudents!=="undefined"?allStudents:[],T=typeof TEACHERS!=="undefined"?TEACHERS:[],C=typeof classes!=="undefined"?classes:[],K=typeof SCHOOLS!=="undefined"?SCHOOLS:[];
+  const k=S.length+"|"+T.length+"|"+C.length+"|"+K.length;if(k!==AR_NK){AR_NK=k;AR_NS=new Set([...S,...T,...C,...K].map(x=>String(x&&x.name||"").trim()).filter(Boolean));AR_NA=[...AR_NS].sort((a,b)=>b.length-a.length);AR_MEMO.clear()}return AR_NS}
+function arClean(r){let x=arRange(r);for(const n of arNames())x=x.split(n).join("");return !arLatin(x.replace(/https?:\S+|\S+@\S+/g,""))}
+// surah names become Arabic, except inside a name the school typed (a student called Yusuf keeps his name)
+const arRange=p=>{let x=String(p);const keep=[];for(const n of AR_NA)if(x.includes(n)){x=x.split(n).join("\u0001"+keep.length+"\u0002");keep.push(n)}
+  x=arSurah(x).replace(/ to /g," إلى ").replace(/\((\d+(?:\.\d+)?) p\)/g,"($1 ص)").replace(/(\d) p\b/g,"$1 ص");return keep.length?x.replace(/\u0001(\d+)\u0002/g,(_,j)=>keep[+j]):x};
+function arSeg(p){const t=String(p).trim();if(!t||!/[A-Za-z]/.test(t))return p;const r=arCore(t);if(r!=null)return r;const g=arRange(t);if(!arLatin(g))return g;
+  if(arNames().has(t)||/^\S+@\S+$|^https?:/.test(t))return t;return null}
+function arCore(t){if(AR_DICT[t]!=null)return AR_DICT[t];
+  if(t.startsWith("· ")){const r=arSeg(t.slice(2));return r==null?null:"· "+r}
+  if(t.endsWith(" ·")){const r=arSeg(t.slice(0,-2));return r==null?null:r+" ·"}
+  for(const [re,fn] of AR_PAT2){const m=t.match(re);if(m){const r=fn(m);if(r!=null)return r}}
+  for(const [re,to] of AR_PAT)if(re.test(t)){const r=t.replace(re,to);if(arClean(r))return r;break} // older rules: only when they give clean Arabic
+  for(const sep of [" · ",", "])if(t.includes(sep)){const ps=t.split(sep).map(arSeg);if(ps.every(x=>x!=null))return ps.join(sep===", "?"، ":sep)}
+  return null}
+function arText(s){const t=s.trim().replace(/\s+/g," ");if(!t||!/[A-Za-z]/.test(t))return s;arNames();let r=AR_MEMO.get(t);
+  if(r===undefined){r=arCore(t);
+    if(r==null){const g=arRange(t);if(!arLatin(g))r=g;else{const w=g.replace(AR_SUB_RE,m=>AR_SUB_M.get(m)||m);let left=w;for(const n of AR_NS)left=left.split(n).join("");if(!arLatin(left))r=w}}
+    else r=arRange(r);
+    if(AR_MEMO.size>8000)AR_MEMO.clear();AR_MEMO.set(t,r)}
+  if(r==null||r===t)return s;return s.match(/^\s*/)[0]+r+s.match(/\s*$/)[0]}
 let arBusy=false;
 function arWalk(root){const w=document.createTreeWalker(root,NodeFilter.SHOW_TEXT,{acceptNode:n=>{const p=n.parentElement;if(!p||p.closest("script,style,textarea,.mpage,[data-noar],option:not([value]),datalist"))return NodeFilter.FILTER_REJECT;return NodeFilter.FILTER_ACCEPT}});
   const list=[];while(w.nextNode())list.push(w.currentNode);for(const n of list){const v=arText(n.nodeValue);if(v!==n.nodeValue)n.nodeValue=v}

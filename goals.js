@@ -33,7 +33,7 @@ function progressData(st,n=6){const ms=monthsBack(n);const by=new Map();events.f
   return ms.map(m=>{const xs=ses.filter(e=>String(e.date).slice(0,7)===m&&attended(e));const hl=xs.reduce((t,e)=>t+(e.hifzLines||0),0),hm=xs.reduce((t,e)=>t+(e.hifzMist||0),0);
     const rl=xs.reduce((t,e)=>t+(e.revRows||[]).reduce((u,r)=>u+rowLines(r),0),0),rm=xs.reduce((t,e)=>t+(e.revMist||0),0);
     return {m,pages:hl/LINES,hmp:hl>0?hm/(hl/LINES):null,rmp:rl>0?rm/(rl/LINES):null,n:xs.length}})}
-const mLabel=m=>{const [y,mo]=m.split("-").map(Number);return new Date(y,mo-1,1).toLocaleDateString("en-GB",{month:"short"})};
+const mLabel=m=>{const [y,mo]=m.split("-").map(Number);return new Date(y,mo-1,1).toLocaleDateString(LOC(),{month:"short"})};
 function lineChart(data,series){const W=320,H=130,x0=30,x1=310,y0=16,y1=100;const vals=series.flatMap(([k])=>data.map(d=>d[k])).filter(v=>v!=null);const mx=Math.max(1,...vals)*1.15;
   const X=i=>x0+(data.length>1?(x1-x0)*i/(data.length-1):0),Y=v=>y1-(y1-y0)*v/mx;
   const grid=[0,0.5,1].map(f=>{const v=mx/1.15*f;return `<line x1="${x0}" y1="${Y(v)}" x2="${x1}" y2="${Y(v)}" stroke="var(--line)"/><text x="4" y="${Y(v)+4}" font-size="10" fill="var(--muted)">${Math.round(v*10)/10}</text>`}).join("");
@@ -45,6 +45,7 @@ function barChart(data){const W=320,H=130,x0=20,x1=310,y1=100;const mx=Math.max(
 function trendText(d){const h=d.filter(x=>x.hmp!=null);const p=d.slice(0,-1);let t=[];
   if(h.length>=2){const a=h.slice(0,Math.ceil(h.length/2)),b=h.slice(Math.ceil(h.length/2));const av=x=>x.reduce((s,y)=>s+y.hmp,0)/x.length;const A=av(a),B=av(b);if(B<A*0.85)t.push("fewer hifz mistakes than before");else if(B>A*1.15)t.push("more hifz mistakes than before");else t.push("hifz mistakes about the same")}
   if(p.length>=2){const l=p[p.length-1].pages,f=p[p.length-2].pages;if(l>f*1.15)t.push("memorizing faster");else if(l<f*0.85)t.push("memorizing slower");}
+  if(typeof AR!=="undefined"&&AR){const A={"fewer hifz mistakes than before":"أخطاء الحفظ أقل من قبل","more hifz mistakes than before":"أخطاء الحفظ أكثر من قبل","hifz mistakes about the same":"أخطاء الحفظ كما هي تقريبًا","memorizing faster":"يحفظ أسرع","memorizing slower":"يحفظ أبطأ"};return t.length?t.map(x=>A[x]).join("، و")+".":"لا توجد حصص كافية بعد لعرض الاتجاه."}
   return t.length?t.join(" and ")[0].toUpperCase()+t.join(" and ").slice(1)+".":"Not enough sessions yet to show a trend."}
 function progressPanel(st){const d=progressData(st);if(!d.some(x=>x.n))return "";
   return `<details class="panel jpanel progp"><summary><h3>Progress charts</h3><span class="small muted">last 6 months</span></summary>
@@ -63,7 +64,7 @@ function challengeData(c){const ch=challengeOf(c);if(!ch)return null;const kids=
   return {ch,done,per,left,pct:Math.min(100,Math.round(done/ch.pages*100)),etaDay:eta!=null&&done<ch.pages?dayN+eta:null}}
 function challengeCard(c,big){const x=challengeData(c);const r1=v=>Math.round(v*10)/10;
   if(!x)return big?"":`<div class="panel chal empty adminonly"><div class="head"><h3>Class challenge</h3></div><p class="small muted">Set a goal the whole class works on together this month, like 50 pages.</p><div class="actions"><button data-chset="${c.id}">Set this month's challenge</button></div>${chForm(c)}</div>`;
-  const d=today(),mo=d.toLocaleDateString("en-GB",{month:"long"}),win=x.done>=x.ch.pages,medal=["🥇","🥈","🥉"];
+  const d=today(),mo=d.toLocaleDateString(LOC(),{month:"long"}),win=x.done>=x.ch.pages,medal=["🥇","🥈","🥉"];
   return `<div class="panel chal ${big?"big":""}"><div class="chb"><div class="small">${esc(mo)} challenge · ${esc(c.name)}</div><div class="cht">${x.ch.pages} pages together</div><div class="small">🏁 <b>${r1(x.done)}</b> done${win?" · 🎉 Reached!":` · ${r1(x.ch.pages-x.done)} to go · ${x.left} ${x.left===1?"day":"days"} left`}</div></div>
    <div class="chbar"><i style="width:${x.pct}%"></i></div><p class="small muted" style="text-align:center;margin:0">${x.pct}%${!win&&x.etaDay?(x.etaDay<=new Date(d.getFullYear(),d.getMonth()+1,0).getDate()?` · on track to finish around the ${x.etaDay}${["th","st","nd","rd"][(x.etaDay%10<4&&Math.floor(x.etaDay/10)!==1)?x.etaDay%10:0]}`:" · needs a faster pace to finish this month"):""}</p>
    ${x.per.some(y=>y.p>0)?`<div class="qh">Who helped most</div><div class="chw">${x.per.filter(y=>y.p>0).slice(0,big?8:5).map((y,i)=>`<div class="chr"><span>${medal[i]||""} ${esc(y.st.name)}</span><span class="mini"><i style="width:${Math.round(y.p/Math.max(0.01,x.per[0].p)*100)}%"></i></span><b>${r1(y.p)} p</b></div>`).join("")}</div>`:""}

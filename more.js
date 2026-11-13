@@ -108,7 +108,7 @@ function applyPre(el){const pr=view.pre;if(!pr)return;const t=el.querySelector("
 // ----- 7. fees -----
 const ymNow=()=>iso(today()).slice(0,7);
 const feeCfg=()=>({amount:0,cur:"AUD",...((settings.main||{}).fee||{})});
-const monthLabel=ym=>new Date(ym+"-01T00:00:00").toLocaleString("en",{month:"long",year:"numeric"});
+const monthLabel=ym=>new Date(ym+"-01T00:00:00").toLocaleString(LOC(),{month:"long",year:"numeric"});
 function renderFees(el,sub){const ym=view.ym||ymNow(),cfg=feeCfg();sub.textContent="Fees · "+monthLabel(ym);
   const rows=students.slice().sort((a,b)=>String(a.name).localeCompare(String(b.name))).map(st=>({st,f:fees.find(x=>x.sid===st.id&&x.ym===ym)}));
   const paid=rows.filter(r=>r.f&&r.f.status==="paid"),ex=rows.filter(r=>r.f&&r.f.status==="exempt"),due=rows.filter(r=>!r.f);

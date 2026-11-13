@@ -159,8 +159,10 @@ const iso=d=>`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
 const parse=s=>{const[y,m,d]=String(s).split("-").map(Number);return new Date(y,m-1,d)};
 const addDays=(d,n)=>{const x=new Date(d);x.setDate(x.getDate()+n);return x};
 const daysBetween=(a,b)=>Math.round((parse(iso(b))-parse(iso(a)))/864e5);
-const fmt=d=>new Intl.DateTimeFormat("en-GB",{weekday:"long",day:"numeric",month:"long"}).format(d);
-const fmtShort=s=>new Intl.DateTimeFormat("en-GB",{weekday:"short",day:"numeric",month:"short"}).format(parse(s));
+// dates in the app's language (Arabic month and day names, Western digits)
+const LOC=()=>typeof AR!=="undefined"&&AR?"ar-u-nu-latn":"en-GB";
+const fmt=d=>new Intl.DateTimeFormat(LOC(),{weekday:"long",day:"numeric",month:"long"}).format(d);
+const fmtShort=s=>new Intl.DateTimeFormat(LOC(),{weekday:"short",day:"numeric",month:"short"}).format(parse(s));
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const today=()=>parse(iso(new Date()));
 const pagesOf=l=>Math.round(l/LINES*10)/10;
@@ -530,7 +532,7 @@ function renderSession(el,sub,st){
         <div class="fields">
           <label>Recited<select id="s_hifz"><option value="0">Nothing new</option><option value="nr">Not ready (did not recite)</option>${ends.map((e,i)=>`<option value="${e}" ${i===Math.min(wk,ends.length)-1?"selected":""}>${i+1===1?"1 day's portion":`${i+1} days' portions`}: ${rangeText(st.pos,e)}</option>`).join("")}<option value="custom">Other: choose surahs…</option></select></label>
           <label>Hifz mistakes<input type="number" id="s_hm" min="0" value="0" inputmode="numeric"></label>
-          <label>Grade<select id="s_hg">${GRADES.map(g=>`<option>${g}</option>`).join("")}</select><span class="small muted autog" id="s_hgx"></span></label>
+          <label>Grade<select id="s_hg">${GRADES.map(g=>`<option value="${g}">${g}</option>`).join("")}</select><span class="small muted autog" id="s_hgx"></span></label>
         </div>
         <p class="small" id="h_editW"><button type="button" class="sm listen" id="h_edit">Recited less? Set where they stopped</button></p>
         <div id="h_rowsW" hidden><p class="small muted lbl">Change "To ayah" to where the student stopped, or remove a surah they did not recite.</p>${rowsBox("h_rows")}</div>
@@ -538,7 +540,7 @@ function renderSession(el,sub,st){
         <div class="fields">
           <label>Type<select id="s_rt"><option value="near">Near</option><option value="far">Far</option><option value="both">Near and far</option><option value="none">No review</option><option value="nr">Not ready (did not recite)</option></select></label>
           <label>Review mistakes<input type="number" id="s_rm" min="0" value="0" inputmode="numeric"></label>
-          <label>Grade<select id="s_rg">${GRADES.map(g=>`<option>${g}</option>`).join("")}</select><span class="small muted autog" id="s_rgx"></span></label>
+          <label>Grade<select id="s_rg">${GRADES.map(g=>`<option value="${g}">${g}</option>`).join("")}</select><span class="small muted autog" id="s_rgx"></span></label>
         </div>
         <div id="r_rowsW"><p class="small muted lbl">Surahs recited, filled from today's plan. If the student recited less, change "To ayah". Tap "Not recited" under any surah they did not read (for example 1 of 4).</p>${rowsBox("r_rows")}</div>
         ${errsBlock(st)}
@@ -1030,7 +1032,7 @@ function reportBody(st,from,to){
   const hl=ses.reduce((t,e)=>t+(e.hifzLines||0),0),hm=ses.reduce((t,e)=>t+(e.hifzMist||0),0),rm=ses.reduce((t,e)=>t+(e.revMist||0),0);
   const tests=mine.filter(e=>e.type==="test"),mon=mine.filter(e=>e.type==="monthly"),notes=mine.filter(e=>e.type==="note"||e.note);
   const errs=[...mine.flatMap(e=>e.errs||[]),...markRange(marksOf(st),from,to).map(m=>({...wordPlace(m.w),k:m.k}))];const la=lastAyahOf(st.pos);
-  const df=new Intl.DateTimeFormat("en-GB",{day:"numeric",month:"short",year:"numeric"}),label=from===to?df.format(parse(from)):`${df.format(parse(from))} – ${df.format(parse(to))}`;
+  const df=new Intl.DateTimeFormat(LOC(),{day:"numeric",month:"short",year:"numeric"}),label=from===to?df.format(parse(from)):`${df.format(parse(from))} – ${df.format(parse(to))}`;
   return {label,html:`
     <p><b>${esc(st.name)}</b>${clsName(st.cls)?" · "+esc(clsName(st.cls)):""} · ${amountLabel(st.amount)} a day · ${orderName()}</p>
     <table><tr><th>Attended</th><th>Late</th><th>Absent</th><th>Excused</th><th>Points</th><th>Pages memorized</th><th>Hifz mistakes</th><th>Review mistakes</th><th>Juz done in total</th></tr>

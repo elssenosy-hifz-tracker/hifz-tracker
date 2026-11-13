@@ -73,7 +73,7 @@ function heartImg(st,mode,w){return heartDraw(document.createElement("canvas"),h
 function heartDoc(st,mode){const v=heartView(st,mode),fr=v.fr,c=heartCounts(fr),pc=heartPct(st),ms=monthStart();
   const nm=s=>SURAH_NAMES[s],done=[],part=[],neu=[];for(let s=0;s<114;s++){if(fr[s]>=0.98)(mode==="month"&&v.col[s]===HC.newm?neu:done).push(nm(s));else if(fr[s]>0.005)part.push(`${nm(s)} (${Math.round(fr[s]*100)}%)`)}
   const p0=mode==="month"?Math.round((posAt(st,ms)+PREV_LINES)/ALL*1000)/10:null;
-  const mName=today().toLocaleString("en",{month:"long",year:"numeric"});
+  const mName=today().toLocaleString(LOC(),{month:"long",year:"numeric"});
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Quran heart - ${esc(st.name)}</title><style>${PRINT_CSS}
   .hh{text-align:center}.hh h1{margin:0 0 2px}.big{font-size:28px;font-weight:700;color:#0d6b5e;margin:4px 0}.bar{height:10px;background:#dce3e0;border-radius:9px;overflow:hidden;margin:6px auto 8px;width:70%}.bar i{display:block;height:100%;background:#0d6b5e}
   .key{font-size:12px}.key span{display:inline-block;width:12px;height:12px;border:1px solid #888;vertical-align:middle;margin:0 4px 0 12px}.lst{font-size:12px;margin-top:6px}.new{color:#2f6db0}</style></head><body>

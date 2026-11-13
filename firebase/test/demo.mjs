@@ -246,6 +246,28 @@ try {
     return o;
   });
   ok('the words that differ are coloured; the Similar verses button hides and shows the marks', simT.diff === 2 && simT.on === 1 && simT.pop === 3 && simT.off === 0 && simT.back === 1 && simT.ld === 2, JSON.stringify(simT));
+  // Arabic: with the app in Arabic, every text on the main pages is fully Arabic (school names may stay as typed), never half and half
+  const arMix = await page.evaluate(async () => {
+    const mixed = [], english = new Set(), t = iso(today()); busy = false; AR = true;
+    const isAr = (x) => /[؀-ۿ]/.test(x);
+    const views = [{ name: 'today' }, { name: 'list' }, { name: 'reports' }, { name: 'class', id: 'c1', date: t }, { name: 'crep', id: 'c1' }, { name: 'student', id: 's1' }, { name: 'session', id: 's1' }, { name: 'history', id: 's1' }, { name: 'report', id: 's1' }, { name: 'mushaf', id: 's1' }, { name: 'week', id: 's1' }];
+    for (const vw of views) {
+      busy = false; go(vw); render(true); await new Promise((r) => setTimeout(r, 150));
+      const w = document.createTreeWalker(document.getElementById('view'), NodeFilter.SHOW_TEXT);
+      while (w.nextNode()) {
+        const n = w.currentNode, p = n.parentElement; if (!p || p.closest('script,style,textarea,.mpage,[data-noar],datalist')) continue;
+        const x = n.nodeValue.trim(); if (!/[A-Za-z]{2,}/.test(x)) continue;
+        let left = x; for (const nm of arNames()) left = left.split(nm).join('');
+        left = left.replace(/https?:\S+|\S+@\S+|PDF|Google Drive|Firebase|AUD|SMART|English|Language/g, '');
+        if (!/[A-Za-z]{2,}/.test(left)) continue;
+        if (isAr(x)) mixed.push(x); else english.add(x);
+      }
+    }
+    AR = false; if (arObs) { arObs.disconnect(); arObs = null; } document.documentElement.removeAttribute('dir'); document.documentElement.setAttribute('lang', 'en'); document.body.classList.remove('ar'); document.getElementById('app').setAttribute('dir', 'ltr'); AR_MEMO.clear(); busy = false; render(true);
+    return { mixed: mixed.slice(0, 6), nMixed: mixed.length, english: [...english].slice(0, 8), nEn: english.size,
+      near: arText('Near review · last 10 hifz days'), cov: arText('recorded by Bilal (covering)'), keep: arText('Some brand new sentence nobody translated') };
+  });
+  ok('Arabic: no half-English text on the main pages, and the common lines are translated', arMix.nMixed === 0 && arMix.nEn === 0 && arMix.near === 'المراجعة القريبة · آخر 10 أيام حفظ' && arMix.cov === 'سجّلها Bilal (بديل)' && arMix.keep === 'Some brand new sentence nobody translated', JSON.stringify(arMix));
   // the six next steps for similar verses
   const six = await page.evaluate(async () => {
     const wait = async (f) => { for (let i = 0; i < 40 && !f(); i++) await new Promise((r) => setTimeout(r, 100)); };
