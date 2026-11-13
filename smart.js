@@ -19,7 +19,7 @@ function oddChecks(st,d,usual){const w=[];
   return w}
 
 // ---------- 3. bottom bar + search ----------
-const NAV=[["today","◷","Today"],["list","☰","Students"],["tajweed","۞","Tajweed"],["reports","▤","Reports"],["settings","⚙","Settings"]];
+const NAV=[["today",'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>',"Today"],["list",'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.6-3.6 3.3-5.5 6.5-5.5s5.9 1.9 6.5 5.5"/><circle cx="17" cy="7" r="2.5"/><path d="M16.5 12.5c2.6.2 4.4 1.9 5 4.5"/></svg>',"Students"],["tajweed",'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 6c-2-1.5-5-2-8-1.5v14c3-.5 6 0 8 1.5 2-1.5 5-2 8-1.5v-14c-3-.5-6 0-8 1.5z"/><path d="M12 6v14"/></svg>',"Tajweed"],["reports",'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h16"/><rect x="5" y="11" width="3" height="7" rx="1"/><rect x="10.5" y="6" width="3" height="12" rx="1"/><rect x="16" y="9" width="3" height="9" rx="1"/></svg>',"Reports"],["settings",'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>',"Settings"]];
 const navOf=v=>({tajweed:"tajweed",today:"today",list:"list",reports:"reports",crep:"reports",wsum:"reports",star:"reports",grading:"reports",screen:"reports",settings:"settings",classes:"settings",fees:"settings",place:"settings",schools:"settings",schoolv:"settings",teacher:"settings",gmove:"settings",handover:"settings",class:"today",buddy:"today",school:"settings",waitlist:"settings",sover:"reports",inbox:"settings"})[v]||"list";
 function afterRender(){
   let n=document.getElementById("nav");
@@ -31,6 +31,7 @@ function afterRender(){
   try{schoolAfter()}catch(e){console.error(e)}
   try{feedbackAfter()}catch(e){console.error(e)}
   if(typeof tourMaybe==="function")tourMaybe();
+  {const h=document.querySelector(".topfix");if(h&&!document.getElementById("langTop")){h.insertAdjacentHTML("afterbegin",`<button type="button" id="langTop" class="link" data-noar lang="${AR?"en":"ar"}">${AR?"English":"العربية"}</button>`);document.getElementById("langTop").onclick=()=>setLang(AR?"en":"ar")}}
   arApply();
 }
 let listQ="";

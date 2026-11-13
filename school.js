@@ -42,7 +42,8 @@ const tchNewSchool=()=>{const c=myMainCls().find(x=>schOfCls(x.id));if(c)return 
 function myPick(td){if(!schoolOn()||isAdminV())return null;const t=meTeacher();if(!t)return null;return td.find(c=>c.teacher===t.id)||td.find(c=>subsFor(c.id).some(a=>a.tid===t.id))||null}
 function schoolBanner(){if(!schoolOn())return null;const t=meTeacher();
   if(isSupervisor())return `<div class="banner info">Supervisor view: you can see every group and report. Nothing can be changed from this account.</div>`;
-  if(t)return `<div class="banner info">Signed in as <b>${esc(t.name)}</b>. You can record in any group of your school, for example when you cover a class. Parents' details show only in your own groups.</div>`;
+  if(t){let seen="";try{seen=localStorage.getItem("hifz.signedNote")||""}catch(_){}if(seen===t.id)return null;
+    return `<div class="banner info" id="signedNote">Signed in as <b>${esc(t.name)}</b>. You can record in any group of your school, for example when you cover a class. Parents' details show only in your own groups. <button type="button" class="link sm bandis" data-bandis="${esc(t.id)}">Got it</button></div>`}
   return null}
 const lastByTeacher=()=>{const t=meTeacher();return t?t.name:null};
 
@@ -95,7 +96,7 @@ function groupPanel(cid){const c=classes.find(x=>x.id===cid);if(!c)return "";con
   const others=TEACHERS.filter(x=>x.active!==false&&x.role!=="supervisor"&&(!mt||x.id!==mt.id));
   const kindTxt=a=>a.kind==="always"?"always":a.kind==="day"?(a.from===iso(today())?"today":fmtShort(a.from)):"until "+fmtShort(a.until);
   const note=GNOTES[cid]&&GNOTES[cid].text||"";
-  return `<details class="panel gpanel" ${mgr&&(abs.length||subs.length)?"open":""}><summary><h3>Group · ${esc(c.name)}</h3><span class="small muted">${mt?"Teacher: "+esc(mt.name):"No main teacher set"}</span></summary>
+  return `<details class="panel gpanel" ${isAdminV()&&(abs.length||subs.length)?"open":""}><summary><h3>Group · ${esc(c.name)}</h3><span class="small muted">${mt?"Teacher: "+esc(mt.name):"No main teacher set"}</span></summary>
     <div class="gsec"><b class="small">Notes for the substitute</b>${mgr?`<textarea id="gNote" rows="2" placeholder="e.g. Yusuf mixes up similar verses. Do not raise Omar's amount.">${esc(note)}</textarea><div class="actions"><button class="sm" id="gNoteSave">Save notes</button><span class="small muted" id="gNoteMsg"></span></div>`:`<p class="small">${note?esc(note):'<span class="muted">No notes.</span>'}</p>`}</div>
     <div class="gsec"><b class="small">Who can edit this group</b>
       ${mt?`<div class="kv"><span>${esc(mt.name)}</span><span class="chip plain">Main teacher</span></div>`:""}
@@ -288,3 +289,5 @@ function wireGroupsEditor(el){wireGroupDel(el);
 Object.assign(AR_DICT,{"Move to another group":"نقل الطالب إلى مجموعة أخرى","New group":"المجموعة الجديدة","Move student":"انقل الطالب","Tap again to move":"اضغط مرة أخرى للنقل","Not moved.":"لم يُنقل.","The whole history moves with the student. Old sessions keep \"Recorded by\" the teacher who recorded them.":"ينتقل سجل الطالب كله معه. وتبقى الجلسات القديمة باسم المعلّم الذي سجّلها.",
  "Suggest moving to another group":"اقترح نقل الطالب إلى مجموعة أخرى","Group":"المجموعة","Why? e.g. ahead of the group":"لماذا؟ مثلًا: سبق مجموعته","Send to the admin":"أرسل إلى المسؤول","Not sent.":"لم يُرسل.","Waiting for the admin to move the student to:":"في انتظار المسؤول لنقل الطالب إلى:",
  "Earlier moves":"سجل النقل","Students moved":"طلاب تم نقلهم","Got it":"تمام","Similar verses practice":"تدريب المتشابهات","To move a student to another class, open the student and tap \"More\". \"Delete group\" under a class moves its students to another class first, then deletes it.":"لنقل طالب إلى فصل آخر افتح الطالب واضغط «المزيد». و«احذف المجموعة» تحت أي فصل تنقل طلابه إلى فصل آخر أولًا ثم تحذفه.","moved by":"نقله","suggested by":"باقتراح من","a deleted group":"مجموعة محذوفة","a teacher":"معلّم"});
+
+document.addEventListener("click",e=>{const b=e.target.closest&&e.target.closest("[data-bandis]");if(!b)return;try{localStorage.setItem("hifz.signedNote",b.dataset.bandis)}catch(_){}const n=document.getElementById("signedNote");if(n)n.remove()});
