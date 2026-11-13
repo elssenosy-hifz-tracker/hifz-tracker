@@ -298,7 +298,7 @@ function renderCore(force){
   const st=allStudents.find(s=>s.id===view.id);
   if(!st){view={name:"list"};return render(true)}
   useOrder(st);
-  ({edit:renderForm,student:renderStudent,week:renderWeek,session:renderSession,saved:renderSaved,test:renderTestMode,history:renderHistory,report:renderReport,mushaf:renderMushaf,mprint:renderMPrint,wa:renderParentMsg,year:renderYear})[view.name](el,sub,st);
+  ({edit:renderForm,student:renderStudent,week:renderWeek,session:renderSession,saved:renderSaved,test:renderTestMode,history:renderHistory,report:renderReport,simprac:renderSimPrac,mushaf:renderMushaf,mprint:renderMPrint,wa:renderParentMsg,year:renderYear})[view.name](el,sub,st);
   if(view.name==="session"&&view.pre)applyPre(el);
 }
 const trackForm=f=>{f.addEventListener("input",()=>busy=true);f.addEventListener("change",()=>busy=true)};
@@ -377,14 +377,14 @@ function renderStudent(el,sub,st){
     <details class="sfold sjuz"><summary>Juz map and attendance</summary><div class="juzgrid">${JUZ_ORDER.map(j=>`<span class="${s.passed.has(j)?"tested":s.done.includes(j)?"done":j===cj?"cur":""}" title="Juz ${j}">${j}</span>`).join("")}</div>
     <p class="small muted">Green: juz passed its test. Teal: memorized, not tested yet. Last 30 days: present ${pres.filter(attended).length} (late ${pres.filter(e=>e.att==="late").length}), absent ${pres.filter(e=>e.att==="absent").length}, excused ${pres.filter(e=>e.att==="excused").length}.</p></details>
     <div class="bigacts"><button class="primary" id="sesBtn">✎ Record session</button><button class="primary" id="musBtn">📖 Mushaf</button></div>
-    <details class="smore" id="sMore"><summary>More</summary><div class="smenu"><b class="small muted">Tests</b><div class="actions"><button id="tmBtn">Test mode</button><button id="jtBtn">Juz test</button><button id="mtBtn">Monthly test</button><button id="otBtn">Other record</button></div><b class="small muted">Reports and parents</b><div class="actions"><button id="repBtn">Report</button><button id="yrBtn">Year report</button><button id="weekBtn">Plan sheet</button><button id="mprBtn">Print mistakes</button>${seesPersonal(st.id)?'<button id="waBtn">Message parents</button>':""}</div><b class="small muted">Student</b><div class="actions"><button id="histBtn">Student history</button><button id="editBtn" class="${tchSurahsOnly(st)?"tok":""}">Edit details</button></div></div></details>
+    <details class="smore" id="sMore"><summary>More</summary><div class="smenu"><b class="small muted">Tests</b><div class="actions"><button id="tmBtn">Test mode</button><button id="jtBtn">Juz test</button><button id="mtBtn">Monthly test</button><button id="otBtn">Other record</button><button data-simgo='${JSON.stringify({name:"simprac",id:st.id})}'>Similar verses practice</button></div><b class="small muted">Reports and parents</b><div class="actions"><button id="repBtn">Report</button><button id="yrBtn">Year report</button><button id="weekBtn">Plan sheet</button><button id="mprBtn">Print mistakes</button>${seesPersonal(st.id)?'<button id="waBtn">Message parents</button>':""}</div><b class="small muted">Student</b><div class="actions"><button id="histBtn">Student history</button><button id="editBtn" class="${tchSurahsOnly(st)?"tok":""}">Edit details</button></div></div></details>
   </div>
   ${st.archived?`<div class="banner warn">${esc(st.name)} is archived since ${fmtShort(st.archived)}: hidden from the lists and reports. <button class="primary adminonly" id="unarchBtn">Restore student</button></div>`:""}
   ${s.done.length>=30?`<div class="banner ok">${esc(st.name)} has completed the whole Quran. <button class="primary" id="khatmCert" ${downloads?"":"hidden"}>Download khatm certificate</button> <span class="small muted" id="k_msg"></span></div>`:""}
   ${backBanner(st)}
   ${p.brk?`<div class="banner info">On break: ${esc(p.brk)}. Near and far review carry on as usual.</div>`:""}
   ${s.lastHifz&&s.lastHifz.hifzMist/Math.max(1,pagesOf(s.lastHifz.hifzLines))>3?`<div class="banner warn">Last recitation had ${s.lastHifz.hifzMist} mistakes in ${pagesOf(s.lastHifz.hifzLines)} pages, more than 3 per page. Reduce the new amount until it settles.</div>`:""}
-  ${s.untested.length?`<div class="banner info">${PREV.includes(s.untested[0])?`Juz ${s.untested[0]} is from earlier hifz: the student recites it all to you to confirm it. If it fails, untick its surahs in "Edit details" so they are memorized again.`:`Juz ${s.untested[0]} is complete: the student recites it all to you. If it fails, it stays in the near review for another week.`}</div>`:""}
+  ${s.untested.length?`<div class="banner info">${PREV.includes(s.untested[0])?`Juz ${s.untested[0]} is from earlier hifz: the student recites it all to you to confirm it. If it fails, untick its surahs in "Edit details" so they are memorized again.`:`Juz ${s.untested[0]} is complete: the student recites it all to you. If it fails, it stays in the near review for another week.`}</div>${typeof simJuzHTML==="function"?simJuzHTML(st,s.untested[0]):""}`:""}
   ${s.block>=5&&!s.consolDone.has(s.block)?`<div class="banner info">${s.block} juz complete: a consolidation week with no new hifz. The last five juz are reviewed and recited to you.</div>`:""}
   <div class="panel">
     <h3>Today's tasks · ${fmt(today())}</h3>
@@ -1043,7 +1043,7 @@ function reportBody(st,from,to){
     ${notes.length?`<h2>Teacher's notes</h2>${notes.map(e=>`<p>${fmtShort(e.date)}: ${esc(e.text||e.note)}</p>`).join("")}`:""}`}}
 function renderReport(el,sub,st){
   const t=iso(today()),from=view.from||t.slice(0,8)+"01",to=view.to||t,r=reportBody(st,from,to),ym=from+"_"+to;
-  r.html+=heartImgHTML(st);
+  r.html+=(typeof simRepHTML==="function"?simRepHTML(st,from,to):"")+heartImgHTML(st);
   sub.textContent="Report · "+st.name;
   const pre=(a,b,l)=>`<button type="button" class="fbtn ${a===from&&b===to?"on":""}" data-rf="${a}" data-rt="${b}">${l}</button>`;
   const d0=today(),wk=iso(addDays(d0,-6)),m0=t.slice(0,8)+"01",pm=new Date(d0.getFullYear(),d0.getMonth()-1,1),pmEnd=new Date(d0.getFullYear(),d0.getMonth(),0);

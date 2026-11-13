@@ -304,7 +304,8 @@ function openQMus(st,items,idx,SM,onMark,onRange){
       if(ex){if(tjp&&tjp.w===w)tjp=null;SM.delete(w);onMark(ex.part,ex.k,-1);draw(false);try{const id=ex.id||await ex.p;if(id)await db.doc("marks/"+id).delete()}catch(_){}return}
       rev[idx]=Math.max(rev[idx],w);const auto=kind==="tajweed"?tjAutoRule(w):"";const v={k:kind,part:it.part,id:null,t:Date.now(),tr:auto};SM.set(w,v);onMark(it.part,kind,1);
       tjp=kind==="tajweed"&&!auto?{w,v,rules:tjWordRules(w)}:null;draw(false);
-      v.p=db.collection("marks").add({sid:st.id,w,k:kind,...(auto?{tr:auto}:{}),date:iso(today()),t:v.t,src:"session",part:it.part}).then(r=>{v.id=r&&r.id;return v.id}).catch(()=>{if(SM.get(w)===v){SM.delete(w);onMark(it.part,kind,-1);draw(false)}errToast("That mistake was not saved. Check your connection and tap the word again.");return null})});
+      v.p=db.collection("marks").add({sid:st.id,w,k:kind,...(auto?{tr:auto}:{}),date:iso(today()),t:v.t,src:"session",part:it.part}).then(r=>{v.id=r&&r.id;return v.id}).catch(()=>{if(SM.get(w)===v){SM.delete(w);onMark(it.part,kind,-1);draw(false)}errToast("That mistake was not saved. Check your connection and tap the word again.");return null});
+      if(kind!=="hesitate"&&typeof simAskMix==="function")simAskMix(st,w,()=>v.id||v.p,()=>{if(SM.get(w)!==v)return;onMark(v.part,v.k,-1);v.k="mix";onMark(v.part,"mix",1);draw(false)})});
     const keep=()=>{if(!anc)return;const b=ov.querySelector(".qmb2");if(!b)return;for(const o of anc.L||[]){const x=b.querySelector(`.mpage .w[data-w="${o.w}"]`);if(x){b.scrollTop+=x.getBoundingClientRect().top-b.getBoundingClientRect().top-o.d;return}}b.scrollTop=anc.top};
     keep();
     const fit=()=>{fitPage(ov);keep();if(scroll){const f=ov.querySelector(`.mpage .w[data-w="${first}"]`);if(f){const b=ov.querySelector(".qmb2");b.scrollTop=Math.max(0,f.offsetTop-b.offsetTop-60)}}};

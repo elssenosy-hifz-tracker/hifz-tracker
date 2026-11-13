@@ -98,11 +98,11 @@ function renderMushaf(el,sub,st){
   const wrap=el.querySelector(".mwrap");let tx=null,ty=null;
   wrap.addEventListener("touchstart",e=>{tx=e.touches[0].clientX;ty=e.touches[0].clientY},{passive:true});
   wrap.addEventListener("touchend",e=>{if(tx==null)return;const dx=e.changedTouches[0].clientX-tx,dy=e.changedTouches[0].clientY-ty;tx=null;if(Math.abs(dx)>70&&Math.abs(dy)<60)goPg(dx>0?pg+1:pg-1)});
-  el.querySelectorAll(".mpage .w").forEach(sp=>sp.onclick=()=>{const w=Number(sp.dataset.w);const ex=all.filter(m=>m.w===w);if(ex.length)openSheet(el,st,w);else addMark(st,w,MK_KIND)});
+  el.querySelectorAll(".mpage .w").forEach(sp=>sp.onclick=()=>{const w=Number(sp.dataset.w);const ex=all.filter(m=>m.w===w);if(ex.length)openSheet(el,st,w);else{const p=addMark(st,w,MK_KIND);if(MK_KIND!=="hesitate"&&typeof simAskMix==="function")simAskMix(st,w,()=>p)}});
   wireMarkRows(el);
   fitPage(el);document.fonts.load('20px "KFGQPC Hafs"').then(()=>fitPage(el)).catch(()=>{});
 }
-async function addMark(st,w,k){const tr=k==="tajweed"?tjAutoRule(w):"";try{await db.collection("marks").add({sid:st.id,w,k,...(tr?{tr}:{}),date:iso(today()),t:Date.now()})}catch(_){}}
+async function addMark(st,w,k){const tr=k==="tajweed"?tjAutoRule(w):"";try{const r=await db.collection("marks").add({sid:st.id,w,k,...(tr?{tr}:{}),date:iso(today()),t:Date.now()});return r&&r.id}catch(_){return null}}
 const markRow=(m,withDate=true)=>`<div class="ev" data-mid="${m.id}"><time>${withDate?fmtShort(m.date):""}</time><div class="evb"><span class="mword">${mw()[m.w]}</span> <b>${markPlace(m)}</b> · <select class="mkind" aria-label="Kind">${MK_ORDER.map(k=>`<option value="${k}" ${k===m.k?"selected":""}>${ERR_KINDS[k]}</option>`).join("")}</select>${m.k==="tajweed"?tjMarkSel(m):""}${m.fixed?' <span class="chip ok">Fixed</span>':""}<input class="mnote" value="${esc(m.note||"")}" placeholder="Note for this mistake"></div><span class="evx"><button class="link small" data-mfix>${m.fixed?"Undo fixed":"Fixed"}</button><button class="link small" data-mdel>Delete</button></span></div>`;
 function wireMarkRows(el){el.querySelectorAll("[data-mid]").forEach(r=>{const id=r.dataset.mid,m=marks.find(x=>x.id===id);if(!m)return;const ref=db.doc("marks/"+id);
   r.querySelector(".mkind").onchange=e=>{const k=e.target.value,tr=k==="tajweed"&&!m.tr?tjAutoRule(m.w):"";ref.update({k,...(tr?{tr}:{})}).catch(()=>{})};

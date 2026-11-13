@@ -37,7 +37,14 @@ export function sampleData() {
       // tajweed mistakes with the rule chosen (tr): iqlab in أَلِيمُۢ, idgham without ghunnah in هُدࣰى
       k3: { sid: 's1', w: 117, k: 'tajweed', tr: 'iqlab', date: daysAgo(1), t: 2 },
       k4: { sid: 's1', w: 59, k: 'tajweed', tr: 'idgN', date: daysAgo(3), t: 3 },
+      // mix-ups with a similar ayah (mx: global ayah index of the ayah he jumped to): An-Nazi'at 34 -> Abasa 33, Al-Inshiqaq 25 -> At-Tin 6
+      k5: { sid: 's4', w: 75416, k: 'mix', mx: [5790], date: daysAgo(2), t: 4 },
+      k6: { sid: 's4', w: 75416, k: 'mix', mx: [5790], date: daysAgo(9), t: 5 },
+      k7: { sid: 's4', w: 76065, k: 'mix', mx: [6103], date: daysAgo(4), t: 6 },
+      k8: { sid: 's5', w: 75416, k: 'mix', mx: [5790], date: daysAgo(3), t: 7 },
     },
+    // similar ayat a teacher added for the whole school (global ayah indexes): Al-Baqarah 48 and 123
+    simpairs: { p1: { o: [54], m: [129], note: 'شفاعة قبل عدل في الأولى، وعدل قبل شفاعة في الثانية', by: 'Bilal', at: 1 } },
     // suggestions and problems sent with 💬 Suggest (only admins see them, in Settings)
     feedback: {
       f1: { kind: 'idea', text: 'Could the parent message also show the surahs reviewed this week?', by: 'Bilal', email: DEMO_USERS.teacher.email, page: 'wa', at: `${daysAgo(1)}T16:20:00.000Z`, date: daysAgo(1), status: 'new' },
@@ -54,12 +61,14 @@ export function sampleData() {
   // group moves (date, from, to, who): Amina (admin) moved Maryam from the Teens class to the Kids class two days ago;
   // the owner sees it under "Students moved" on Today
   const moves = { s2: [{ date: daysAgo(2), from: 'c2', to: 'c1', by: 'Amina', at: Date.now() - 2 * 864e5 }] };
+  // surahs memorized before the program (index): Hana knows Al-Haqqah, so juz 30 has similar ayat to review before its test
+  const prevS = { s6: [68] };
   // parents' WhatsApp numbers: a teacher sees them only in their own group (Bilal: Kids class)
   const phone = { s1: '+61400555001', s2: '+61400555002', s4: '+61400555004', s5: '+61400555005' };
   for (const [id, name, cls, amount, pos] of kids) {
     const days = data.classes[cls].days;
     data.students[id] = {
-      name, cls, order: 'nas', startS: 113, prevS: [], amount, readPages: 20, readStart: 1, farDays: 7, days, start: daysAgo(60), pos,
+      name, cls, order: 'nas', startS: 113, prevS: prevS[id] || [], amount, readPages: 20, readStart: 1, farDays: 7, days, start: daysAgo(60), pos,
       ...(tjp[id] ? { tjp: tjp[id] } : {}),
       ...(moves[id] ? { moves: moves[id] } : {}),
       ...(phone[id] ? { phone: phone[id] } : {}),

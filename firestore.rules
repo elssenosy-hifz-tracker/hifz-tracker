@@ -132,12 +132,12 @@ service cloud.firestore {
     match /{coll}/{id} {
       allow read: if coll in ['students', 'events', 'classes', 'meetings', 'breaks', 'marks', 'settings', 'schedule',
                               'fees', 'teachers', 'access', 'absences', 'groupnotes', 'requests', 'waiting', 'links',
-                              'schools', 'hours']
+                              'schools', 'hours', 'simpairs']
         && canRead();
       allow delete: if coll != 'members' && isAdmin();
       allow create, update: if coll in ['students', 'events', 'classes', 'meetings', 'breaks', 'marks', 'settings',
                                         'schedule', 'fees', 'teachers', 'access', 'absences', 'groupnotes', 'requests',
-                                        'waiting', 'links', 'schools', 'hours']
+                                        'waiting', 'links', 'schools', 'hours', 'simpairs']
         && safeId(id) && safeData(id) && isAdmin();
     }
 
@@ -149,6 +149,14 @@ service cloud.firestore {
       allow update: if isTeacher() && safeData(id) && canRecordStudent(resource.data.get('sid', ''))
         && canRecordStudent(request.resource.data.get('sid', ''));
       allow delete: if isTeacher() && canRecordStudent(resource.data.get('sid', ''));
+    }
+    // Similar verses a teacher adds for the whole school: two lists of ayah numbers, a short note, who and when.
+    match /simpairs/{id} {
+      allow create: if isTeacher() && safeId(id) && safeData(id)
+        && request.resource.data.keys().hasOnly(['o', 'm', 'note', 'by', 'at'])
+        && request.resource.data.o is list && request.resource.data.o.size() > 0 && request.resource.data.o.size() <= 5
+        && request.resource.data.m is list && request.resource.data.m.size() > 0 && request.resource.data.m.size() <= 5
+        && request.resource.data.get('note', '') is string && request.resource.data.get('note', '').size() <= 200;
     }
     // Mushaf mistake marks: same as events.
     match /marks/{id} {

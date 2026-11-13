@@ -289,3 +289,16 @@ test('a suggestion email copy may only go to the address the admins chose', asyn
   await assertFails(updateDoc(doc(db, `feedback/${r.id}`), { status: 'done' }));
   await assertSucceeds(deleteDoc(doc(admin, `feedback/${r.id}`)));
 });
+
+test('similar verses a teacher adds: teachers add, everyone reads, only admins remove', async () => {
+  const t = as('bilal@example.com');
+  await assertSucceeds(setDoc(doc(t, 'simpairs/p1'), { o: [54], m: [129], note: 'shafa\'a before adl', by: 'Bilal', at: 1 }));
+  await assertFails(setDoc(doc(t, 'simpairs/p2'), { o: [54], m: [129], extra: 1 })); // only the pair fields
+  await assertFails(setDoc(doc(t, 'simpairs/p3'), { o: [], m: [129] })); // both lists have ayat
+  await assertFails(setDoc(doc(t, 'simpairs/p4'), { o: [54], m: [129], note: 'x'.repeat(201) }));
+  await assertFails(updateDoc(doc(t, 'simpairs/p1'), { note: 'changed' }));
+  await assertFails(deleteDoc(doc(t, 'simpairs/p1')));
+  await assertSucceeds(getDoc(doc(as('sami@example.com'), 'simpairs/p1')));
+  await assertFails(setDoc(doc(as('sami@example.com'), 'simpairs/p5'), { o: [1], m: [2] })); // supervisors read only
+  await assertSucceeds(deleteDoc(doc(as('aisha@example.com'), 'simpairs/p1')));
+});

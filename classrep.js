@@ -80,7 +80,7 @@ function renderClassReport(el,sub){const c=classes.find(x=>x.id===view.id);if(!c
     <div class="fields"><label>From<input type="date" id="cr_from" value="${from}"></label><label>To<input type="date" id="cr_to" value="${to}"></label></div>
     <div class="filters">${pre(iso(addDays(d0,-6)),t,"Last 7 days")}${pre(t.slice(0,8)+"01",t,"This month")}${pre(iso(pm),iso(pmEnd),"Last month")}${pre(iso(addDays(d0,-89)),t,"Last 3 months")}</div>
     ${classes.length>1?`<div class="filters">${classes.map(x=>`<button type="button" class="fbtn ${x.id===c.id?"on":""}" data-crc="${x.id}">${esc(x.name)}</button>`).join("")}</div>`:""}<p class="small muted">${d.kids.length} ${d.kids.length===1?"student":"students"} · ${fmt(parse(from))} – ${fmt(parse(to))}</p>
-    <div class="report crep">${classReportHTML(c,from,to,d,f)}</div></div>
+    <div class="report crep">${classReportHTML(c,from,to,d,f)}${typeof simClassRepHTML==="function"?simClassRepHTML(d.kids,from,to):""}</div></div>
   <div class="panel"><h3>Class heart</h3><p class="small muted">Darker green: more students memorized the surah. Blue border: completed by someone in this period. Tap a surah for details.</p>
     <div class="heartscroll"><div class="heartbox"><canvas id="cHeart" aria-label="Class heart"></canvas></div></div><p class="small" id="cHeartInfo" aria-live="polite"></p></div>`;
   wireBack(el);
