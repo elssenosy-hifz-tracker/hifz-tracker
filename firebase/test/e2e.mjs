@@ -147,6 +147,20 @@ const backup = {
       ok('supervisor cannot write', w === 'permission-denied', w);
     }
 
+    // ---- a student's page at home: opens from its link without signing in, and shows nothing else of the school ----
+    {
+      const tok = 'e2eSharePageToken0000000000';
+      await o.evaluate(async (tok) => { const db = await claude.use('db'); await db.doc('share/' + tok).set({ sid: 's1', title: 'Share Test Pupil', school: 'S', lang: 'en', updated: '2026-11-14', tasks: [['New hifz', 'Al-Fil'], ['Near review', 'Quraysh']], stats: [['Points', '5']], watch: ['A looks like B'], note: '' }); }, tok);
+      const f = await newPage(browser);
+      await f.goto(BASE + '#s/' + tok); await f.waitForSelector('.shrow', { timeout: 15000 });
+      const fv = await f.evaluate(() => ({ text: document.getElementById('app').textContent, gate: !!document.getElementById('hifzGate'), kids: (typeof allStudents !== 'undefined' ? allStudents.length : 0) }));
+      ok("student page at home opens without signing in, with only that page", /Share Test Pupil/.test(fv.text) && /Quraysh/.test(fv.text) && !fv.gate && fv.kids === 0, JSON.stringify({ gate: fv.gate, kids: fv.kids }));
+      await f.goto('about:blank'); await f.goto(BASE + '#s/' + 'noSuchTokenAtAll00000000000'); await f.waitForSelector('#app h2', { timeout: 15000 });
+      ok('a stopped or wrong link says so', /does not work/.test(await f.textContent('#app')));
+      await o.evaluate(async (tok) => { const db = await claude.use('db'); await db.doc('share/' + tok).delete(); }, tok);
+      await f.context().close();
+    }
+
     // ---- sign out ----
     await o.click('#hifzAcct button');
     await o.waitForSelector('#gGoogle', { timeout: 15000 });

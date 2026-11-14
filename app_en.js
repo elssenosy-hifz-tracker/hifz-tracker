@@ -422,10 +422,10 @@ function renderStudent(el,sub,st){
   const ub=el.querySelector("#unarchBtn");if(ub)ub.onclick=()=>setArchived(st,false);
   wireFix(el,st);wirePoints(el,st);
   wireDeletes(el,st);
-  studentTabs(el);
+  studentTabs(el,st);
 }
 // The student page in four tabs (Today, Progress, Mistakes, Reports) instead of one long page. The chosen tab stays while moving between students.
-function studentTabs(el){const hdr=el.querySelector(":scope > .panel");if(!hdr)return;
+function studentTabs(el,st){const hdr=el.querySelector(":scope > .panel");if(!hdr)return;
   const T=[["today","Today"],["progress","Progress"],["mistakes","Mistakes"],["reports","Reports"]],cur=view.stab||"today";
   const bar=document.createElement("div");bar.className="stabs";bar.setAttribute("role","tablist");
   bar.innerHTML=T.map(([k,l])=>`<button type="button" role="tab" data-stab="${k}" class="${k===cur?"on":""}" aria-selected="${k===cur}">${l}</button>`).join("");
@@ -433,7 +433,7 @@ function studentTabs(el){const hdr=el.querySelector(":scope > .panel");if(!hdr)r
   const tabOf=x=>{const sf=x.dataset&&x.dataset.sf;if(!sf)return "today";return sf==="book"||sf==="tajweed"?"mistakes":sf==="sugg"?"today":"progress"};
   const G={today:[],progress:[],mistakes:[],reports:[]};after.forEach(x=>G[tabOf(x)].push(x));
   const L=[["repBtn","Report"],["yrBtn","Year report"],["weekBtn","Plan sheet"],["mprBtn","Print mistakes"],["waBtn","Message parents"],["histBtn","Student history"]].filter(([id])=>el.querySelector("#"+id));
-  const rep=document.createElement("div");rep.className="panel srep";rep.innerHTML=`<div class="srepg">${L.map(([id,l])=>`<button type="button" data-sclick="${id}">${l}</button>`).join("")}</div>`;el.appendChild(rep);G.reports.push(rep);
+  const rep=document.createElement("div");rep.className="panel srep";rep.innerHTML=`<div class="srepg">${L.map(([id,l])=>`<button type="button" data-sclick="${id}">${l}</button>`).join("")}</div>`;el.appendChild(rep);G.reports.push(rep);if(st&&typeof shareBoxHTML==="function")rep.insertAdjacentHTML("beforeend",shareBoxHTML(st));
   {const j=hdr.querySelector(".sjuz");if(j){j.open=true;const box=document.createElement("div");box.className="panel";box.append(j);el.insertBefore(box,G.progress[0]||rep);G.progress.unshift(box)}}
   const show=k=>{for(const [g,ns] of Object.entries(G))ns.forEach(x=>x.hidden=g!==k);bar.querySelectorAll("[data-stab]").forEach(b=>{const on=b.dataset.stab===k;b.classList.toggle("on",on);b.setAttribute("aria-selected",on)})};show(cur);
   bar.onclick=e=>{const b=e.target.closest("[data-stab]");if(!b)return;view.stab=b.dataset.stab;show(view.stab)};

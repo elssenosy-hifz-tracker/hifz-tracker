@@ -328,6 +328,34 @@ try {
     await db.doc('events/' + id).delete(); return o;
   });
   ok('families: weekly message in Arabic, weekly card picture, congratulations on the class screen', gf.ar && gf.en && gf.png && gf.cel, JSON.stringify(gf));
+  // the student's page at home: off until an admin turns it on; a link opens a read-only page without signing in
+  const sh = await page.evaluate(async () => {
+    const wait = async (f) => { for (let i = 0; i < 40 && !f(); i++) await new Promise((r) => setTimeout(r, 100)); };
+    const o = {}; busy = false; view.stab = 'reports'; go({ name: 'student', id: 's4' }); render(true);
+    o.offFirst = !document.querySelector('.shbox');
+    busy = false; go({ name: 'settings' }); render(true); document.querySelector('[data-shon="1"]').click(); await wait(() => shareOn());
+    busy = false; view.stab = 'reports'; go({ name: 'student', id: 's4' }); render(true);
+    document.querySelector('[data-shmk="s4"]').click(); await wait(() => SHAREKEYS.s4 && document.querySelector('.shbox input'));
+    o.tok = SHAREKEYS.s4 && SHAREKEYS.s4.tok; const d = (await db.doc('share/' + o.tok).get()).data();
+    o.snap = !!d && d.sid === 's4' && d.title === 'Fatima' && Array.isArray(d.tasks) && d.tasks.length >= 3 && !('phone' in d) && /An-Nazi'at 34|النازعات 34/.test(JSON.stringify(d));
+    o.link = document.querySelector('.shbox input').value.endsWith('#s/' + o.tok);
+    view.stab = 'today'; return o;
+  });
+  await page.evaluate(() => window.dispatchEvent(new Event('pagehide'))); // the preview keeps its data in the browser: write it down now
+  const fam = await ctx.newPage();
+  await fam.goto(BASE + '#s/' + sh.tok); await fam.waitForSelector('.shrow');
+  const famView = await fam.evaluate(() => ({ text: document.getElementById('app').textContent, nav: !!document.getElementById('nav'), list: !!document.querySelector('.slist') }));
+  await fam.goto('about:blank'); await fam.goto(BASE + '#s/' + 'nosuchtoken000000000000'); await fam.waitForSelector('#app h2');
+  const famBad = await fam.evaluate(() => /does not work|لا يعمل/.test(document.getElementById('app').textContent));
+  await fam.close();
+  const stop = await page.evaluate(async () => {
+    busy = false; view.stab = 'reports'; go({ name: 'student', id: 's4' }); render(true); const tok = SHAREKEYS.s4.tok;
+    const b = document.querySelector('[data-shstop="s4"]'); b.click(); b.click();
+    for (let i = 0; i < 40 && SHAREKEYS.s4; i++) await new Promise((r) => setTimeout(r, 100));
+    const gone = !(await db.doc('share/' + tok).get()).exists; view.stab = 'today';
+    await db.doc('settings/main').set({ ...(settings.main || {}), shareOn: false }); return gone && !SHAREKEYS.s4;
+  });
+  ok("student page at home: off by default, link made by the teacher, family page opens without signing in, link can be stopped", sh.offFirst && sh.snap && sh.link && /Fatima/.test(famView.text) && !famView.nav && !famView.list && famBad && stop, JSON.stringify({ sh, famView: { nav: famView.nav, list: famView.list, len: famView.text.length }, famBad, stop }));
   // the six next steps for similar verses
   const six = await page.evaluate(async () => {
     const wait = async (f) => { for (let i = 0; i < 40 && !f(); i++) await new Promise((r) => setTimeout(r, 100)); };

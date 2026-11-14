@@ -307,6 +307,15 @@ function showAccount(user, roleLabel) {
 // ---------- boot ----------
 let started = false;
 window.HIFZ_BOOT = function boot(init) {
+  // a student's page at home (#s/<token>): one document read without signing in; nothing else of the school is opened
+  const share = location.hash.match(/^#s\/([A-Za-z0-9]{20,60})$/);
+  if (share) {
+    showGate('<h1>Hifz Tracker</h1><p class="muted">Loading…</p>');
+    getDoc(doc(fs, 'share', share[1]))
+      .then((s) => window.renderSharePage(s.exists() ? dec(s.data()) : null))
+      .catch(() => window.renderSharePage(null));
+    return;
+  }
   showGate('<h1>Hifz Tracker</h1><p class="muted">Loading…</p>');
   getRedirectResult(auth).catch((e) => showSignIn(authError(e)));
   finishEmailLink().catch(() => {});

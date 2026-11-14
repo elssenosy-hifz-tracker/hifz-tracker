@@ -302,3 +302,21 @@ test('similar verses a teacher adds: teachers add, everyone reads, only admins r
   await assertFails(setDoc(doc(as('sami@example.com'), 'simpairs/p5'), { o: [1], m: [2] })); // supervisors read only
   await assertSucceeds(deleteDoc(doc(as('aisha@example.com'), 'simpairs/p1')));
 });
+
+test("a student's page at home: anyone with the link reads that one page; only the student's teachers write or stop it", async () => {
+  const t = as('bilal@example.com'), tok = 'abcdefghijklmnopqrstuvwxyz12';
+  const snap = { sid: 's1', title: 'Yusuf', school: 'S', lang: 'ar', updated: '2026-11-14', tasks: [{ __a: ['a', 'b'] }], stats: [{ __a: ['p', '1'] }], watch: [], note: '' }; // lists inside lists are stored wrapped, as the app does
+  await assertFails(setDoc(doc(t, 'share/' + tok), { ...snap, sid: 's2' })); // another group's student
+  await assertFails(setDoc(doc(t, 'share/shorttoken'), snap)); // the token must be long
+  await assertFails(setDoc(doc(t, 'share/' + tok), { ...snap, phone: '123' })); // only the page's fields
+  await assertSucceeds(setDoc(doc(t, 'share/' + tok), snap));
+  await assertFails(updateDoc(doc(t, 'share/' + tok), { sid: 's2' })); // a link stays with its student
+  await assertSucceeds(setDoc(doc(t, 'sharekeys/s1'), { tok, by: 'Bilal', at: 1 }));
+  await assertFails(setDoc(doc(t, 'sharekeys/s2'), { tok, by: 'Bilal', at: 1 }));
+  await assertSucceeds(getDoc(doc(anon(), 'share/' + tok))); // the family, not signed in
+  await assertFails(getDocs(collection(anon(), 'share'))); // nobody lists the pages
+  await assertFails(getDoc(doc(anon(), 'sharekeys/s1')));
+  await assertFails(getDoc(doc(anon(), 'students/s1')));
+  await assertSucceeds(deleteDoc(doc(t, 'share/' + tok)));
+  await assertSucceeds(deleteDoc(doc(t, 'sharekeys/s1')));
+});

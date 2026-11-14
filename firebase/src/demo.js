@@ -127,6 +127,8 @@ function showBanner() {
 
 window.HIFZ_BOOT = function boot(init) {
   window.claude = { use: async (n) => ({ db: dbApi, downloads: downloadsApi, user: userApi })[n] || null };
+  const share = location.hash.match(/^#s\/([A-Za-z0-9]{20,60})$/); // a student's page at home, from this preview's data
+  if (share) { window.renderSharePage(((store && store.share) || {})[share[1]] || null); return; }
   showBanner();
   init();
 };

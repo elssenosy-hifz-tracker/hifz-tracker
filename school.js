@@ -50,7 +50,7 @@ const lastByTeacher=()=>{const t=meTeacher();return t?t.name:null};
 function schoolInit(){
   const sub=(c,f,k=0)=>{try{db.collection(c).onSnapshot(s=>{f(s.docs.map(d=>({...d.data(),id:d.id})));render()},()=>{if(k<5)setTimeout(()=>sub(c,f,k+1),3000)})}catch(_){}};
   sub("teachers",a=>{TCH_LOADED=true;TEACHERS=a.sort((x,y)=>(x.n||0)-(y.n||0)||String(x.name).localeCompare(String(y.name)))});
-  sub("access",a=>ACCESS=a);sub("simpairs",a=>{SIMPAIRS=a;SIM=null});sub("absences",a=>ABSENCES=a);sub("requests",a=>REQS=a);sub("waiting",a=>WAITING=a);
+  sub("access",a=>ACCESS=a);sub("sharekeys",a=>{SHAREKEYS={};a.forEach(x=>SHAREKEYS[x.id]=x)});sub("simpairs",a=>{SIMPAIRS=a;SIM=null});sub("absences",a=>ABSENCES=a);sub("requests",a=>REQS=a);sub("waiting",a=>WAITING=a);
   sub("links",a=>{LINKS={};a.forEach(x=>LINKS[x.id]=x)});sub("groupnotes",a=>{GNOTES={};a.forEach(x=>GNOTES[x.id]=x)});
   (async()=>{try{scUser=await claude.use("user");if(!scUser)return;const me=await scUser.me();ME_UID=me.id;ME_EMAIL=me.email;ME_NAME=me.name||"";ME_OWNER=!!me.isOwner;render()}catch(_){}})();
   try{schoolsInit()}catch(e){console.error(e)}
